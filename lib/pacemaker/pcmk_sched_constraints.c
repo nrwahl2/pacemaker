@@ -40,7 +40,9 @@ enum pe_order_kind {
 
 enum pe_ordering get_flags(const char *id, enum pe_order_kind kind,
                            const char *action_first, const char *action_then, gboolean invert);
-enum pe_ordering get_asymmetrical_flags(enum pe_order_kind kind);
+enum pe_ordering get_asymmetrical_flags(const char *id, enum pe_order_kind kind,
+                                        const char *action_first,
+                                        const char *action_then);
 static pe__location_t *generate_location_rule(pe_resource_t *rsc,
                                               xmlNode *rule_xml,
                                               const char *discovery,
@@ -413,7 +415,7 @@ unpack_simple_rsc_order(xmlNode * xml_obj, pe_working_set_t * data_set)
     }
 
     if (invert_bool == FALSE) {
-        cons_weight |= get_asymmetrical_flags(kind);
+        cons_weight |= get_asymmetrical_flags(id, kind, action_first, action_then);
     } else {
         cons_weight |= get_flags(id, kind, action_first, action_then, FALSE);
     }
@@ -1632,16 +1634,10 @@ custom_action_order(pe_resource_t * lh_rsc, char *lh_action_task, pe_action_t * 
 }
 
 enum pe_ordering
-get_asymmetrical_flags(enum pe_order_kind kind)
+get_asymmetrical_flags(const char *id, enum pe_order_kind kind,
+                       const char *action_first, const char *action_then)
 {
-    enum pe_ordering flags = pe_order_optional;
-
-    if (kind == pe_order_kind_mandatory) {
-        flags |= pe_order_asymmetrical;
-    } else if (kind == pe_order_kind_serialize) {
-        flags |= pe_order_serialize_only;
-    }
-    return flags;
+    return get_flags(id, kind, action_first, action_then, FALSE);
 }
 
 enum pe_ordering
@@ -1651,12 +1647,12 @@ get_flags(const char *id, enum pe_order_kind kind,
     enum pe_ordering flags = pe_order_optional;
 
     if (invert && kind == pe_order_kind_mandatory) {
-        crm_trace("Upgrade %s: implies left", id);
-        flags |= pe_order_implies_first;
-
-    } else if (kind == pe_order_kind_mandatory) {
         crm_trace("Upgrade %s: implies right", id);
         flags |= pe_order_implies_then;
+
+    } else if (kind == pe_order_kind_mandatory) {
+        crm_trace("Upgrade %s: implies left", id);
+        flags |= pe_order_implies_first;
         if (safe_str_eq(action_first, RSC_START)
             || safe_str_eq(action_first, RSC_PROMOTE)) {
             crm_trace("Upgrade %s: runnable", id);
@@ -1717,7 +1713,7 @@ unpack_order_set(xmlNode * set, enum pe_order_kind parent_kind, pe_resource_t **
     if (symmetrical) {
         flags = get_flags(id, local_kind, action, action, FALSE);
     } else {
-        flags = get_asymmetrical_flags(local_kind);
+        flags = get_asymmetrical_flags(id, local_kind, action, action);
     }
 
     for (xml_rsc = __xml_first_child_element(set); xml_rsc != NULL;
@@ -1886,7 +1882,7 @@ order_rsc_sets(const char *id, xmlNode * set1, xmlNode * set2, enum pe_order_kin
     }
 
     if (symmetrical == FALSE) {
-        flags = get_asymmetrical_flags(kind);
+        flags = get_asymmetrical_flags(id, kind, action_2, action_1);
     } else {
         flags = get_flags(id, kind, action_2, action_1, invert);
     }

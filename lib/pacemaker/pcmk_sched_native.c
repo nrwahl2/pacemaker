@@ -2151,7 +2151,12 @@ native_update_actions(pe_action_t *first, pe_action_t *then, pe_node_t *node,
     }
 
     if (type & pe_order_implies_first) {
-        if (is_set(filter, pe_action_optional) && is_not_set(flags /* Should be then_flags? */, pe_action_optional)) {
+        // begin nwahl new
+        if (is_set(filter, pe_action_optional)
+                && is_not_set(then_flags, pe_action_optional)
+                && is_set(first_flags, pe_action_optional)) {
+        // end nwahl new
+        // if (is_set(filter, pe_action_optional) && is_not_set(flags /* Should be then_flags? */, pe_action_optional)) {    // nwahl: old
             // Needs is_set(first_flags, pe_action_optional) too?
             pe_rsc_trace(first->rsc, "Unset optional on %s because of %s", first->uuid, then->uuid);
             pe_action_implies(first, then, pe_action_optional);
