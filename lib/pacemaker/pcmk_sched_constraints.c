@@ -1650,13 +1650,10 @@ get_flags(const char *id, enum pe_order_kind kind,
 {
     enum pe_ordering flags = pe_order_optional;
 
-    if (invert && kind == pe_order_kind_mandatory) {
+    if (kind == pe_order_kind_mandatory) {
         crm_trace("Upgrade %s: implies left", id);
         flags |= pe_order_implies_first;
 
-    } else if (kind == pe_order_kind_mandatory) {
-        crm_trace("Upgrade %s: implies right", id);
-        flags |= pe_order_implies_then;
         if (safe_str_eq(action_first, RSC_START)
             || safe_str_eq(action_first, RSC_PROMOTE)) {
             crm_trace("Upgrade %s: runnable", id);
