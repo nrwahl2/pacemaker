@@ -1875,6 +1875,7 @@ construct_op(lrm_state_t * lrm_state, xmlNode * rsc_op, const char *rsc_id, cons
     const char *op_delay = NULL;
     const char *op_timeout = NULL;
     GHashTable *params = NULL;
+    lrmd_rsc_info_t *rsc = lrm_state_get_rsc_info(lrm_state, rsc_id, 0);
 
     const char *transition = NULL;
 
@@ -1923,7 +1924,6 @@ construct_op(lrm_state_t * lrm_state, xmlNode * rsc_op, const char *rsc_id, cons
         && !is_remote_lrmd_ra(NULL, NULL, rsc_id)) {
 
         // Resource info *should* already be cached, so we don't get executor call
-        lrmd_rsc_info_t *rsc = lrm_state_get_rsc_info(lrm_state, rsc_id, 0);
         struct ra_metadata_s *metadata;
 
         metadata = metadata_cache_get(lrm_state->metadata_cache, rsc);
@@ -1995,6 +1995,18 @@ construct_op(lrm_state_t * lrm_state, xmlNode * rsc_op, const char *rsc_id, cons
             g_hash_table_destroy(params);
             params = NULL;
         }
+    }
+
+    /* pcmk_monitor_timeout overrides CRM_meta_timeout for stonith
+     * start/monitor
+     */
+    if (safe_str_eq(rsc->standard, PCMK_RESOURCE_CLASS_STONITH)
+        && pcmk__str_any_of(operation, RSC_START, RSC_STATUS, NULL)) {
+
+        const char *st_mon_timeout = g_hash_table_lookup(params,
+                                         "pcmk_monitor_timeout");
+        if (st_mon_timeout)
+            op->timeout = crm_get_msec(st_mon_timeout);
     }
 
     /* sanity */

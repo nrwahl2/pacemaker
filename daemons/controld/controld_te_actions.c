@@ -25,11 +25,40 @@ GHashTable *te_targets = NULL;
 void send_rsc_command(crm_action_t * action);
 static void te_update_job_count(crm_action_t * action, int offset);
 
+/*
+ * For stonith start/monitor operations, pcmk_monitor_timeout overrides
+ * the action timeout.
+ */
+static int
+rsc_timer_timeout(crm_action_t * action)
+{
+    xmlNode *rsc = find_xml_node(action->xml, XML_CIB_TAG_RESOURCE, FALSE);
+    xmlNode *attributes = find_xml_node(action->xml, XML_TAG_ATTRS, FALSE);
+
+    if (rsc && attributes) {
+        const char *task = crm_element_value(action->xml, XML_LRM_ATTR_TASK);
+        const char *class = crm_element_value(rsc, XML_AGENT_ATTR_CLASS);
+        const char *st_mon_timeout = crm_element_value(attributes,
+                                                       "pcmk_monitor_timeout");
+
+        if (safe_str_eq(class, PCMK_RESOURCE_CLASS_STONITH)
+            && pcmk__str_any_of(task, RSC_START, RSC_STATUS, NULL)
+            && st_mon_timeout) {
+
+            return crm_get_msec(st_mon_timeout);
+        }
+    }
+
+    return action->timeout;
+}
+
 static void
 te_start_action_timer(crm_graph_t * graph, crm_action_t * action)
 {
     action->timer = calloc(1, sizeof(crm_action_timer_t));
-    action->timer->timeout = action->timeout;
+    action->timer->timeout = (action->type == action_type_rsc)
+                                  ? rsc_timer_timeout(action)
+                                  : action->timeout;
     action->timer->action = action;
     action->timer->source_id = g_timeout_add(action->timer->timeout + graph->network_delay,
                                              action_timer_callback, (void *)action->timer);
