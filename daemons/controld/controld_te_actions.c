@@ -273,6 +273,8 @@ te_rsc_command(crm_graph_t * graph, crm_action_t * action)
      */
     xmlNode *cmd = NULL;
     xmlNode *rsc_op = NULL;
+    xmlNode *action_rsc = NULL;
+    xmlNode *attributes = NULL;
 
     gboolean rc = TRUE;
     gboolean no_wait = FALSE;
@@ -284,6 +286,8 @@ te_rsc_command(crm_graph_t * graph, crm_action_t * action)
     const char *on_node = NULL;
     const char *router_node = NULL;
     const char *task_uuid = NULL;
+    const char *class = NULL;
+    const char *st_monitor_timeout = NULL;
 
     CRM_ASSERT(action != NULL);
     CRM_ASSERT(action->xml != NULL);
@@ -303,6 +307,17 @@ te_rsc_command(crm_graph_t * graph, crm_action_t * action)
     if (!router_node) {
         router_node = on_node;
     }
+
+    action_rsc = find_xml_node(action->xml, XML_CIB_TAG_RESOURCE, TRUE);
+    attributes = find_xml_node(action->xml, XML_TAG_ATTRS, TRUE);
+    class = crm_element_value(action_rsc, XML_AGENT_ATTR_CLASS);
+    st_monitor_timeout = crm_element_value(attributes, "pcmk_monitor_timeout");
+
+    // Use monitor timeout as start timeout for stonith devices
+    if (safe_str_eq(class, PCMK_RESOURCE_CLASS_STONITH)
+            && safe_str_eq(task, RSC_START)
+            && st_monitor_timeout)
+        action->timeout = crm_get_msec(st_monitor_timeout);
 
     counter = pcmk__transition_key(transition_graph->id, action->id,
                                    get_target_rc(action), te_uuid);
