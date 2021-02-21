@@ -11,18 +11,12 @@ RemoteOnline: [ node3-rem ]
  node3-rem	(ocf:pacemaker:remote):	 Started node1
 
 Transition Summary:
- * Move       stateful:0     ( Slave node1 -> Master node2 )  
- * Start      stateful:1     (                       node1 )  
+ * Promote    stateful:1     ( Stopped -> Master node2 )  
 
 Executing cluster transition:
- * Pseudo action:   stateful-clone_stop_0
- * Resource action: stateful        stop on node1
- * Pseudo action:   stateful-clone_stopped_0
  * Pseudo action:   stateful-clone_start_0
  * Resource action: stateful        start on node2
- * Resource action: stateful        start on node1
  * Pseudo action:   stateful-clone_running_0
- * Resource action: stateful        monitor=11000 on node1
  * Pseudo action:   stateful-clone_promote_0
  * Resource action: stateful        promote on node2
  * Pseudo action:   stateful-clone_promoted_0

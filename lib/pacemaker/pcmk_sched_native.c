@@ -121,8 +121,12 @@ native_choose_node(pe_resource_t * rsc, pe_node_t * prefer, pe_working_set_t * d
          *
          * An alternative would be to favor the preferred node even if the best
          * node is better, when the best node's weight is less than INFINITY.
+	 *
+	 * For anonymous clone instances, favor the preferred node.
          */
-        } else if ((chosen->weight < 0) || (chosen->weight < best->weight)) {
+        } else if ((chosen->weight < 0)
+                   || ((chosen->weight < best->weight)
+                       && !pe_rsc_is_anon_clone(rsc->parent))) {
             pe_rsc_trace(rsc, "Preferred node %s for %s was unsuitable",
                          chosen->details->uname, rsc->id);
             chosen = NULL;
