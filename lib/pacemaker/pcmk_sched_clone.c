@@ -519,6 +519,86 @@ append_parent_colocation(pe_resource_t * rsc, pe_resource_t * child, gboolean al
     }
 }
 
+static pe_resource_t*
+first_native_child(pe_resource_t *rsc)
+{
+    while (rsc->children != NULL) {
+        rsc = rsc->children->data;
+    }
+
+    CRM_ASSERT(rsc->variant == pe_native);
+    return rsc;
+}
+
+static void
+swap_allocations(pe_resource_t *rsc1, pe_resource_t *rsc2, pe_node_t *alloc1,
+                 pe_node_t *alloc2)
+{
+    GHashTable *tmp;
+
+    pe_rsc_trace(rsc, "Swapping allocations: %s (currently allocated to %s) "
+                      "and %s (currently allocated to %s)",
+                 rsc1->id, alloc1->details->uname, rsc2->id,
+                 alloc2->details->uname);
+
+    tmp = rsc1->allowed_nodes;
+    rsc1->allowed_nodes = rsc2->allowed_nodes;
+    rsc2->allowed_nodes = tmp;
+
+    assign_node(rsc1, alloc2, TRUE);
+    assign_node(rsc2, alloc1, TRUE);
+}
+
+static void
+reallocate_to_running_on(GListPtr instances)
+{
+    bool changed = true;
+
+    while (changed) {
+        changed = false;
+
+        for (GListPtr gIter = instances; gIter != NULL; gIter = gIter->next) {
+            pe_resource_t *rsc1 = gIter->data;
+            pe_resource_t *native1 = first_native_child(rsc1);
+
+            pe_node_t *running1 = pe__current_node(rsc1);
+            pe_node_t *alloc1 = native1->allocated_to;
+
+            GListPtr gIter2 = instances;
+
+            /* If not running, there's no reason to swap.
+             * If not allocated, it should stay that way.
+             */
+            if ((running1 == NULL) || (alloc1 == NULL)) {
+                continue;
+            }
+
+            /* We're already where we want to be. */
+            if (running1->details == alloc1->details) {
+                continue;
+            }
+
+            for (; gIter2 != NULL; gIter2 = gIter2->next) {
+                pe_resource_t *rsc2 = gIter2->data;
+                pe_resource_t *native2 = first_native_child(rsc2);
+
+                pe_node_t *running2 = pe__current_node(rsc2);
+                pe_node_t *alloc2 = native2->allocated_to;
+
+                /* Swap if rsc2 is allocated to rsc1's running node
+                 * and rsc2 is not also running on the same node.
+                 */
+                if ((alloc2 != NULL) && (alloc2->details == running1->details)
+                    && ((running2 == NULL)
+                        || (running2->details != running1->details))) {
+
+                    swap_allocations(rsc1, rsc2, alloc1, alloc2);
+                    changed = true;
+                }
+            }
+        }
+    }
+}
 
 void
 distribute_children(pe_resource_t *rsc, GListPtr children, GListPtr nodes,
@@ -610,6 +690,15 @@ distribute_children(pe_resource_t *rsc, GListPtr children, GListPtr nodes,
         }
     }
 
+    /* Allocate everything first using the logic above.
+     * After this is done, ensure that if any allocated anonymous
+     * instances are already running on a node, they stay there if
+     * possible.
+     */
+    if (!pcmk_is_set(rsc->flags, pe_rsc_unique)) {
+        reallocate_to_running_on(children);
+    }
+
     pe_rsc_debug(rsc, "Allocated %d %s instances of a possible %d",
                  allocated, rsc->id, max);
 }
@@ -676,6 +765,7 @@ pcmk__clone_allocate(pe_resource_t *rsc, pe_node_t *prefer,
 
     pe__clear_resource_flags(rsc, pe_rsc_provisional|pe_rsc_allocating);
     pe_rsc_trace(rsc, "Done allocating %s", rsc->id);
+    crm_trace("Done allocating %s", rsc->id);
     return NULL;
 }
 

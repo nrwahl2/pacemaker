@@ -338,6 +338,7 @@ native_assign_node(pe_resource_t *rsc, pe_node_t *chosen, gboolean force)
 
     crm_debug("Assigning %s to %s", chosen->details->uname, rsc->id);
     rsc->allocated_to = pe__copy_node(chosen);
+    pe_rsc_trace(rsc, "nwahl: rsc=%p, rsc->id=%s, rsc->allocated_to=%s", rsc, rsc->id, rsc->allocated_to->details->uname);
 
     chosen->details->allocated_rsc = g_list_prepend(chosen->details->allocated_rsc, rsc);
     chosen->details->num_resources++;

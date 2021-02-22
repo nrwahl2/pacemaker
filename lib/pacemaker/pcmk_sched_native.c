@@ -107,6 +107,9 @@ native_choose_node(pe_resource_t * rsc, pe_node_t * prefer, pe_working_set_t * d
 
         // First node in sorted list has the best score
         best = g_list_nth_data(nodes, 0);
+        /* start printing to avoid optimization */
+        pe_rsc_trace(rsc, "nwahl: best is %s", best->details->uname);
+        pe_rsc_trace(rsc, "nwahl: best->weight is %d", best->weight);
     }
 
     if (prefer && nodes) {
@@ -121,12 +124,8 @@ native_choose_node(pe_resource_t * rsc, pe_node_t * prefer, pe_working_set_t * d
          *
          * An alternative would be to favor the preferred node even if the best
          * node is better, when the best node's weight is less than INFINITY.
-	 *
-	 * For anonymous clone instances, favor the preferred node.
          */
-        } else if ((chosen->weight < 0)
-                   || ((chosen->weight < best->weight)
-                       && !pe_rsc_is_anon_clone(rsc->parent))) {
+        } else if ((chosen->weight < 0) || (chosen->weight < best->weight)) {
             pe_rsc_trace(rsc, "Preferred node %s for %s was unsuitable",
                          chosen->details->uname, rsc->id);
             chosen = NULL;
@@ -169,6 +168,7 @@ native_choose_node(pe_resource_t * rsc, pe_node_t * prefer, pe_working_set_t * d
                 pe_rsc_trace(rsc, "Current node for %s (%s) can't run resources",
                              rsc->id, running->details->uname);
             } else if (running) {
+                pe_rsc_trace(rsc, "nwahl: %s is running; trying to assign to current running node", rsc->id);
                 for (GList *iter = nodes->next; iter; iter = iter->next) {
                     pe_node_t *tmp = (pe_node_t *) iter->data;
 
@@ -182,6 +182,66 @@ native_choose_node(pe_resource_t * rsc, pe_node_t * prefer, pe_working_set_t * d
                     }
                     multiple++;
                 }
+
+                /* nwahl: BEGIN */
+                /*
+                if (pe_rsc_is_anon_clone(rsc->parent)
+                    && (running->details != chosen->details)) {
+                    */
+
+                    /* If this instance is not allocated to its current node,
+                     * allocate it to its current node if possible.
+                     *
+                     * Find another instance that is allocated to this one's
+                     * current node, and swap which nodes they're allocated to.
+                     */
+
+                    /* Find an instance to swap with. */
+                /*
+                    pe_resource_t *swap = NULL;
+
+                    pe_rsc_trace(rsc, "nwahl: %s is anon_clone and running != chosen", rsc->id);
+                    for (GListPtr gIter = rsc->parent->children; gIter != NULL;
+                         gIter = gIter->next) {
+
+                        pe_resource_t *r = gIter->data;
+                        pe_rsc_trace(rsc, "nwahl: r=%p, r->id=%s", r, r->id);
+                        pe_rsc_trace(rsc, "nwahl: r=%p, r->id=%s, r->allocated_to=%s", r, r->id, r->allocated_to ? r->allocated_to->details->uname : "<null>");
+
+                        if (r->allocated_to != NULL
+                            && pcmk__str_eq(r->allocated_to->details->id,
+                                            running->details->id,
+                                            pcmk__str_none)) {
+
+                            pe_node_t *n = pe__current_node(r);
+
+                            if (n != NULL
+                                && !pcmk__str_eq(n->details->id,
+                                                 running->details->id,
+                                                 pcmk__str_none)) {
+                                swap = r;
+                                break;
+                            }
+                        }
+                    }
+                    */
+
+                    /* If swap is NULL, that means the instance's current
+                     * node isn't allocated any instances. In that case,
+                     * don't allocate this instance to its current node.
+                     */
+                /*
+                    if (swap != NULL) {
+                        pe_rsc_trace(rsc, "Allocating %s to its current node %s",
+                                     rsc->id, running->details->uname);
+                        pe_rsc_trace(rsc, "Allocating %s to node %s to replace %s",
+                                     swap->id, chosen->details->uname, rsc->id);
+                        native_assign_node(swap, chosen, FALSE);
+                        chosen = running;
+                    }
+                }
+            */
+                /* nwahl: END */
             }
         }
     }
