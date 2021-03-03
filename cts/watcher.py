@@ -9,8 +9,8 @@ import os
 import time
 import threading
 
+from cts.CTSlogging import *
 from cts.remote import *
-from cts.logging import *
 
 log_watcher_bin = CTSvars.CRM_DAEMON_DIR + "/cts-log-watcher"
 

@@ -25,9 +25,9 @@ import tempfile
 from stat import *
 from cts import CTS
 from cts.CTSaudits import *
+from cts.CTSlogging import LogFactory
 from cts.CTSvars   import *
 from cts.patterns  import PatternSelector
-from cts.logging   import LogFactory
 from cts.remote    import RemoteFactory, input_wrapper
 from cts.watcher   import LogWatcher
 from cts.environment import EnvFactory

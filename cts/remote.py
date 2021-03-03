@@ -14,8 +14,8 @@ from threading import Thread
 pdir=os.path.dirname(sys.path[0])
 sys.path.insert(0, pdir) # So that things work from the source directory
 
-from cts.CTSvars import *
-from cts.logging import *
+from cts.CTSvars    import *
+from cts.CTSlogging import *
 
 trace_rsh=None
 trace_lw=None

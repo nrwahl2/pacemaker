@@ -36,10 +36,10 @@ ctslib_PYTHON		= __init__.py		\
 			  CM_common.py		\
 			  CM_corosync.py	\
 			  CTSaudits.py		\
+			  CTSlogging.py		\
 			  CTSscenarios.py	\
 			  CTStests.py		\
 			  environment.py	\
-			  logging.py		\
 			  patterns.py		\
 			  remote.py		\
 			  watcher.py

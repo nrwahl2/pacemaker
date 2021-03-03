@@ -12,8 +12,8 @@ import traceback
 
 from collections import UserDict
 
+from cts.CTSlogging  import LogFactory
 from cts.CTSvars     import *
-from cts.logging     import LogFactory
 from cts.watcher     import LogWatcher
 from cts.remote      import RemoteFactory, input_wrapper
 from cts.environment import EnvFactory

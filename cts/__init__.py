@@ -8,11 +8,11 @@ CM_common
 CM_corosync
 CTSaudits
 CTS
+CTSlogging
 CTSscenarios
 CTStests
 CTSvars
 environment
-logging
 patterns
 remote
 watcher
