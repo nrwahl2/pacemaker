@@ -232,7 +232,6 @@ do_cl_join_finalize_respond(long long action,
                             enum crmd_fsa_state cur_state,
                             enum crmd_fsa_input current_input, fsa_data_t * msg_data)
 {
-    xmlNode *tmp1 = NULL;
     gboolean was_nack = TRUE;
     static gboolean first_join = TRUE;
     ha_msg_input_t *input = fsa_typed_data(fsa_dt_ha_msg);
@@ -241,6 +240,9 @@ do_cl_join_finalize_respond(long long action,
     int join_id = -1;
     const char *op = crm_element_value(input->msg, F_CRM_TASK);
     const char *welcome_from = crm_element_value(input->msg, F_CRM_HOST_FROM);
+
+    xmlNode *execd_state = NULL;
+    xmlNode *reply = NULL;
 
     if (!pcmk__str_eq(op, CRM_OP_JOIN_ACKNAK, pcmk__str_casei)) {
         crm_trace("Ignoring op=%s message", op);
@@ -282,52 +284,52 @@ do_cl_join_finalize_respond(long long action,
                  CRM_FEATURE_SET, NULL, FALSE);
 
     /* send our status section to the DC */
-    tmp1 = controld_query_executor_state();
-    if (tmp1 != NULL) {
-        xmlNode *reply = create_request(CRM_OP_JOIN_CONFIRM, tmp1,
-                                        controld_globals.dc_name, CRM_SYSTEM_DC,
-                                        CRM_SYSTEM_CRMD, NULL);
-
-        crm_xml_add_int(reply, F_CRM_JOIN_ID, join_id);
-
-        crm_debug("Confirming join-%d: sending local operation history to %s",
-                  join_id, controld_globals.dc_name);
-
-        /*
-         * If this is the node's first join since the controller started on it,
-         * set its initial state (standby or member) according to the user's
-         * preference.
-         *
-         * We do not clear the LRM history here. Even if the DC failed to do it
-         * when we last left, removing them here creates a race condition if the
-         * controller is being recovered. Instead of a list of active resources
-         * from the executor, we may end up with a blank status section. If we
-         * are _NOT_ lucky, we will probe for the "wrong" instance of anonymous
-         * clones and end up with multiple active instances on the machine.
-         */
-        if (first_join
-            && !pcmk_is_set(controld_globals.fsa_input_register, R_SHUTDOWN)) {
-
-            first_join = FALSE;
-            if (start_state) {
-                set_join_state(start_state);
-            }
+    if (!AM_I_DC) {
+        execd_state = controld_query_executor_state();
+        if (execd_state == NULL) {
+            crm_err("Could not confirm join-%d with %s: Local operation "
+                    "history failed",
+                    join_id, controld_globals.dc_name);
+            register_fsa_error(C_FSA_INTERNAL, I_FAIL, NULL);
+            return;
         }
+    }
 
-        send_cluster_message(crm_get_peer(0, controld_globals.dc_name),
-                             crm_msg_crmd, reply, TRUE);
-        free_xml(reply);
+    reply = create_request(CRM_OP_JOIN_CONFIRM, execd_state,
+                           controld_globals.dc_name, CRM_SYSTEM_DC,
+                           CRM_SYSTEM_CRMD, NULL);
+    free_xml(execd_state);
 
-        if (AM_I_DC == FALSE) {
-            register_fsa_input_adv(cause, I_NOT_DC, NULL, A_NOTHING, TRUE,
-                                   __func__);
+    crm_xml_add_int(reply, F_CRM_JOIN_ID, join_id);
+
+    crm_debug("Confirming join-%d: sending local operation history to %s",
+              join_id, controld_globals.dc_name);
+
+    /* If this is the node's first join since the controller started on it, set
+     * its initial state (standby or member) according to the user's preference.
+     *
+     * We do not clear the LRM history here. Even if the DC failed to do it when
+     * we last left, removing them here creates a race condition if the
+     * controller is being recovered. Instead of a list of active resources from
+     * the executor, we may end up with a blank status section. If we are _NOT_
+     * lucky, we will probe for the "wrong" instance of anonymous clones and end
+     * up with multiple active instances on the machine.
+     */
+    if (first_join
+        && !pcmk_is_set(controld_globals.fsa_input_register, R_SHUTDOWN)) {
+
+        first_join = FALSE;
+        if (start_state) {
+            set_join_state(start_state);
         }
+    }
 
-        free_xml(tmp1);
+    send_cluster_message(crm_get_peer(0, controld_globals.dc_name),
+                         crm_msg_crmd, reply, TRUE);
+    free_xml(reply);
 
-    } else {
-        crm_err("Could not confirm join-%d with %s: Local operation history "
-                "failed", join_id, controld_globals.dc_name);
-        register_fsa_error(C_FSA_INTERNAL, I_FAIL, NULL);
+    if (!AM_I_DC) {
+        register_fsa_input_adv(cause, I_NOT_DC, NULL, A_NOTHING, TRUE,
+                               __func__);
     }
 }

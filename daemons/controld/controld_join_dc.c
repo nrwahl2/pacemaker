@@ -744,8 +744,6 @@ do_dc_join_ack(long long action,
         return;
     }
 
-    crm_update_peer_join(__func__, peer, crm_join_confirmed);
-
     /* Update CIB with node's current executor state. A new transition will be
      * triggered later, when the CIB notifies us of the change.
      */
@@ -753,28 +751,31 @@ do_dc_join_ack(long long action,
         section = controld_section_lrm_unlocked;
     }
     controld_delete_node_state(join_from, section, cib_scope_local);
+
     if (pcmk__str_eq(join_from, controld_globals.our_nodename,
                      pcmk__str_casei)) {
-        xmlNode *now_dc_lrmd_state = controld_query_executor_state();
+        xmlNode *execd_state = controld_query_executor_state();
 
-        if (now_dc_lrmd_state != NULL) {
-            crm_debug("Updating local node history for join-%d "
-                      "from query result", join_id);
-            controld_update_cib(XML_CIB_TAG_STATUS, now_dc_lrmd_state, cib_opts,
-                                join_update_complete_callback);
-            free_xml(now_dc_lrmd_state);
-        } else {
-            crm_warn("Updating local node history from join-%d confirmation "
-                     "because query failed", join_id);
-            controld_update_cib(XML_CIB_TAG_STATUS, join_ack->xml, cib_opts,
-                                join_update_complete_callback);
+        if (execd_state == NULL) {
+            crm_err("Could not ack join-%d for ourselves: Local operation "
+                    "history failed",
+                    join_id);
+            register_fsa_error(C_FSA_INTERNAL, I_FAIL, NULL);
+            return;
         }
+        crm_debug("Updating local node history for join-%d from query result",
+                  join_id);
+        controld_update_cib(XML_CIB_TAG_STATUS, execd_state, cib_opts,
+                            join_update_complete_callback);
+        free_xml(execd_state);
+
     } else {
         crm_debug("Updating node history for %s from join-%d confirmation",
                   join_from, join_id);
         controld_update_cib(XML_CIB_TAG_STATUS, join_ack->xml, cib_opts,
                             join_update_complete_callback);
     }
+    crm_update_peer_join(__func__, peer, crm_join_confirmed);
 }
 
 void
