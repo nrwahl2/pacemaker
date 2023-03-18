@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2022 the Pacemaker project contributors
+ * Copyright 2004-2023 the Pacemaker project contributors
  *
  * The version control history for this file may have further details.
  *
@@ -14,24 +14,26 @@
 #  include <crm/common/output_internal.h>
 
 // Request types for CIB manager IPC/CPG
-#define PCMK__CIB_REQUEST_SECONDARY     "cib_slave"
-#define PCMK__CIB_REQUEST_ALL_SECONDARY "cib_slave_all"
-#define PCMK__CIB_REQUEST_PRIMARY       "cib_master"
-#define PCMK__CIB_REQUEST_SYNC_TO_ALL   "cib_sync"
-#define PCMK__CIB_REQUEST_SYNC_TO_ONE   "cib_sync_one"
-#define PCMK__CIB_REQUEST_IS_PRIMARY    "cib_ismaster"
-#define PCMK__CIB_REQUEST_BUMP          "cib_bump"
-#define PCMK__CIB_REQUEST_QUERY         "cib_query"
-#define PCMK__CIB_REQUEST_CREATE        "cib_create"
-#define PCMK__CIB_REQUEST_MODIFY        "cib_modify"
-#define PCMK__CIB_REQUEST_DELETE        "cib_delete"
-#define PCMK__CIB_REQUEST_ERASE         "cib_erase"
-#define PCMK__CIB_REQUEST_REPLACE       "cib_replace"
-#define PCMK__CIB_REQUEST_APPLY_PATCH   "cib_apply_diff"
-#define PCMK__CIB_REQUEST_UPGRADE       "cib_upgrade"
-#define PCMK__CIB_REQUEST_ABS_DELETE    "cib_delete_alt"
-#define PCMK__CIB_REQUEST_NOOP          "noop"
-#define PCMK__CIB_REQUEST_SHUTDOWN      "cib_shutdown_req"
+#define PCMK__CIB_REQUEST_SECONDARY         "cib_slave"
+#define PCMK__CIB_REQUEST_ALL_SECONDARY     "cib_slave_all"
+#define PCMK__CIB_REQUEST_PRIMARY           "cib_master"
+#define PCMK__CIB_REQUEST_SYNC_TO_ALL       "cib_sync"
+#define PCMK__CIB_REQUEST_SYNC_TO_ONE       "cib_sync_one"
+#define PCMK__CIB_REQUEST_IS_PRIMARY        "cib_ismaster"
+#define PCMK__CIB_REQUEST_BUMP              "cib_bump"
+#define PCMK__CIB_REQUEST_QUERY             "cib_query"
+#define PCMK__CIB_REQUEST_CREATE            "cib_create"
+#define PCMK__CIB_REQUEST_MODIFY            "cib_modify"
+#define PCMK__CIB_REQUEST_DELETE            "cib_delete"
+#define PCMK__CIB_REQUEST_ERASE             "cib_erase"
+#define PCMK__CIB_REQUEST_REPLACE           "cib_replace"
+#define PCMK__CIB_REQUEST_APPLY_PATCH       "cib_apply_diff"
+#define PCMK__CIB_REQUEST_UPGRADE           "cib_upgrade"
+#define PCMK__CIB_REQUEST_ABS_DELETE        "cib_delete_alt"
+#define PCMK__CIB_REQUEST_NOOP              "noop"
+#define PCMK__CIB_REQUEST_SHUTDOWN          "cib_shutdown_req"
+#define PCMK__CIB_REQUEST_CLUSTER_LOCK      "cib_cluster_lock"
+#define PCMK__CIB_REQUEST_CLUSTER_UNLOCK    "cib_cluster_unlock"
 
 #  define F_CIB_CLIENTID  "cib_clientid"
 #  define F_CIB_CALLOPTS  "cib_callopt"

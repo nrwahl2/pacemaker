@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2022 the Pacemaker project contributors
+ * Copyright 2004-2023 the Pacemaker project contributors
  *
  * The version control history for this file may have further details.
  *
@@ -89,6 +89,8 @@ xmlNode *readCibXmlFile(const char *dir, const char *file,
                         gboolean discard_status);
 int activateCibXml(xmlNode *doc, gboolean to_disk, const char *op);
 
+void based_free_message_queue(void);
+void based_handle_cluster_message(xmlNode **msg);
 int cib_process_shutdown_req(const char *op, int options, const char *section,
                              xmlNode *req, xmlNode *input,
                              xmlNode *existing_cib, xmlNode **result_cib,
@@ -122,6 +124,9 @@ int cib_process_upgrade_server(const char *op, int options, const char *section,
                                xmlNode *req, xmlNode *input,
                                xmlNode *existing_cib, xmlNode **result_cib,
                                xmlNode **answer);
+int cib_process_lock(const char *op, int options, const char *section,
+                     xmlNode *req, xmlNode *input, xmlNode *existing_cib,
+                     xmlNode **result_cib, xmlNode **answer);
 void send_sync_request(const char *host);
 int sync_our_cib(xmlNode *request, gboolean all);
 

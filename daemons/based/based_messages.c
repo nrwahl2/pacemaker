@@ -37,6 +37,9 @@ bool based_is_primary = false;
 
 xmlNode *the_cib = NULL;
 
+static GQueue *message_queue = NULL;
+static bool cluster_messages_locked = false;
+
 int
 sync_our_cib(xmlNode *request, gboolean all)
 {
@@ -89,6 +92,79 @@ sync_our_cib(xmlNode *request, gboolean all)
     free_xml(replace_request);
     free(digest);
     return result;
+}
+
+/*!
+ * \internal
+ * \brief Push a message onto the tail of the queue
+ *
+ * \param[in] msg  Message to push
+ *
+ * \note This function takes ownership of \p msg.
+ */
+static void
+push_message_queue(xmlNode *msg)
+{
+    if (message_queue == NULL) {
+        message_queue = g_queue_new();
+    }
+    g_queue_push_tail(message_queue, (gpointer) msg);
+}
+
+/*!
+ * \internal
+ * \brief Process all messages in the queue, leaving the queue empty
+ */
+static void
+flush_message_queue(void)
+{
+    if (message_queue == NULL) {
+        return;
+    }
+
+    for (xmlNode *msg = g_queue_pop_head(message_queue); msg != NULL;
+         msg = g_queue_pop_head(message_queue)) {
+        cib_peer_callback(msg, NULL);
+        free_xml(msg);
+    }
+}
+
+/*!
+ * \internal
+ * \brief Free the message queue and destroy messages
+ */
+void
+based_free_message_queue(void)
+{
+    if (message_queue != NULL) {
+        // We're shutting down so don't process any messages that remain
+        g_queue_free_full(message_queue, (GDestroyNotify) free_xml);
+    }
+}
+
+/*!
+ * \internal
+ * \brief Process a message or add it to a queue for later processing
+ *
+ * \param[in,out] msg  Message to handle
+ *
+ * \note This function takes ownership of \p *msg.
+ */
+void
+based_handle_cluster_message(xmlNode **msg)
+{
+    CRM_CHECK((msg != NULL) && (*msg != NULL), return);
+
+    if (cluster_messages_locked) {
+        // Process later when we flush the queue and unlock
+        push_message_queue(*msg);
+    } else {
+        // Process now
+        /* crm_xml_add_int(xml, F_SEQ, wrapper->id); */
+        cib_peer_callback(*msg, NULL);
+        free_xml(*msg);
+        *msg = NULL;
+    }
 }
 
 int
@@ -424,5 +500,29 @@ cib_process_delete_absolute(const char *op, int options, const char *section, xm
                             xmlNode * input, xmlNode * existing_cib, xmlNode ** result_cib,
                             xmlNode ** answer)
 {
+    return -EINVAL;
+}
+
+int
+cib_process_lock(const char *op, int options, const char *section, xmlNode *req,
+                 xmlNode *input, xmlNode *existing_cib, xmlNode **result_cib,
+                 xmlNode **answer)
+{
+    /* Currently only cluster locking is implemented. IPC locking can be
+     * implemented later if needed.
+     */
+    if (pcmk__str_eq(op, PCMK__CIB_REQUEST_CLUSTER_LOCK, pcmk__str_none)) {
+        // Prevent cluster messages from being dispatched
+        cluster_messages_locked = true;
+        return pcmk_ok;
+    }
+
+    if (pcmk__str_eq(op, PCMK__CIB_REQUEST_CLUSTER_UNLOCK, pcmk__str_none)) {
+        // Flush queue and allow future cluster messages be dispatched
+        flush_message_queue();
+        cluster_messages_locked = false;
+        return pcmk_ok;
+    }
+
     return -EINVAL;
 }

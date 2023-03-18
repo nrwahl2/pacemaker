@@ -1,5 +1,5 @@
 /*
- * Copyright 2008-2022 the Pacemaker project contributors
+ * Copyright 2008-2023 the Pacemaker project contributors
  *
  * The version control history for this file may have further details.
  *
@@ -220,6 +220,14 @@ static cib_operation_t cib_server_ops[] = {
     {
         CRM_OP_PING, FALSE, FALSE, FALSE,
         cib_prepare_none, cib_cleanup_output, cib_process_ping
+    },
+    {
+        PCMK__CIB_REQUEST_CLUSTER_LOCK, FALSE, TRUE, FALSE,
+        cib_prepare_none, cib_cleanup_none, cib_process_lock
+    },
+    {
+        PCMK__CIB_REQUEST_CLUSTER_UNLOCK, TRUE, TRUE, FALSE,
+        cib_prepare_none, cib_cleanup_none, cib_process_lock
     },
 };
 

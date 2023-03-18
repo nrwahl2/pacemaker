@@ -292,6 +292,8 @@ done:
     if (config_hash != NULL) {
         g_hash_table_destroy(config_hash);
     }
+
+    based_free_message_queue();
     pcmk__client_cleanup();
     pcmk_cluster_free(crm_cluster);
     g_free(cib_root);
@@ -313,7 +315,6 @@ cib_cs_dispatch(cpg_handle_t handle,
                  uint32_t nodeid, uint32_t pid, void *msg, size_t msg_len)
 {
     uint32_t kind = 0;
-    xmlNode *xml = NULL;
     const char *from = NULL;
     char *data = pcmk_message_common_cs(handle, nodeid, pid, msg, &kind, &from);
 
@@ -321,18 +322,17 @@ cib_cs_dispatch(cpg_handle_t handle,
         return;
     }
     if (kind == crm_class_cluster) {
-        xml = string2xml(data);
+        xmlNode *xml = string2xml(data);
+
         if (xml == NULL) {
             crm_err("Invalid XML: '%.120s'", data);
-            free(data);
-            return;
+            goto done;
         }
         crm_xml_add(xml, F_ORIG, from);
-        /* crm_xml_add_int(xml, F_SEQ, wrapper->id); */
-        cib_peer_callback(xml, NULL);
+        based_handle_cluster_message(&xml);
     }
 
-    free_xml(xml);
+done:
     free(data);
 }
 
