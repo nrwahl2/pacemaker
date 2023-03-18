@@ -36,17 +36,60 @@
 bool based_is_primary = false;
 
 xmlNode *the_cib = NULL;
-int revision_check(xmlNode * cib_update, xmlNode * cib_copy, int flags);
-int get_revision(xmlNode * xml_obj, int cur_revision);
 
-int updateList(xmlNode * local_cib, xmlNode * update_command, xmlNode * failed,
-               int operation, const char *section);
+int
+sync_our_cib(xmlNode *request, gboolean all)
+{
+    int result = pcmk_ok;
+    char *digest = NULL;
+    const char *host = crm_element_value(request, F_ORIG);
+    const char *op = crm_element_value(request, F_CIB_OPERATION);
 
-gboolean update_results(xmlNode * failed, xmlNode * target, const char *operation, int return_code);
+    xmlNode *replace_request = NULL;
 
-int cib_update_counter(xmlNode * xml_obj, const char *field, gboolean reset);
+    CRM_CHECK(the_cib != NULL, return -EINVAL);
 
-int sync_our_cib(xmlNode * request, gboolean all);
+    replace_request = cib_msg_copy(request, FALSE);
+    CRM_CHECK(replace_request != NULL, return -EINVAL);
+
+    crm_debug("Syncing CIB to %s", all ? "all peers" : host);
+    if (all == FALSE && host == NULL) {
+        crm_log_xml_err(request, "bad sync");
+    }
+
+    /* remove the "all == FALSE" condition
+     *
+     * sync_from was failing, the local client wasn't being notified
+     *    because it didn't know it was a reply
+     * setting this does not prevent the other nodes from applying it
+     *    if all == TRUE
+     */
+    if (host != NULL) {
+        crm_xml_add(replace_request, F_CIB_ISREPLY, host);
+    }
+    if (all) {
+        xml_remove_prop(replace_request, F_CIB_HOST);
+    }
+
+    crm_xml_add(replace_request, F_CIB_OPERATION, PCMK__CIB_REQUEST_REPLACE);
+    crm_xml_add(replace_request, "original_" F_CIB_OPERATION, op);
+    pcmk__xe_set_bool_attr(replace_request, F_CIB_GLOBAL_UPDATE, true);
+
+    crm_xml_add(replace_request, XML_ATTR_CRM_VERSION, CRM_FEATURE_SET);
+    digest = calculate_xml_versioned_digest(the_cib, FALSE, TRUE,
+                                            CRM_FEATURE_SET);
+    crm_xml_add(replace_request, XML_ATTR_DIGEST, digest);
+
+    add_message_xml(replace_request, F_CIB_CALLDATA, the_cib);
+
+    if (!send_cluster_message((all? NULL : crm_get_peer(0, host)), crm_msg_cib,
+                              replace_request, FALSE)) {
+        result = -ENOTCONN;
+    }
+    free_xml(replace_request);
+    free(digest);
+    return result;
+}
 
 int
 cib_process_shutdown_req(const char *op, int options, const char *section, xmlNode * req,
@@ -382,57 +425,4 @@ cib_process_delete_absolute(const char *op, int options, const char *section, xm
                             xmlNode ** answer)
 {
     return -EINVAL;
-}
-
-int
-sync_our_cib(xmlNode * request, gboolean all)
-{
-    int result = pcmk_ok;
-    char *digest = NULL;
-    const char *host = crm_element_value(request, F_ORIG);
-    const char *op = crm_element_value(request, F_CIB_OPERATION);
-
-    xmlNode *replace_request = NULL;
-
-    CRM_CHECK(the_cib != NULL, return -EINVAL);
-
-    replace_request = cib_msg_copy(request, FALSE);
-    CRM_CHECK(replace_request != NULL, return -EINVAL);
-
-    crm_debug("Syncing CIB to %s", all ? "all peers" : host);
-    if (all == FALSE && host == NULL) {
-        crm_log_xml_err(request, "bad sync");
-    }
-
-    /* remove the "all == FALSE" condition
-     *
-     * sync_from was failing, the local client wasn't being notified
-     *    because it didn't know it was a reply
-     * setting this does not prevent the other nodes from applying it
-     *    if all == TRUE
-     */
-    if (host != NULL) {
-        crm_xml_add(replace_request, F_CIB_ISREPLY, host);
-    }
-    if (all) {
-        xml_remove_prop(replace_request, F_CIB_HOST);
-    }
-
-    crm_xml_add(replace_request, F_CIB_OPERATION, PCMK__CIB_REQUEST_REPLACE);
-    crm_xml_add(replace_request, "original_" F_CIB_OPERATION, op);
-    pcmk__xe_set_bool_attr(replace_request, F_CIB_GLOBAL_UPDATE, true);
-
-    crm_xml_add(replace_request, XML_ATTR_CRM_VERSION, CRM_FEATURE_SET);
-    digest = calculate_xml_versioned_digest(the_cib, FALSE, TRUE, CRM_FEATURE_SET);
-    crm_xml_add(replace_request, XML_ATTR_DIGEST, digest);
-
-    add_message_xml(replace_request, F_CIB_CALLDATA, the_cib);
-
-    if (send_cluster_message
-        (all ? NULL : crm_get_peer(0, host), crm_msg_cib, replace_request, FALSE) == FALSE) {
-        result = -ENOTCONN;
-    }
-    free_xml(replace_request);
-    free(digest);
-    return result;
 }
