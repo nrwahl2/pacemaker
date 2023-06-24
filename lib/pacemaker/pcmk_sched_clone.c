@@ -26,6 +26,8 @@
 pe_node_t *
 pcmk__clone_assign(pe_resource_t *rsc, const pe_node_t *prefer)
 {
+    GList *colocations = NULL;
+
     CRM_ASSERT(pe_rsc_is_clone(rsc));
 
     if (!pcmk_is_set(rsc->flags, pe_rsc_provisional)) {
@@ -44,23 +46,21 @@ pcmk__clone_assign(pe_resource_t *rsc, const pe_node_t *prefer)
         pcmk__add_promotion_scores(rsc);
     }
 
-    /* If this clone is colocated with any other resources, assign those first.
-     * Since the this_with_colocations() method boils down to a copy of rsc_cons
-     * for clones, we can use that here directly for efficiency.
-     */
-    for (GList *iter = rsc->rsc_cons; iter != NULL; iter = iter->next) {
+    // If this clone is colocated with any other resources, assign those first
+    colocations = pcmk__this_with_colocations(rsc);
+    for (GList *iter = colocations; iter != NULL; iter = iter->next) {
         pcmk__colocation_t *constraint = (pcmk__colocation_t *) iter->data;
 
         pe_rsc_trace(rsc, "%s: Assigning colocation %s primary %s first",
                      rsc->id, constraint->id, constraint->primary->id);
         constraint->primary->cmds->assign(constraint->primary, prefer);
     }
+    g_list_free(colocations);
 
-    /* If any resources are colocated with this one, consider their preferences.
-     * Because the with_this_colocations() method boils down to a copy of
-     * rsc_cons_lhs for clones, we can use that here directly for efficiency.
-     */
-    g_list_foreach(rsc->rsc_cons_lhs, pcmk__add_dependent_scores, rsc);
+    // If any resources are colocated with this one, consider their preferences
+    colocations = pcmk__with_this_colocations(rsc);
+    g_list_foreach(colocations, pcmk__add_dependent_scores, rsc);
+    g_list_free(colocations);
 
     pe__show_node_scores(!pcmk_is_set(rsc->cluster->flags, pe_flag_show_scores),
                          rsc, __func__, rsc->allowed_nodes, rsc->cluster);
@@ -340,6 +340,10 @@ pcmk__with_clone_colocations(const pe_resource_t *rsc,
     } else {
         pcmk__add_collective_constraints(list, orig_rsc, rsc, true);
     }
+
+    if (rsc->parent != NULL) {
+        rsc->parent->cmds->with_this_colocations(rsc->parent, rsc, list);
+    }
 }
 
 // Clone implementation of resource_alloc_functions_t:this_with_colocations()
@@ -353,6 +357,10 @@ pcmk__clone_with_colocations(const pe_resource_t *rsc,
         pcmk__add_this_with_list(list, rsc->rsc_cons, orig_rsc);
     } else {
         pcmk__add_collective_constraints(list, orig_rsc, rsc, false);
+    }
+
+    if (rsc->parent != NULL) {
+        rsc->parent->cmds->this_with_colocations(rsc->parent, rsc, list);
     }
 }
 

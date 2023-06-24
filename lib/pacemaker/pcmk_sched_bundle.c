@@ -531,8 +531,12 @@ pcmk__with_bundle_colocations(const pe_resource_t *rsc,
     if (rsc == orig_rsc) { // Colocations are wanted for bundle itself
         pcmk__add_with_this_list(list, rsc->rsc_cons_lhs, orig_rsc);
 
-    // Only the bundle replicas' containers get the bundle's constraints
-    } else if (pcmk_is_set(orig_rsc->flags, pe_rsc_replica_container)) {
+    /* Only the bundle replicas' containers and the bundled resource get the
+     * bundle's constraints
+     */
+    } else if (pcmk_is_set(orig_rsc->flags, pe_rsc_replica_container)
+               || pe__rsc_is_bundle_primitive(orig_rsc)) {
+
         pcmk__add_collective_constraints(list, orig_rsc, rsc, true);
     }
 }
@@ -548,8 +552,12 @@ pcmk__bundle_with_colocations(const pe_resource_t *rsc,
     if (rsc == orig_rsc) { // Colocations are wanted for bundle itself
         pcmk__add_this_with_list(list, rsc->rsc_cons, orig_rsc);
 
-    // Only the bundle replicas' containers get the bundle's constraints
-    } else if (pcmk_is_set(orig_rsc->flags, pe_rsc_replica_container)) {
+    /* Only the bundle replicas' containers and the bundled resource get the
+     * bundle's constraints
+     */
+    } else if (pcmk_is_set(orig_rsc->flags, pe_rsc_replica_container)
+               || pe__rsc_is_bundle_primitive(orig_rsc)) {
+
         pcmk__add_collective_constraints(list, orig_rsc, rsc, false);
     }
 }
