@@ -378,18 +378,14 @@ add_assigned_resource(pe_node_t *node, pe_resource_t *rsc)
  * \param[in,out] chosen  Node to assign \p rsc to
  * \param[in]     force   If true, assign to \p chosen even if unavailable
  *
- * \return true if \p rsc could be assigned, otherwise false
- *
  * \note Assigning a resource to the NULL node using this function is different
  *       from calling pcmk__unassign_resource(), in that it will also update any
  *       actions created for the resource.
  */
-bool
-pcmk__finalize_assignment(pe_resource_t *rsc, pe_node_t *chosen, bool force)
+static void
+assign_resource(pe_resource_t *rsc, pe_node_t *chosen, bool force)
 {
     pcmk__output_t *out = rsc->cluster->priv;
-
-    CRM_ASSERT(rsc->variant == pe_native);
 
     if (!force && (chosen != NULL)) {
         if ((chosen->weight < 0)
@@ -445,7 +441,7 @@ pcmk__finalize_assignment(pe_resource_t *rsc, pe_node_t *chosen, bool force)
                 free(rc_stopped);
             }
         }
-        return false;
+        return;
     }
 
     crm_debug("Assigning %s to %s", rsc->id, pe__node_name(chosen));
@@ -459,7 +455,6 @@ pcmk__finalize_assignment(pe_resource_t *rsc, pe_node_t *chosen, bool force)
     if (pcmk_is_set(rsc->cluster->flags, pe_flag_show_utilization)) {
         out->message(out, "resource-util", rsc, chosen, __func__);
     }
-    return true;
 }
 
 /*!
@@ -476,7 +471,7 @@ pcmk__finalize_assignment(pe_resource_t *rsc, pe_node_t *chosen, bool force)
  * \param[in,out] chosen  Node to assign \p rsc to
  * \param[in]     force   If true, assign to \p chosen even if unavailable
  *
- * \return true if \p rsc could be assigned, otherwise false
+ * \return \c true if the assignment of \p rsc changed, or \c false otherwise
  *
  * \note Assigning a resource to the NULL node using this function is different
  *       from calling pcmk__unassign_resource(), in that it will also update any
@@ -488,14 +483,19 @@ pcmk__assign_resource(pe_resource_t *rsc, pe_node_t *node, bool force)
     bool changed = false;
 
     if (rsc->children == NULL) {
+        pe_node_t *old = NULL;
+
         if (rsc->allocated_to != NULL) {
-            changed = true;
+            old = pe__copy_node(rsc->allocated_to);
         }
-        pcmk__finalize_assignment(rsc, node, force);
+        assign_resource(rsc, node, force);
+        changed = ((old != NULL) || (rsc->allocated_to != NULL))
+                  && !pe__same_node(old, rsc->allocated_to);
+        free(old);
 
     } else {
         for (GList *iter = rsc->children; iter != NULL; iter = iter->next) {
-            pe_resource_t *child_rsc = (pe_resource_t *) iter->data;
+            pe_resource_t *child_rsc = iter->data;
 
             changed |= pcmk__assign_resource(child_rsc, node, force);
         }
