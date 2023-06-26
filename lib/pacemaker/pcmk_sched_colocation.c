@@ -1157,7 +1157,14 @@ pcmk__apply_coloc_to_scores(pe_resource_t *dependent,
     pe_node_t *node = NULL;
 
     if (primary->allocated_to != NULL) {
-        value = pe_node_attribute_raw(primary->allocated_to, attribute);
+        /* For a bundle primitive, always look up a bundle node's colocation
+         * attributes on its host node
+         */
+        bool force_host = pe__is_bundle_node(primary->allocated_to)
+                          && pe_rsc_is_bundle_primitive(primary);
+        value = pe__node_attribute_calculated(primary->allocated_to, attribute,
+                                              primary, pe__rsc_node_assigned,
+                                              force_host);
 
     } else if (colocation->score < 0) {
         // Nothing to do (anti-colocation with something that is not running)
@@ -1168,6 +1175,8 @@ pcmk__apply_coloc_to_scores(pe_resource_t *dependent,
 
     g_hash_table_iter_init(&iter, work);
     while (g_hash_table_iter_next(&iter, NULL, (void **)&node)) {
+        bool force_host = false;
+
         if (primary->allocated_to == NULL) {
             node->weight = pcmk__add_scores(-colocation->score, node->weight);
             pe_rsc_trace(dependent,
@@ -1176,9 +1185,21 @@ pcmk__apply_coloc_to_scores(pe_resource_t *dependent,
                          colocation->id, dependent->id, pe__node_name(node),
                          pcmk_readable_score(node->weight),
                          pcmk_readable_score(colocation->score), primary->id);
+            continue;
+        }
 
-        } else if (pcmk__str_eq(pe_node_attribute_raw(node, attribute), value,
-                                pcmk__str_casei)) {
+        /* For a bundle primitive, always look up a bundle node's colocation
+         * attributes on its host node
+         */
+        force_host = pe__is_bundle_node(node)
+                     && pe_rsc_is_bundle_primitive(dependent);
+
+        if (pcmk__str_eq(pe__node_attribute_calculated(node, attribute,
+                                                       dependent,
+                                                       pe__rsc_node_assigned,
+                                                       force_host),
+                         value, pcmk__str_casei)) {
+
             /* Add colocation score only if optional (or minus infinity). A
              * mandatory colocation is a requirement rather than a preference,
              * so we don't need to consider it for relative assignment purposes.
@@ -1195,8 +1216,10 @@ pcmk__apply_coloc_to_scores(pe_resource_t *dependent,
                              pcmk_readable_score(node->weight),
                              pcmk_readable_score(colocation->score));
             }
+            continue;
+        }
 
-        } else if (colocation->score >= CRM_SCORE_INFINITY) {
+        if (colocation->score >= CRM_SCORE_INFINITY) {
             /* Only mandatory colocations are relevant when the colocation
              * attribute doesn't match, because an attribute not matching is not
              * a negative preference -- the colocation is simply relevant only
@@ -1249,13 +1272,28 @@ pcmk__apply_coloc_to_priority(pe_resource_t *dependent,
     const char *primary_value = NULL;
     const char *attribute = colocation->node_attribute;
     int score_multiplier = 1;
+    bool force_host = false;
 
     if ((primary->allocated_to == NULL) || (dependent->allocated_to == NULL)) {
         return;
     }
 
-    dependent_value = pe_node_attribute_raw(dependent->allocated_to, attribute);
-    primary_value = pe_node_attribute_raw(primary->allocated_to, attribute);
+    /* For a bundle primitive, always look up a bundle node's colocation
+     * attributes on its host node
+     */
+    force_host = pe__is_bundle_node(dependent->allocated_to)
+                 && pe_rsc_is_bundle_primitive(dependent);
+    dependent_value = pe__node_attribute_calculated(dependent->allocated_to,
+                                                    attribute, dependent,
+                                                    pe__rsc_node_assigned,
+                                                    force_host);
+
+    force_host = pe__is_bundle_node(primary->allocated_to)
+                 && pe_rsc_is_bundle_primitive(primary);
+    primary_value = pe__node_attribute_calculated(primary->allocated_to,
+                                                  attribute, primary,
+                                                  pe__rsc_node_assigned,
+                                                  force_host);
 
     if (!pcmk__str_eq(dependent_value, primary_value, pcmk__str_casei)) {
         if ((colocation->score == INFINITY)
@@ -1305,10 +1343,18 @@ best_node_score_matching_attr(const pe_resource_t *rsc, const char *attr,
     g_hash_table_iter_init(&iter, rsc->allowed_nodes);
     while (g_hash_table_iter_next(&iter, NULL, (void **) &node)) {
 
+        /* For a bundle primitive, always look up a bundle node's colocation
+         * attributes on its host node
+         */
+        bool force_host = pe__is_bundle_node(node)
+                          && pe_rsc_is_bundle_primitive(rsc);
+        const char *found = pe__node_attribute_calculated(node, attr, rsc,
+                                                          pe__rsc_node_assigned,
+                                                          force_host);
+
         if ((node->weight > best_score)
             && pcmk__node_available(node, false, false)
-            && pcmk__str_eq(value, pe_node_attribute_raw(node, attr),
-                            pcmk__str_casei)) {
+            && pcmk__str_eq(value, found, pcmk__str_casei)) {
 
             best_score = node->weight;
             best_node = node->details->uname;
@@ -1364,7 +1410,9 @@ allowed_on_one(const pe_resource_t *rsc)
  * nodes' scores to the node's score.
  *
  * \param[in,out] nodes          Table of nodes with assignment scores so far
- * \param[in]     rsc            Resource whose allowed nodes should be compared
+ * \param[in]     coloc_rsc      Resource whose allowed nodes should be compared
+ * \param[in]     nodes_rsc      Resource on whose behalf we're updating
+ *                               \p nodes
  * \param[in]     colocation     Original colocation constraint (used to get
  *                               configured primary resource's stickiness, and
  *                               to get colocation node attribute; pass NULL to
@@ -1373,7 +1421,8 @@ allowed_on_one(const pe_resource_t *rsc)
  * \param[in]     only_positive  Whether to add only positive scores
  */
 static void
-add_node_scores_matching_attr(GHashTable *nodes, const pe_resource_t *rsc,
+add_node_scores_matching_attr(GHashTable *nodes, const pe_resource_t *coloc_rsc,
+                              const pe_resource_t *nodes_rsc,
                               pcmk__colocation_t *colocation, float factor,
                               bool only_positive)
 {
@@ -1388,9 +1437,21 @@ add_node_scores_matching_attr(GHashTable *nodes, const pe_resource_t *rsc,
         int delta = 0;
         int score = 0;
         int new_score = 0;
-        const char *value = pe_node_attribute_raw(node, attr);
 
-        score = best_node_score_matching_attr(rsc, attr, value);
+        /* For a bundle primitive, always look up a bundle node's colocation
+         * attributes on its host node
+         *
+         * @TODO: Document usage constraint or rework this. nodes table actually
+         * comes from coloc_rsc in the case of cmp_resources(), but coloc_rsc is
+         * a descendent of nodes_rsc in that case.
+         */
+        bool force_host = pe__is_bundle_node(node)
+                          && pe_rsc_is_bundle_primitive(nodes_rsc);
+        const char *value = pe__node_attribute_calculated(node, attr, nodes_rsc,
+                                                          pe__rsc_node_assigned,
+                                                          force_host);
+
+        score = best_node_score_matching_attr(coloc_rsc, attr, value);
 
         if ((factor < 0) && (score < 0)) {
             /* If the dependent is anti-colocated, we generally don't want the
@@ -1491,58 +1552,88 @@ add_node_scores_matching_attr(GHashTable *nodes, const pe_resource_t *rsc,
  * scores of the best nodes matching the attribute used for each of the
  * resource's relevant colocations.
  *
- * \param[in,out] rsc         Resource to check colocations for
- * \param[in]     log_id      Resource ID for logs (if NULL, use \p rsc ID)
- * \param[in,out] nodes       Nodes to update (set initial contents to NULL
- *                            to copy \p rsc's allowed nodes)
+ * \param[in,out] coloc_rsc   Resource to check colocations for
+ * \param[in]     nodes_rsc   Resource on whose behalf we're updating \p *nodes
+ * \param[in]     log_id      Resource ID for logs (if \c NULL, use \p coloc_rsc
+ *                            ID)
+ * \param[in,out] nodes       Nodes to update (set initial contents to \c NULL
+ *                            to copy allowed nodes from \p coloc_rsc)
  * \param[in]     colocation  Original colocation constraint (used to get
  *                            configured primary resource's stickiness, and
- *                            to get colocation node attribute; if NULL,
- *                            \p rsc's own matching node scores will not be
- *                            added, and *nodes must be NULL as well)
+ *                            to get colocation node attribute; if \c NULL,
+ *                            <tt>coloc_rsc</tt>'s own matching node scores will
+ *                            not be added, and \p *nodes must be \c NULL as
+ *                            well)
  * \param[in]     factor      Incorporate scores multiplied by this factor
  * \param[in]     flags       Bitmask of enum pcmk__coloc_select values
  *
  * \note NULL *nodes, NULL colocation, and the pcmk__coloc_select_this_with
  *       flag are used together (and only by cmp_resources()).
  * \note The caller remains responsible for freeing \p *nodes.
+ * \note This is the shared implementation of
+ *       \c resource_alloc_functions_t:add_colocated_node_scores().
  */
 void
-pcmk__add_colocated_node_scores(pe_resource_t *rsc, const char *log_id,
+pcmk__add_colocated_node_scores(pe_resource_t *coloc_rsc,
+                                const pe_resource_t *nodes_rsc,
+                                const char *log_id,
                                 GHashTable **nodes,
                                 pcmk__colocation_t *colocation,
                                 float factor, uint32_t flags)
 {
     GHashTable *work = NULL;
 
-    CRM_ASSERT((rsc != NULL) && (nodes != NULL)
+    CRM_ASSERT((coloc_rsc != NULL) && (nodes_rsc != NULL) && (nodes != NULL)
                && ((colocation != NULL) || (*nodes == NULL)));
 
     if (log_id == NULL) {
-        log_id = rsc->id;
+        log_id = coloc_rsc->id;
     }
 
     // Avoid infinite recursion
-    if (pcmk_is_set(rsc->flags, pe_rsc_merging)) {
-        pe_rsc_info(rsc, "%s: Breaking dependency loop at %s",
-                    log_id, rsc->id);
+    if (pcmk_is_set(coloc_rsc->flags, pe_rsc_merging)) {
+        pe_rsc_info(coloc_rsc, "%s: Breaking dependency loop at %s",
+                    log_id, coloc_rsc->id);
         return;
     }
-    pe__set_resource_flags(rsc, pe_rsc_merging);
+    pe__set_resource_flags(coloc_rsc, pe_rsc_merging);
 
     if (*nodes == NULL) {
-        work = pcmk__copy_node_table(rsc->allowed_nodes);
+        work = pcmk__copy_node_table(coloc_rsc->allowed_nodes);
     } else {
         const bool pos = pcmk_is_set(flags, pcmk__coloc_select_nonnegative);
 
-        pe_rsc_trace(rsc, "%s: Merging %s scores from %s (at %.6f)",
-                     log_id, (pos? "positive" : "all"), rsc->id, factor);
+        pe_rsc_trace(coloc_rsc, "%s: Merging %s scores from %s (at %.6f)",
+                     log_id, (pos? "positive" : "all"), coloc_rsc->id, factor);
         work = pcmk__copy_node_table(*nodes);
-        add_node_scores_matching_attr(work, rsc, colocation, factor, pos);
+
+        /* @TODO: Constraint colocation-base-bundle-vip-5000 in test
+         * bundle-promoted-colocation-4 adds a "base-bundle with vip" colocation
+         * to vip's with_this list and to base-bundle's this_with list.
+         *
+         * However, it adds NOTHING to base-bundle's replica containers or to
+         * its bundled resource. This is because
+         * pcmk__add_collective_constraints() finds that the bundle can run
+         * everywhere and is an optional positive "this with" constraint for
+         * base-bundle.
+         *
+         * Two things happen as a result:
+         * * base-bundle's replicas get completely placed and promoted before
+         *   vip gets assigned.
+         * * Our dependent (coloc_rsc) here is always base-bundle when the
+         *   primary (nodes_rsc) is vip. The dependent is NOT one of
+         *   base-bundle's containers or bundled resource instances. So we
+         *   currently have no way to detect which cluster node corresponds to
+         *   the bundle node on which the bundled resource is promoted.
+         *
+         * Need to think of a way to solve this -- preferably not too hackily.
+         */
+        add_node_scores_matching_attr(work, coloc_rsc, nodes_rsc, colocation,
+                                      factor, pos);
     }
 
     if (work == NULL) {
-        pe__clear_resource_flags(rsc, pe_rsc_merging);
+        pe__clear_resource_flags(coloc_rsc, pe_rsc_merging);
         return;
     }
 
@@ -1550,15 +1641,17 @@ pcmk__add_colocated_node_scores(pe_resource_t *rsc, const char *log_id,
         GList *colocations = NULL;
 
         if (pcmk_is_set(flags, pcmk__coloc_select_this_with)) {
-            colocations = pcmk__this_with_colocations(rsc);
-            pe_rsc_trace(rsc,
+            colocations = pcmk__this_with_colocations(coloc_rsc);
+            pe_rsc_trace(coloc_rsc,
                          "Checking additional %d optional '%s with' "
-                         "constraints", g_list_length(colocations), rsc->id);
+                         "constraints",
+                         g_list_length(colocations), coloc_rsc->id);
         } else {
-            colocations = pcmk__with_this_colocations(rsc);
-            pe_rsc_trace(rsc,
+            colocations = pcmk__with_this_colocations(coloc_rsc);
+            pe_rsc_trace(coloc_rsc,
                          "Checking additional %d optional 'with %s' "
-                         "constraints", g_list_length(colocations), rsc->id);
+                         "constraints",
+                         g_list_length(colocations), coloc_rsc->id);
         }
         flags |= pcmk__coloc_select_active;
 
@@ -1576,23 +1669,23 @@ pcmk__add_colocated_node_scores(pe_resource_t *rsc, const char *log_id,
                 other = constraint->dependent;
             }
 
-            pe_rsc_trace(rsc,
+            pe_rsc_trace(coloc_rsc,
                          "Optionally merging score of '%s' constraint "
                          "(%s with %s)",
                          constraint->id, constraint->dependent->id,
                          constraint->primary->id);
-            other->cmds->add_colocated_node_scores(other, log_id, &work,
-                                                   constraint,
+            other->cmds->add_colocated_node_scores(other, nodes_rsc, log_id,
+                                                   &work, constraint,
                                                    other_factor, flags);
-            pe__show_node_scores(true, NULL, log_id, work, rsc->cluster);
+            pe__show_node_scores(true, NULL, log_id, work, coloc_rsc->cluster);
         }
         g_list_free(colocations);
 
     } else if (pcmk_is_set(flags, pcmk__coloc_select_active)) {
-        pe_rsc_info(rsc, "%s: Rolling back optional scores from %s",
-                    log_id, rsc->id);
+        pe_rsc_info(coloc_rsc, "%s: Rolling back optional scores from %s",
+                    log_id, coloc_rsc->id);
         g_hash_table_destroy(work);
-        pe__clear_resource_flags(rsc, pe_rsc_merging);
+        pe__clear_resource_flags(coloc_rsc, pe_rsc_merging);
         return;
     }
 
@@ -1614,7 +1707,7 @@ pcmk__add_colocated_node_scores(pe_resource_t *rsc, const char *log_id,
     }
     *nodes = work;
 
-    pe__clear_resource_flags(rsc, pe_rsc_merging);
+    pe__clear_resource_flags(coloc_rsc, pe_rsc_merging);
 }
 
 /*!
@@ -1643,8 +1736,9 @@ pcmk__add_dependent_scores(gpointer data, gpointer user_data)
     pe_rsc_trace(rsc,
                  "%s: Incorporating attenuated %s assignment scores due "
                  "to colocation %s", rsc->id, other->id, colocation->id);
-    other->cmds->add_colocated_node_scores(other, rsc->id, &rsc->allowed_nodes,
-                                           colocation, factor, flags);
+    other->cmds->add_colocated_node_scores(other, rsc, rsc->id,
+                                           &rsc->allowed_nodes, colocation,
+                                           factor, flags);
 }
 
 /*!

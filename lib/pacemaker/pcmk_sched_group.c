@@ -752,47 +752,54 @@ pcmk__group_with_colocations(const pe_resource_t *rsc,
  * scores of the best nodes matching the attribute used for each of the
  * resource's relevant colocations.
  *
- * \param[in,out] rsc         Group resource to check colocations for
- * \param[in]     log_id      Resource ID for logs (if NULL, use \p rsc ID)
- * \param[in,out] nodes       Nodes to update (set initial contents to NULL
- *                            to copy \p rsc's allowed nodes)
+ * \param[in,out] coloc_rsc   Group resource to check colocations for
+ * \param[in]     nodes_rsc   Resource on whose behalf we're updating \p *nodes
+ * \param[in]     log_id      Resource ID for logs (if \c NULL, use \p coloc_rsc
+ *                            ID)
+ * \param[in,out] nodes       Nodes to update (set initial contents to \c NULL
+ *                            to copy allowed nodes from \p coloc_rsc)
  * \param[in]     colocation  Original colocation constraint (used to get
  *                            configured primary resource's stickiness, and
- *                            to get colocation node attribute; if NULL,
- *                            \p rsc's own matching node scores will not be
- *                            added, and *nodes must be NULL as well)
+ *                            to get colocation node attribute; if \c NULL,
+ *                            <tt>coloc_rsc</tt>'s own matching node scores will
+ *                            not be added, and \p *nodes must be \c NULL as
+ *                            well)
  * \param[in]     factor      Incorporate scores multiplied by this factor
  * \param[in]     flags       Bitmask of enum pcmk__coloc_select values
  *
  * \note NULL *nodes, NULL colocation, and the pcmk__coloc_select_this_with
  *       flag are used together (and only by cmp_resources()).
  * \note The caller remains responsible for freeing \p *nodes.
+ * \note This is the group implementation of
+ *       \c resource_alloc_functions_t:add_colocated_node_scores().
  */
 void
-pcmk__group_add_colocated_node_scores(pe_resource_t *rsc, const char *log_id,
-                                      GHashTable **nodes,
+pcmk__group_add_colocated_node_scores(pe_resource_t *coloc_rsc,
+                                      const pe_resource_t *nodes_rsc,
+                                      const char *log_id, GHashTable **nodes,
                                       pcmk__colocation_t *colocation,
                                       float factor, uint32_t flags)
 {
     pe_resource_t *member = NULL;
 
-    CRM_ASSERT((rsc != NULL) && (rsc->variant == pe_group) && (nodes != NULL)
+    CRM_ASSERT((coloc_rsc != NULL) && (coloc_rsc->variant == pe_group)
+               && (nodes_rsc != NULL) && (nodes != NULL)
                && ((colocation != NULL) || (*nodes == NULL)));
 
     if (log_id == NULL) {
-        log_id = rsc->id;
+        log_id = coloc_rsc->id;
     }
 
     // Avoid infinite recursion
-    if (pcmk_is_set(rsc->flags, pe_rsc_merging)) {
-        pe_rsc_info(rsc, "%s: Breaking dependency loop at %s",
-                    log_id, rsc->id);
+    if (pcmk_is_set(coloc_rsc->flags, pe_rsc_merging)) {
+        pe_rsc_info(coloc_rsc, "%s: Breaking dependency loop at %s",
+                    log_id, coloc_rsc->id);
         return;
     }
-    pe__set_resource_flags(rsc, pe_rsc_merging);
+    pe__set_resource_flags(coloc_rsc, pe_rsc_merging);
 
     // Ignore empty groups (only possible with schema validation disabled)
-    if (rsc->children == NULL) {
+    if (coloc_rsc->children == NULL) {
         return;
     }
 
@@ -807,15 +814,15 @@ pcmk__group_add_colocated_node_scores(pe_resource_t *rsc, const char *log_id,
      * For "with this" colocations, the first member works similarly.
      */
     if (*nodes == NULL) {
-        member = pe__last_group_member(rsc);
+        member = pe__last_group_member(coloc_rsc);
     } else {
-        member = rsc->children->data;
+        member = coloc_rsc->children->data;
     }
-    pe_rsc_trace(rsc, "%s: Merging scores from group %s using member %s "
-                 "(at %.6f)", log_id, rsc->id, member->id, factor);
-    member->cmds->add_colocated_node_scores(member, log_id, nodes, colocation,
-                                            factor, flags);
-    pe__clear_resource_flags(rsc, pe_rsc_merging);
+    pe_rsc_trace(coloc_rsc, "%s: Merging scores from group %s using member %s "
+                 "(at %.6f)", log_id, coloc_rsc->id, member->id, factor);
+    member->cmds->add_colocated_node_scores(member, nodes_rsc, log_id, nodes,
+                                            colocation, factor, flags);
+    pe__clear_resource_flags(coloc_rsc, pe_rsc_merging);
 }
 
 // Group implementation of resource_alloc_functions_t:add_utilization()

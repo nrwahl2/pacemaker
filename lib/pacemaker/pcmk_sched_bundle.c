@@ -419,6 +419,10 @@ replica_apply_coloc_score(const pe__bundle_replica_t *replica, void *user_data)
                                                     replica->container,
                                                     coloc_data->colocation,
                                                     false);
+        replica->child->cmds->apply_coloc_score(coloc_data->dependent,
+                                                replica->child,
+                                                coloc_data->colocation,
+                                                false);
         return true;
     }
 

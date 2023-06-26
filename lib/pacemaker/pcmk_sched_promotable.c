@@ -355,9 +355,9 @@ apply_coloc_to_dependent(gpointer data, gpointer user_data)
                  constraint->id, constraint->dependent->id,
                  constraint->primary->id,
                  pcmk_readable_score(constraint->score));
-    primary->cmds->add_colocated_node_scores(primary, clone->id,
-                                             &clone->allowed_nodes,
-                                             constraint, factor, flags);
+    primary->cmds->add_colocated_node_scores(primary, clone, clone->id,
+                                             &clone->allowed_nodes, constraint,
+                                             factor, flags);
 }
 
 /*!
@@ -386,7 +386,7 @@ apply_coloc_to_primary(gpointer data, gpointer user_data)
                  constraint->id, constraint->dependent->id,
                  constraint->primary->id,
                  pcmk_readable_score(constraint->score));
-    dependent->cmds->add_colocated_node_scores(dependent, clone->id,
+    dependent->cmds->add_colocated_node_scores(dependent, clone, clone->id,
                                                &clone->allowed_nodes,
                                                constraint, factor, flags);
 }
@@ -1151,11 +1151,13 @@ pcmk__order_promotable_instances(pe_resource_t *clone)
  * \brief Update dependent's allowed nodes for colocation with promotable
  *
  * \param[in,out] dependent     Dependent resource to update
+ * \param[in]     primary       Primary resource
  * \param[in]     primary_node  Node where an instance of the primary will be
  * \param[in]     colocation    Colocation constraint to apply
  */
 static void
 update_dependent_allowed_nodes(pe_resource_t *dependent,
+                               const pe_resource_t *primary,
                                const pe_node_t *primary_node,
                                const pcmk__colocation_t *colocation)
 {
@@ -1163,13 +1165,18 @@ update_dependent_allowed_nodes(pe_resource_t *dependent,
     pe_node_t *node = NULL;
     const char *primary_value = NULL;
     const char *attr = colocation->node_attribute;
+    bool force_host = false;
 
     if (colocation->score >= INFINITY) {
         return; // Colocation is mandatory, so allowed node scores don't matter
     }
 
     // Get value of primary's colocation node attribute
-    primary_value = pe_node_attribute_raw(primary_node, attr);
+    force_host = pe__is_bundle_node(primary_node)
+                 && pe_rsc_is_bundle_primitive(primary);
+    primary_value = pe__node_attribute_calculated(primary_node, attr, primary,
+                                                  pe__rsc_node_assigned,
+                                                  force_host);
 
     pe_rsc_trace(colocation->primary,
                  "Applying %s (%s with %s on %s by %s @%d) to %s",
@@ -1179,7 +1186,13 @@ update_dependent_allowed_nodes(pe_resource_t *dependent,
 
     g_hash_table_iter_init(&iter, dependent->allowed_nodes);
     while (g_hash_table_iter_next(&iter, NULL, (void **) &node)) {
-        const char *dependent_value = pe_node_attribute_raw(node, attr);
+        const char *dependent_value = NULL;
+
+        force_host = pe__is_bundle_node(node)
+                     && pe_rsc_is_bundle_primitive(dependent);
+        dependent_value = pe__node_attribute_calculated(node, attr, dependent,
+                                                        pe__rsc_node_assigned,
+                                                        force_host);
 
         if (pcmk__str_eq(primary_value, dependent_value, pcmk__str_casei)) {
             node->weight = pcmk__add_scores(node->weight, colocation->score);
@@ -1218,7 +1231,8 @@ pcmk__update_dependent_with_promotable(const pe_resource_t *primary,
             continue;
         }
         if (instance->fns->state(instance, FALSE) == colocation->primary_role) {
-            update_dependent_allowed_nodes(dependent, node, colocation);
+            update_dependent_allowed_nodes(dependent, primary, node,
+                                           colocation);
             affected_nodes = g_list_prepend(affected_nodes, node);
         }
     }

@@ -669,12 +669,12 @@ cmp_resources(gconstpointer a, gconstpointer b, gpointer data)
     }
 
     // Calculate and log node scores
-    resource1->cmds->add_colocated_node_scores(resource1, resource1->id,
-                                               &r1_nodes, NULL, 1,
-                                               pcmk__coloc_select_this_with);
-    resource2->cmds->add_colocated_node_scores(resource2, resource2->id,
-                                               &r2_nodes, NULL, 1,
-                                               pcmk__coloc_select_this_with);
+    resource1->cmds->add_colocated_node_scores(resource1, resource1,
+                                               resource1->id, &r1_nodes, NULL,
+                                               1, pcmk__coloc_select_this_with);
+    resource2->cmds->add_colocated_node_scores(resource2, resource2,
+                                               resource2->id, &r2_nodes, NULL,
+                                               1, pcmk__coloc_select_this_with);
     pe__show_node_scores(true, NULL, resource1->id, r1_nodes,
                          resource1->cluster);
     pe__show_node_scores(true, NULL, resource2->id, r2_nodes,
