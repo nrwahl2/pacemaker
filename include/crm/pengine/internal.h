@@ -595,6 +595,22 @@ GList *pe__bundle_containers(const pe_resource_t *bundle);
 int pe__bundle_max(const pe_resource_t *rsc);
 bool pe__node_is_bundle_instance(const pe_resource_t *bundle,
                                  const pe_node_t *node);
+
+/*!
+ * \brief Check whether a resource is a bundle primitive or its clone resource
+ *
+ * \param[in] rsc  Resource to check
+ *
+ * \return \c true if resource is a bundle primitive or its clone resource, or
+ *         \c false otherwise
+ */
+static inline bool
+pe__rsc_is_bundle_primitive(const pe_resource_t *rsc)
+{
+    return pe_rsc_is_bundled(rsc)
+           && (pe__const_top_resource(rsc, false) == pe__bundled_resource(rsc));
+}
+
 pe_resource_t *pe__bundled_resource(const pe_resource_t *rsc);
 const pe_resource_t *pe__get_rsc_in_container(const pe_resource_t *instance);
 pe_resource_t *pe__first_container(const pe_resource_t *bundle);
