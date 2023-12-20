@@ -1293,10 +1293,10 @@ pcmk__create_history_xml(xmlNode *parent, lrmd_event_data_t *op,
  * \internal
  * \brief Check whether an action shutdown-locks a resource to a node
  *
- * If the shutdown-lock cluster property is set, resources will not be recovered
- * on a different node if cleanly stopped, and may start only on that same node.
- * This function checks whether that applies to a given action, so that the
- * transition graph can be marked appropriately.
+ * If the PCMK__OPT_SHUTDOWN_LOCK cluster property is set, resources will not be
+ * recovered on a different node if cleanly stopped, and may start only on that
+ * same node. This function checks whether that applies to a given action, so
+ * that the transition graph can be marked appropriately.
  *
  * \param[in] action  Action to check
  *
