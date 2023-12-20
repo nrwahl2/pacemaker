@@ -1024,8 +1024,8 @@ pcmk__create_graph(pcmk_scheduler_t *scheduler)
         crm_xml_add(scheduler->graph, "failed-start-offset", "1");
     }
 
-    value = pe_pref(scheduler->config_hash, "batch-limit");
-    crm_xml_add(scheduler->graph, "batch-limit", value);
+    value = pe_pref(scheduler->config_hash, PCMK__OPT_BATCH_LIMIT);
+    crm_xml_add(scheduler->graph, PCMK__OPT_BATCH_LIMIT, value);
 
     crm_xml_add_int(scheduler->graph, "transition_id", transition_id);
 

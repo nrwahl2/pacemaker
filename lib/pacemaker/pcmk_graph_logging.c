@@ -220,8 +220,9 @@ pcmk__log_graph(unsigned int log_level, pcmk__graph_t *graph)
         return;
     }
 
-    do_crm_log(log_level, "Graph %d with %d actions:"
-               " batch-limit=%d jobs, network-delay=%ums",
+    do_crm_log(log_level,
+               "Graph %d with %d actions: " PCMK__OPT_BATCH_LIMIT "=%d jobs, "
+               "network-delay=%ums",
                graph->id, graph->num_actions,
                graph->batch_limit, graph->network_delay);
 

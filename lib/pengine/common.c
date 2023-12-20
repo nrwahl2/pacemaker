@@ -177,7 +177,7 @@ static pcmk__cluster_option_t pe_opts[] = {
             "load of your network and cluster nodes.")
     },
     {
-        "batch-limit", NULL, "integer", NULL,
+        PCMK__OPT_BATCH_LIMIT, NULL, "integer", NULL,
         "0", pcmk__valid_number,
         N_("Maximum number of jobs that the cluster may execute in parallel "
             "across all nodes"),
