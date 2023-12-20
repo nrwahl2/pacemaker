@@ -126,6 +126,7 @@ bool pcmk__valid_sbd_timeout(const char *value);
 
 // Constants for cluster option names
 #define PCMK__OPT_BATCH_LIMIT               "batch-limit"
+#define PCMK__OPT_CLUSTER_DELAY             "cluster-delay"
 #define PCMK__OPT_NODE_HEALTH_BASE          "node-health-base"
 #define PCMK__OPT_NODE_HEALTH_GREEN         "node-health-green"
 #define PCMK__OPT_NODE_HEALTH_RED           "node-health-red"

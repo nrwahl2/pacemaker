@@ -83,7 +83,7 @@ handle_pecalc_request(pcmk__request_t *request)
     if (!cli_config_update(&converted, NULL, TRUE)) {
         scheduler->graph = create_xml_node(NULL, XML_TAG_GRAPH);
         crm_xml_add_int(scheduler->graph, "transition_id", 0);
-        crm_xml_add_int(scheduler->graph, "cluster-delay", 0);
+        crm_xml_add_int(scheduler->graph, PCMK__OPT_CLUSTER_DELAY, 0);
         process = false;
         free(digest);
 
