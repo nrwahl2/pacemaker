@@ -233,6 +233,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_CONFIG_ATTR_NODE_PENDING_TIMEOUT "node-pending-timeout"
 
+//! \deprecated Do not use
+#define XML_CONFIG_ATTR_PRIORITY_FENCING_DELAY "priority-fencing-delay"
+
 #ifdef __cplusplus
 }
 #endif
