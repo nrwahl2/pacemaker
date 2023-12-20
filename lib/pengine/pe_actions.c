@@ -301,7 +301,7 @@ effective_quorum_policy(pcmk_resource_t *rsc, pcmk_scheduler_t *scheduler)
             case pcmk_role_unpromoted:
                 if (rsc->next_role > pcmk_role_unpromoted) {
                     pe__set_next_role(rsc, pcmk_role_unpromoted,
-                                      "no-quorum-policy=demote");
+                                      PCMK__OPT_NO_QUORUM_POLICY "=demote");
                 }
                 policy = pcmk_no_quorum_ignore;
                 break;

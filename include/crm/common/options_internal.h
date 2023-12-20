@@ -143,6 +143,7 @@ bool pcmk__valid_sbd_timeout(const char *value);
 #define PCMK__OPT_LOAD_THRESHOLD            "load-threshold"
 #define PCMK__OPT_MAINTENANCE_MODE          "maintenance-mode"
 #define PCMK__OPT_MIGRATION_LIMIT           "migration-limit"
+#define PCMK__OPT_NO_QUORUM_POLICY          "no-quorum-policy"
 #define PCMK__OPT_NODE_HEALTH_BASE          "node-health-base"
 #define PCMK__OPT_NODE_HEALTH_GREEN         "node-health-green"
 #define PCMK__OPT_NODE_HEALTH_RED           "node-health-red"
