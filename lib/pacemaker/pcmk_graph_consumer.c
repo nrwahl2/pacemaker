@@ -716,7 +716,7 @@ pcmk__unpack_graph(const xmlNode *xml_graph, const char *reference)
         }
 
         // Use 0 (dynamic limit) as default/invalid, -1 (no limit) as minimum
-        buf = crm_element_value(xml_graph, "batch-limit");
+        buf = crm_element_value(xml_graph, PCMK__OPT_BATCH_LIMIT);
         if ((buf == NULL)
             || (pcmk__scan_min_int(buf, &(new_graph->batch_limit),
                                    -1) != pcmk_rc_ok)) {
