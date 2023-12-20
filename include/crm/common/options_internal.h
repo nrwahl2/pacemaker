@@ -158,6 +158,7 @@ bool pcmk__valid_sbd_timeout(const char *value);
 #define PCMK__OPT_PLACEMENT_STRATEGY        "placement-strategy"
 #define PCMK__OPT_PRIORITY_FENCING_DELAY    "priority-fencing-delay"
 #define PCMK__OPT_REMOVE_AFTER_STOP         "remove-after-stop"
+#define PCMK__OPT_SHUTDOWN_ESCALATION       "shutdown-escalation"
 
 // Constants for meta-attribute names
 #define PCMK__META_ALLOW_UNHEALTHY_NODES    "allow-unhealthy-nodes"
