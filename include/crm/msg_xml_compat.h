@@ -221,6 +221,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_CONFIG_ATTR_DC_DEADTIME "dc-deadtime"
 
+//! \deprecated Do not use
+#define XML_CONFIG_ATTR_ELECTION_FAIL "election-timeout"
+
 #ifdef __cplusplus
 }
 #endif
