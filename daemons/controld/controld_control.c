@@ -528,7 +528,8 @@ static pcmk__cluster_option_t controller_options[] = {
             "built from. Used for diagnostic purposes.")
     },
     {
-        "cluster-infrastructure", NULL, "string", NULL, "corosync", NULL,
+        PCMK__OPT_CLUSTER_INFRASTRUCTURE, NULL, "string", NULL,
+        "corosync", NULL,
         N_("The messaging stack on which Pacemaker is currently running"),
         N_("Used for informational and diagnostic purposes.")
     },
