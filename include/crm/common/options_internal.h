@@ -155,6 +155,7 @@ bool pcmk__valid_sbd_timeout(const char *value);
 #define PCMK__OPT_PE_INPUT_SERIES_MAX       "pe-input-series-max"
 #define PCMK__OPT_PE_WARN_SERIES_MAX        "pe-warn-series-max"
 #define PCMK__OPT_PLACEMENT_STRATEGY        "placement-strategy"
+#define PCMK__OPT_PRIORITY_FENCING_DELAY    "priority-fencing-delay"
 
 // Constants for meta-attribute names
 #define PCMK__META_ALLOW_MIGRATE            "allow-migrate"
