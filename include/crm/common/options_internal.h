@@ -151,6 +151,7 @@ bool pcmk__valid_sbd_timeout(const char *value);
 #define PCMK__OPT_NODE_HEALTH_STRATEGY      "node-health-strategy"
 #define PCMK__OPT_NODE_HEALTH_YELLOW        "node-health-yellow"
 #define PCMK__OPT_NODE_PENDING_TIMEOUT      "node-pending-timeout"
+#define PCMK__OPT_PE_ERROR_SERIES_MAX       "pe-error-series-max"
 
 // Constants for meta-attribute names
 #define PCMK__META_ALLOW_MIGRATE            "allow-migrate"
