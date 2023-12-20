@@ -4946,7 +4946,8 @@ add_node_attrs(const xmlNode *xml_obj, pcmk_node_t *node, bool overwrite,
                             strdup(CRM_ATTR_IS_DC), strdup(XML_BOOLEAN_FALSE));
     }
 
-    cluster_name = g_hash_table_lookup(scheduler->config_hash, "cluster-name");
+    cluster_name = g_hash_table_lookup(scheduler->config_hash,
+                                       PCMK__OPT_CLUSTER_NAME);
     if (cluster_name) {
         g_hash_table_insert(node->details->attrs, strdup(CRM_ATTR_CLUSTER_NAME),
                             strdup(cluster_name));
