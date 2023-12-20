@@ -163,6 +163,7 @@ bool pcmk__valid_sbd_timeout(const char *value);
 #define PCMK__OPT_START_FAILURE_IS_FATAL    "start-failure-is-fatal"
 #define PCMK__OPT_STARTUP_FENCING           "startup-fencing"
 #define PCMK__OPT_STONITH_ACTION            "stonith-action"
+#define PCMK__OPT_STONITH_ENABLED           "stonith-enabled"
 
 // Constants for meta-attribute names
 #define PCMK__META_ALLOW_MIGRATE            "allow-migrate"
