@@ -120,20 +120,25 @@ INKSCAPE_CMD	= $(INKSCAPE) --export-dpi=90 -C
 # Create the book directory in case this is a VPATH build.
 $(BOOKS:%=%/conf.py): conf.py.in
 	$(AM_V_at)-$(MKDIR_P) "$(@:%/conf.py=%)"
-	$(AM_V_GEN)sed							\
-		-e 's/%VERSION%/$(VERSION)/g'				\
-		-e 's/%BOOK_ID%/$(@:%/conf.py=%)/g'			\
-		-e 's/%BOOK_TITLE%/$(subst _, ,$(@:%/conf.py=%))/g'	\
-		-e 's#%SRC_DIR%#$(abs_srcdir)#g'			\
+	$(AM_V_GEN)sed								\
+		-e 's/%VERSION%/$(VERSION)/g'					\
+		-e 's/%BOOK_ID%/$(@:%/conf.py=%)/g'				\
+		-e 's/%BOOK_TITLE%/$(subst _, ,$(@:%/conf.py=%))/g'		\
+		-e 's#%SRC_DIR%#$(abs_srcdir)#g'				\
 		-e 's#%ABS_TOP_SRCDIR%#$(abs_top_srcdir)#g'			\
 		-e 's#%CONFIGDIR%#@CONFIGDIR@#g'				\
 		-e 's#%CRM_BLACKBOX_DIR%#@CRM_BLACKBOX_DIR@#g'			\
 		-e 's#%CRM_DAEMON_GROUP%#@CRM_DAEMON_GROUP@#g'			\
 		-e 's#%CRM_DAEMON_USER%#@CRM_DAEMON_USER@#g'			\
+		-e 's#%CRM_DAEMON_USER_RAW%#@CRM_DAEMON_USER_RAW@#g'		\
 		-e 's#%CRM_LOG_DIR%#@CRM_LOG_DIR@#g'				\
 		-e 's#%CRM_SCHEMA_DIRECTORY%#@CRM_SCHEMA_DIRECTORY@#g'		\
 		-e 's#%PACEMAKER_CONFIG_DIR%#@PACEMAKER_CONFIG_DIR@#g'		\
+		-e 's#%PCMK_AUTHKEY_FILE%#@PCMK_AUTHKEY_FILE@#g'		\
+		-e 's#%PCMK_CONFIG_FILE%#@PCMK_CONFIG_FILE@#g'			\
 		-e 's#%PCMK_GNUTLS_PRIORITIES%#@PCMK_GNUTLS_PRIORITIES@#g'	\
+		-e 's#%PCMK_INIT_ENV_FILE%#@PCMK_INIT_ENV_FILE@#g'		\
+		-e 's#%PCMK_LOG_FILE%#@PCMK_LOG_FILE@#g'			\
 		$(<) > "$@"
 
 $(BOOK)/_build: $(STATIC_FILES) $(BOOK)/conf.py $(DEPS_$(BOOK)) $(wildcard $(srcdir)/$(BOOK)/*.rst)
