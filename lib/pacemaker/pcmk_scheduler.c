@@ -611,7 +611,8 @@ schedule_fencing_and_shutdowns(pcmk_scheduler_t *scheduler)
 
         } else if (!pcmk_is_set(scheduler->flags, pcmk_sched_quorate)) {
             crm_notice("Unclean nodes will not be fenced until quorum is "
-                       "attained or no-quorum-policy is set to ignore");
+                       "attained or " PCMK__OPT_NO_QUORUM_POLICY " is set to "
+                       "ignore");
         }
     }
 
