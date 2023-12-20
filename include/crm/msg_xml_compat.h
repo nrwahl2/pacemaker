@@ -239,6 +239,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_CONFIG_ATTR_FORCE_QUIT "shutdown-escalation"
 
+//! \deprecated Do not use
+#define XML_CONFIG_ATTR_SHUTDOWN_LOCK "shutdown-lock"
+
 #ifdef __cplusplus
 }
 #endif
