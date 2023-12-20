@@ -1010,8 +1010,8 @@ pcmk__create_graph(pcmk_scheduler_t *scheduler)
 
     scheduler->graph = create_xml_node(NULL, XML_TAG_GRAPH);
 
-    value = pe_pref(scheduler->config_hash, "cluster-delay");
-    crm_xml_add(scheduler->graph, "cluster-delay", value);
+    value = pe_pref(scheduler->config_hash, PCMK__OPT_CLUSTER_DELAY);
+    crm_xml_add(scheduler->graph, PCMK__OPT_CLUSTER_DELAY, value);
 
     value = pe_pref(scheduler->config_hash, "stonith-timeout");
     crm_xml_add(scheduler->graph, "stonith-timeout", value);

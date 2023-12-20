@@ -666,7 +666,7 @@ action_timer_callback(gpointer data)
         /* fail the action */
 
         crm_err("Node %s did not send %s result (via %s) within %dms "
-                "(action timeout plus cluster-delay)",
+                "(action timeout plus " PCMK__OPT_CLUSTER_DELAY ")",
                 (on_node? on_node : ""), (task? task : "unknown action"),
                 (via_node? via_node : "controller"),
                 (action->timeout
