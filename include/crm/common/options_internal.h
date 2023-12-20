@@ -167,6 +167,7 @@ bool pcmk__valid_sbd_timeout(const char *value);
 #define PCMK__OPT_STONITH_MAX_ATTEMPTS      "stonith-max-attempts"
 #define PCMK__OPT_STONITH_TIMEOUT           "stonith-timeout"
 #define PCMK__OPT_STONITH_WATCHDOG_TIMEOUT  "stonith-watchdog-timeout"
+#define PCMK__OPT_STOP_ALL_RESOURCES        "stop-all-resources"
 
 // Constants for meta-attribute names
 #define PCMK__META_ALLOW_MIGRATE            "allow-migrate"
