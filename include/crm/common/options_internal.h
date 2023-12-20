@@ -160,6 +160,7 @@ bool pcmk__valid_sbd_timeout(const char *value);
 #define PCMK__OPT_REMOVE_AFTER_STOP         "remove-after-stop"
 #define PCMK__OPT_SHUTDOWN_ESCALATION       "shutdown-escalation"
 #define PCMK__OPT_SHUTDOWN_LOCK             "shutdown-lock"
+#define PCMK__OPT_SHUTDOWN_LOCK_LIMIT       "shutdown-lock-limit"
 
 // Constants for meta-attribute names
 #define PCMK__META_ALLOW_UNHEALTHY_NODES    "allow-unhealthy-nodes"
