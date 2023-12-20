@@ -224,6 +224,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_CONFIG_ATTR_ELECTION_FAIL "election-timeout"
 
+//! \deprecated Do not use
+#define XML_CONFIG_ATTR_FENCE_REACTION "fence-reaction"
+
 #ifdef __cplusplus
 }
 #endif
