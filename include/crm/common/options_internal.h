@@ -132,6 +132,7 @@ bool pcmk__valid_sbd_timeout(const char *value);
 #define PCMK__OPT_CLUSTER_NAME              "cluster-name"
 #define PCMK__OPT_CLUSTER_RECHECK_INTERVAL  "cluster-recheck-interval"
 #define PCMK__OPT_CONCURRENT_FENCING        "concurrent-fencing"
+#define PCMK__OPT_DC_DEADTIME               "dc-deadtime"
 #define PCMK__OPT_NODE_HEALTH_BASE          "node-health-base"
 #define PCMK__OPT_NODE_HEALTH_GREEN         "node-health-green"
 #define PCMK__OPT_NODE_HEALTH_RED           "node-health-red"
