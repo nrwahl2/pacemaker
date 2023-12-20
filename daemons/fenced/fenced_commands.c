@@ -1023,7 +1023,8 @@ xml2device_params(const char *name, const xmlNode *dev)
             crm_warn("Ignoring empty '%s' parameter", STONITH_ATTR_ACTION_OP);
 
         } else if (strcmp(value, PCMK_ACTION_REBOOT) == 0) {
-            crm_warn("Ignoring %s='reboot' (see stonith-action cluster property instead)",
+            crm_warn("Ignoring %s='reboot' (see " PCMK__OPT_STONITH_ACTION
+                     " cluster property instead)",
                      STONITH_ATTR_ACTION_OP);
 
         } else if (strcmp(value, PCMK_ACTION_OFF) == 0) {
