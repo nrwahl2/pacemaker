@@ -193,11 +193,14 @@ append_dump_text(gpointer key, gpointer value, gpointer user_data)
     *dump_text = new_text;
 }
 
+#define XPATH_STACK "//" XML_CIB_TAG_NVPAIR         \
+                    "[@" XML_NVPAIR_ATTR_NAME "='"  \
+                        PCMK__OPT_CLUSTER_INFRASTRUCTURE "']"
+
 static const char *
 get_cluster_stack(pcmk_scheduler_t *scheduler)
 {
-    xmlNode *stack = get_xpath_object("//nvpair[@name='cluster-infrastructure']",
-                                      scheduler->input, LOG_DEBUG);
+    xmlNode *stack = get_xpath_object(XPATH_STACK, scheduler->input, LOG_DEBUG);
     return stack? crm_element_value(stack, XML_NVPAIR_ATTR_VALUE) : "unknown";
 }
 
