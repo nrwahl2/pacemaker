@@ -349,7 +349,8 @@ peer_update_callback(enum crm_status_type type, crm_node_t * node, const void *d
             && (node->when_member > 1)) {
             /* The node left CPG but is still a cluster member. Set its
              * membership time to 1 to record it in the cluster state as a
-             * boolean, so we don't fence it due to node-pending-timeout.
+             * boolean, so we don't fence it due to
+             * PCMK__OPT_NODE_PENDING_TIMEOUT.
              */
             node->when_member = 1;
             flags |= node_update_cluster;
