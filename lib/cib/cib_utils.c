@@ -876,7 +876,7 @@ static pcmk__cluster_option_t cib_opts[] = {
         NULL
     },
     {
-        "cluster-ipc-limit", NULL, "integer", NULL,
+        PCMK__OPT_CLUSTER_IPC_LIMIT, NULL, "integer", NULL,
         "500", pcmk__valid_positive_number,
         N_("Maximum IPC message backlog before disconnecting a cluster daemon"),
         N_("Raise this if log has \"Evicting client\" messages for cluster daemon"
