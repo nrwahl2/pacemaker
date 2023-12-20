@@ -109,6 +109,9 @@ extern "C" {
 //! \deprecated Use name member directly
 #define TYPE(x) (((x) == NULL)? NULL : (const char *) ((x)->name))
 
+//! \deprecated Do not use
+#define XML_CONFIG_ATTR_RECHECK "cluster-recheck-interval"
+
 #ifdef __cplusplus
 }
 #endif
