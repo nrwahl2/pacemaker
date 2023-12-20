@@ -504,7 +504,9 @@ crmd_remote_proxy_cb(lrmd_t *lrmd, void *userdata, xmlNode *msg)
             if (proxy != NULL) {
                 cib_t *cib_conn = controld_globals.cib_conn;
 
-                /* Look up stonith-watchdog-timeout and send to the remote peer for validation */
+                /* Look up PCMK__OPT_STONITH_WATCHDOG_TIMEOUT and send to the
+                 * remote peer for validation
+                 */
                 int rc = cib_conn->cmds->query(cib_conn, XML_CIB_TAG_CRMCONFIG,
                                                NULL, cib_scope_local);
                 cib_conn->cmds->register_callback_full(cib_conn, rc, 10, FALSE,
