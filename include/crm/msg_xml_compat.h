@@ -130,6 +130,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_CONFIG_ATTR_PRIORITY_FENCING_DELAY "priority-fencing-delay"
 
+//! \deprecated Do not use
+#define XML_CONFIG_ATTR_FORCE_QUIT "shutdown-escalation"
+
 #ifdef __cplusplus
 }
 #endif
