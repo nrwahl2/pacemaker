@@ -153,6 +153,7 @@ bool pcmk__valid_sbd_timeout(const char *value);
 #define PCMK__OPT_NODE_PENDING_TIMEOUT      "node-pending-timeout"
 #define PCMK__OPT_PE_ERROR_SERIES_MAX       "pe-error-series-max"
 #define PCMK__OPT_PE_INPUT_SERIES_MAX       "pe-input-series-max"
+#define PCMK__OPT_PE_WARN_SERIES_MAX        "pe-warn-series-max"
 
 // Constants for meta-attribute names
 #define PCMK__META_ALLOW_MIGRATE            "allow-migrate"
