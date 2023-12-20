@@ -137,6 +137,7 @@ extern "C" {
 #define TYPE(x) (((x) == NULL)? NULL : (const char *) ((x)->name))
 
 //! \deprecated Do not use
+<<<<<<< HEAD
 #define PCMK_META_ENABLED "enabled"
 
 //! \deprecated Do not use
@@ -213,6 +214,9 @@ extern "C" {
 
 //! \deprecated Do not use
 #define XML_REMOTE_ATTR_RECONNECT_INTERVAL "reconnect_interval"
+
+//! \deprecated Do not use
+#define XML_CONFIG_ATTR_RECHECK "cluster-recheck-interval"
 
 #ifdef __cplusplus
 }
