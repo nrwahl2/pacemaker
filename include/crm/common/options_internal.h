@@ -171,6 +171,7 @@ bool pcmk__valid_sbd_timeout(const char *value);
 #define PCMK__OPT_STOP_ORPHAN_ACTIONS       "stop-orphan-actions"
 #define PCMK__OPT_STOP_ORPHAN_RESOURCES     "stop-orphan-resources"
 #define PCMK__OPT_SYMMETRIC_CLUSTER         "symmetric-cluster"
+#define PCMK__OPT_TRANSITION_DELAY          "transition-delay"
 
 // Constants for meta-attribute names
 #define PCMK__META_ALLOW_MIGRATE            "allow-migrate"
