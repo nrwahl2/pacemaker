@@ -170,6 +170,7 @@ bool pcmk__valid_sbd_timeout(const char *value);
 #define PCMK__OPT_STONITH_WATCHDOG_TIMEOUT  "stonith-watchdog-timeout"
 #define PCMK__OPT_STOP_ALL_RESOURCES        "stop-all-resources"
 #define PCMK__OPT_STOP_ORPHAN_ACTIONS       "stop-orphan-actions"
+#define PCMK__OPT_STOP_ORPHAN_RESOURCES     "stop-orphan-resources"
 
 // Constants for meta-attribute names
 #define PCMK__META_ALLOW_UNHEALTHY_NODES    "allow-unhealthy-nodes"
