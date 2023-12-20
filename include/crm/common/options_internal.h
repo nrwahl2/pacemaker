@@ -140,6 +140,7 @@ bool pcmk__valid_sbd_timeout(const char *value);
 #define PCMK__OPT_FENCE_REACTION            "fence-reaction"
 #define PCMK__OPT_HAVE_WATCHDOG             "have-watchdog"
 #define PCMK__OPT_JOIN_FINALIZATION_TIMEOUT "join-finalization-timeout"
+#define PCMK__OPT_JOIN_INTEGRATION_TIMEOUT  "join-integration-timeout"
 #define PCMK__OPT_NODE_HEALTH_BASE          "node-health-base"
 #define PCMK__OPT_NODE_HEALTH_GREEN         "node-health-green"
 #define PCMK__OPT_NODE_HEALTH_RED           "node-health-red"
