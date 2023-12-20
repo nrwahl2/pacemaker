@@ -112,6 +112,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_CONFIG_ATTR_RECHECK "cluster-recheck-interval"
 
+//! \deprecated Do not use
+#define XML_CONFIG_ATTR_DC_DEADTIME "dc-deadtime"
+
 #ifdef __cplusplus
 }
 #endif
