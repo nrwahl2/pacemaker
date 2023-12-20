@@ -242,6 +242,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_CONFIG_ATTR_SHUTDOWN_LOCK "shutdown-lock"
 
+//! \deprecated Do not use
+#define XML_CONFIG_ATTR_SHUTDOWN_LOCK_LIMIT "shutdown-lock-limit"
+
 #ifdef __cplusplus
 }
 #endif
