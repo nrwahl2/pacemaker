@@ -230,6 +230,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_ATTR_HAVE_WATCHDOG "have-watchdog"
 
+//! \deprecated Do not use
+#define XML_CONFIG_ATTR_NODE_PENDING_TIMEOUT "node-pending-timeout"
+
 #ifdef __cplusplus
 }
 #endif
