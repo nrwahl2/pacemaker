@@ -121,6 +121,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_CONFIG_ATTR_FENCE_REACTION "fence-reaction"
 
+//! \deprecated Do not use
+#define XML_ATTR_HAVE_WATCHDOG "have-watchdog"
+
 #ifdef __cplusplus
 }
 #endif
