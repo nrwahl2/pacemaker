@@ -139,6 +139,7 @@ $(BOOKS:%=%/conf.py): conf.py.in
 		-e 's#%PCMK_GNUTLS_PRIORITIES%#@PCMK_GNUTLS_PRIORITIES@#g'	\
 		-e 's#%PCMK_INIT_ENV_FILE%#@PCMK_INIT_ENV_FILE@#g'		\
 		-e 's#%PCMK_LOG_FILE%#@PCMK_LOG_FILE@#g'			\
+		-e 's#%PCMK__REMOTE_SCHEMA_DIR%#@PCMK__REMOTE_SCHEMA_DIR@#g'	\
 		$(<) > "$@"
 
 $(BOOK)/_build: $(STATIC_FILES) $(BOOK)/conf.py $(DEPS_$(BOOK)) $(wildcard $(srcdir)/$(BOOK)/*.rst)
