@@ -353,12 +353,12 @@ pcmk__guint_from_hash(GHashTable *table, const char *key, guint default_val,
 /*!
  * \brief Parse a time+units string and return milliseconds equivalent
  *
- * \param[in] input  String with a number and optional unit (optionally
- *                   with whitespace before and/or after the number).  If
- *                   missing, the unit defaults to seconds.
+ * \param[in] input  String with a nonnegative number and optional unit
+ *                   (optionally with whitespace before and/or after the
+ *                   number). If missing, the unit defaults to seconds.
  *
  * \return Milliseconds corresponding to string expression, or
- *         PCMK__PARSE_INT_DEFAULT on error
+ *         \c PCMK__PARSE_INT_DEFAULT on error
  */
 long long
 crm_get_msec(const char *input)
