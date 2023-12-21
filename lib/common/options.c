@@ -177,15 +177,6 @@ pcmk__env_option_enabled(const char *daemon, const char *option)
  */
 
 bool
-pcmk__valid_positive_number(const char *value)
-{
-    long long num = 0LL;
-
-    return pcmk_str_is_infinity(value)
-           || ((pcmk__scan_ll(value, &num, 0LL) == pcmk_rc_ok) && (num > 0));
-}
-
-bool
 pcmk__valid_quorum(const char *value)
 {
     return pcmk__strcase_any_of(value, "stop", "freeze", "ignore", "demote", "suicide", NULL);
