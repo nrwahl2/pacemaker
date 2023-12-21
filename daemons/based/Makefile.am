@@ -8,6 +8,7 @@
 #
 
 include $(top_srcdir)/mk/common.mk
+include $(top_srcdir)/mk/man.mk
 
 EXTRA_DIST	= cib.pam
 
@@ -34,6 +35,12 @@ pacemaker_based_SOURCES	= pacemaker-based.c 	\
 			  based_operation.c 	\
 			  based_remote.c 	\
 			  based_transaction.c
+
+if BUILD_XML_HELP
+man7_MANS 	= pacemaker-based.7
+endif
+
+CLEANFILES = $(man7_MANS)
 
 .PHONY: install-exec-hook
 install-exec-hook:
