@@ -177,20 +177,6 @@ pcmk__env_option_enabled(const char *daemon, const char *option)
  */
 
 bool
-pcmk__valid_number(const char *value)
-{
-    if (value == NULL) {
-        return false;
-
-    } else if (pcmk_str_is_minus_infinity(value) ||
-               pcmk_str_is_infinity(value)) {
-        return true;
-    }
-
-    return pcmk__scan_ll(value, NULL, 0LL) == pcmk_rc_ok;
-}
-
-bool
 pcmk__valid_positive_number(const char *value)
 {
     long long num = 0LL;
