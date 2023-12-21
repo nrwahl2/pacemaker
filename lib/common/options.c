@@ -177,12 +177,6 @@ pcmk__env_option_enabled(const char *daemon, const char *option)
  */
 
 bool
-pcmk__valid_quorum(const char *value)
-{
-    return pcmk__strcase_any_of(value, "stop", "freeze", "ignore", "demote", "suicide", NULL);
-}
-
-bool
 pcmk__valid_script(const char *value)
 {
     struct stat st;
