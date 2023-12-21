@@ -33,7 +33,7 @@ static enum {
 
 struct {
     gboolean health;
-    gint timeout;
+    guint timeout;
     char *optarg;
     char *ipc_name;
     gboolean bash_export;
@@ -117,7 +117,7 @@ command_cb(const gchar *option_name, const gchar *optarg, gpointer data, GError 
     }
 
     if (!strcmp(option_name, "--timeout") || !strcmp(option_name, "-t")) {
-        options.timeout = crm_parse_interval_spec(optarg);
+        pcmk__parse_interval_spec(optarg, &options.timeout);
         if (errno == EINVAL) {
             return FALSE;
         }

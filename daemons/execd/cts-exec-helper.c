@@ -56,8 +56,8 @@ static struct {
 
 static gboolean
 interval_cb(const gchar *option_name, const gchar *optarg, gpointer data, GError **error) {
-    options.interval_ms = crm_parse_interval_spec(optarg);
-    return errno == 0;
+    return pcmk__parse_interval_spec(optarg,
+                                     &options.interval_ms) == pcmk_rc_ok;
 }
 
 static gboolean
