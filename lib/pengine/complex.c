@@ -856,8 +856,11 @@ pe__unpack_resource(xmlNode *xml_obj, pcmk_resource_t **rsc,
 
     value = g_hash_table_lookup((*rsc)->meta, PCMK__META_FAILURE_TIMEOUT);
     if (value != NULL) {
+        guint interval_ms = 0U;
+
         // Stored as seconds
-        (*rsc)->failure_timeout = (int) (crm_parse_interval_spec(value) / 1000);
+        pcmk__parse_interval_spec(value, &interval_ms);
+        (*rsc)->failure_timeout = (int) (interval_ms / 1000);
     }
 
     if (remote_node) {
@@ -873,7 +876,8 @@ pe__unpack_resource(xmlNode *xml_obj, pcmk_resource_t **rsc,
         if (value) {
             /* reconnect delay works by setting failure_timeout and preventing the
              * connection from starting until the failure is cleared. */
-            (*rsc)->remote_reconnect_ms = crm_parse_interval_spec(value);
+            pcmk__parse_interval_spec(value, &((*rsc)->remote_reconnect_ms));
+
             /* we want to override any default failure_timeout in use when remote
              * reconnect_interval is in use. */ 
             (*rsc)->failure_timeout = (*rsc)->remote_reconnect_ms / 1000;

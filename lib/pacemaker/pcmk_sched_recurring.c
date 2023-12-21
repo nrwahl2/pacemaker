@@ -40,8 +40,11 @@ struct op_history {
 static guint
 xe_interval(const xmlNode *xml)
 {
-    return crm_parse_interval_spec(crm_element_value(xml,
-                                                     XML_LRM_ATTR_INTERVAL));
+    guint interval_ms = 0U;
+
+    pcmk__parse_interval_spec(crm_element_value(xml, XML_LRM_ATTR_INTERVAL),
+                              &interval_ms);
+    return interval_ms;
 }
 
 /*!
