@@ -177,14 +177,6 @@ pcmk__env_option_enabled(const char *daemon, const char *option)
  */
 
 bool
-pcmk__valid_boolean(const char *value)
-{
-    int tmp;
-
-    return crm_str_to_boolean(value, &tmp) == 1;
-}
-
-bool
 pcmk__valid_number(const char *value)
 {
     if (value == NULL) {
