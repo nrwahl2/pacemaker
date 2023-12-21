@@ -92,7 +92,25 @@ pcmk__valid_boolean(const char *value)
     return crm_str_to_boolean(value, NULL) == 1;
 }
 
-bool pcmk__valid_number(const char *value);
+/*!
+ * \internal
+ * \brief Check whether a string represents a valid integer
+ *
+ * Valid values include \c INFINITY, \c -INFINITY, and all 64-bit integers.
+ *
+ * \param[in] value  String to validate
+ *
+ * \return \c true if \p value is a valid integer, or \c false otherwise
+ */
+static inline bool
+pcmk__valid_int(const char *value)
+{
+    return (value != NULL)
+           && (pcmk_str_is_infinity(value)
+               || pcmk_str_is_minus_infinity(value)
+               || (pcmk__scan_ll(value, NULL, 0LL) == pcmk_rc_ok));
+}
+
 bool pcmk__valid_positive_number(const char *value);
 bool pcmk__valid_quorum(const char *value);
 bool pcmk__valid_script(const char *value);
