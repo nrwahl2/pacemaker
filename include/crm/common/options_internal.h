@@ -154,7 +154,7 @@ pcmk__valid_no_quorum_policy(const char *value)
  * \internal
  * \brief Check whether a string represents a valid percentage
  *
- * Valid values include long integers, with an optional trailing string
+ * Valid values include floating-point numbers, with an optional trailing string
  * beginning with '%'.
  *
  * \param[in] value  String to validate
@@ -166,7 +166,7 @@ static inline bool
 pcmk__valid_percentage(const char *value)
 {
     char *end = NULL;
-    long number = strtol(value, &end, 10);
+    float number = strtof(value, &end);
 
     return ((end == NULL) || (end[0] == '%')) && (number >= 0);
 }
