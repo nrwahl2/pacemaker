@@ -111,7 +111,27 @@ pcmk__valid_int(const char *value)
                || (pcmk__scan_ll(value, NULL, 0LL) == pcmk_rc_ok));
 }
 
-bool pcmk__valid_positive_number(const char *value);
+/*!
+ * \internal
+ * \brief Check whether a string represents a valid positive integer
+ *
+ * Valid values include \c INFINITY and all 64-bit positive integers.
+ *
+ * \param[in] value  String to validate
+ *
+ * \return \c true if \p value is a valid positive integer, or \c false
+ *         otherwise
+ */
+static inline bool
+pcmk__valid_positive_int(const char *value)
+{
+    long long num = 0LL;
+
+    return pcmk_str_is_infinity(value)
+           || ((pcmk__scan_ll(value, &num, 0LL) == pcmk_rc_ok)
+               && (num > 0));
+}
+
 bool pcmk__valid_quorum(const char *value);
 bool pcmk__valid_script(const char *value);
 bool pcmk__valid_percentage(const char *value);
