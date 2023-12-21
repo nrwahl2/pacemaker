@@ -18,6 +18,8 @@
 #  include <glib.h>     // GHashTable
 #  include <stdbool.h>  // bool
 
+#include <crm/common/strings_internal.h>    // pcmk__parse_interval_spec()
+
 _Noreturn void pcmk__cli_help(char cmd);
 
 
@@ -61,7 +63,21 @@ void pcmk__validate_cluster_options(GHashTable *options,
                                     pcmk__cluster_option_t *option_list,
                                     int len);
 
-bool pcmk__valid_interval_spec(const char *value);
+/*!
+ * \internal
+ * \brief Check whether a string represents a valid interval specification
+ *
+ * \param[in] value  String to validate
+ *
+ * \return \c true if \p value is a valid interval specification, or \c false
+ *         otherwise
+ */
+static inline bool
+pcmk__valid_interval_spec(const char *value)
+{
+    return pcmk__parse_interval_spec(value, NULL) == pcmk_rc_ok;
+}
+
 bool pcmk__valid_boolean(const char *value);
 bool pcmk__valid_number(const char *value);
 bool pcmk__valid_positive_number(const char *value);
