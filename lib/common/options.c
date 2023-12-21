@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2022 the Pacemaker project contributors
+ * Copyright 2004-2023 the Pacemaker project contributors
  *
  * The version control history for this file may have further details.
  *
@@ -175,12 +175,6 @@ pcmk__env_option_enabled(const char *daemon, const char *option)
 /*
  * Cluster option handling
  */
-
-bool
-pcmk__valid_interval_spec(const char *value)
-{
-    return pcmk__parse_interval_spec(value, NULL) == pcmk_rc_ok;
-}
 
 bool
 pcmk__valid_boolean(const char *value)
