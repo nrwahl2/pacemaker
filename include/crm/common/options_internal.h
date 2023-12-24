@@ -36,6 +36,30 @@ bool pcmk__env_option_enabled(const char *daemon, const char *option);
  * Cluster option handling
  */
 
+/*!
+ * \internal
+ * \enum pcmk__option_context
+ * \brief Context in which a Pacemaker option is valid
+ */
+enum pcmk__option_context {
+    pcmk__option_none           = 0,        //!< No context
+    pcmk__option_local          = (1 << 0), //!< Host-local option
+    pcmk__option_cluster        = (1 << 1), //!< Cluster-wide option (property)
+    pcmk__option_alert          = (1 << 2), //!< Alert meta-attribute
+    pcmk__option_primitive      = (1 << 3), //!< Primitive meta-attribute
+    pcmk__option_group          = (1 << 4), //!< Group meta-attribute
+    pcmk__option_clone          = (1 << 5), //!< Clone meta-attribute
+    pcmk__option_bundle         = (1 << 6), //!< Bundle meta-attribute
+    pcmk__option_fence_instance = (1 << 7), //!< Fence device instance attribute
+    pcmk__option_fence_meta     = (1 << 8), //!< Fence device meta-attribute
+    pcmk__option_operation      = (1 << 9), //!< Operation attribute
+
+    // @COMPAT Used only for daemon meta-data
+    pcmk__option_based      = (1 << 10),    //!< CIB manager meta-data
+    pcmk__option_controld   = (1 << 11),    //!< Controller meta-data
+    pcmk__option_schedulerd = (1 << 12),    //!< Scheduler meta-data
+};
+
 typedef struct pcmk__cluster_option_s {
     const char *name;
     const char *alt_name;
