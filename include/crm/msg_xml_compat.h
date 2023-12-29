@@ -226,6 +226,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_OP_ATTR_ALLOW_MIGRATE "allow-migrate"
 
+//! \deprecated Use \c XML_BOOLEAN_TRUE instead
+#define XML_BOOLEAN_YES XML_BOOLEAN_TRUE
+
 #ifdef __cplusplus
 }
 #endif
