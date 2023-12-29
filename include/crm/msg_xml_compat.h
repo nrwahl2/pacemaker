@@ -64,7 +64,10 @@ extern "C" {
 //! \deprecated Use PCMK_XA_PROMOTED_NODE_MAX_LEGACY instead
 #define PCMK_XE_PROMOTED_NODE_MAX_LEGACY PCMK_XA_PROMOTED_NODE_MAX_LEGACY
 
-//! \deprecated Use PCMK_META_MIGRATION_THRESHOLD instead
+//! \deprecated Do not use
+#define PCMK_META_MIGRATION_THRESHOLD "migration-threshold"
+
+//! \deprecated Do not use
 #define XML_RSC_ATTR_FAIL_STICKINESS PCMK_META_MIGRATION_THRESHOLD
 
 //! \deprecated Do not use
