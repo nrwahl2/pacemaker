@@ -542,20 +542,26 @@ expand_remote_rsc_meta(xmlNode *xml_obj, xmlNode *parent, pcmk_scheduler_t *data
             const char *value = crm_element_value(attr, XML_NVPAIR_ATTR_VALUE);
             const char *name = crm_element_value(attr, XML_NVPAIR_ATTR_NAME);
 
-            if (pcmk__str_eq(name, PCMK__META_REMOTE_NODE, pcmk__str_none)) {
+            if (name == NULL) { // Sanity
+                continue;
+            }
+
+            if (strcmp(name, PCMK__META_REMOTE_NODE) == 0) {
                 remote_name = value;
 
-            } else if (pcmk__str_eq(name, "remote-addr", pcmk__str_casei)) {
+            } else if (strcmp(name, PCMK__META_REMOTE_ADDR) == 0) {
                 remote_server = value;
-            } else if (pcmk__str_eq(name, "remote-port", pcmk__str_casei)) {
-                remote_port = value;
-            } else if (pcmk__str_eq(name, "remote-connect-timeout", pcmk__str_casei)) {
-                connect_timeout = value;
-            } else if (pcmk__str_eq(name, "remote-allow-migrate", pcmk__str_casei)) {
-                remote_allow_migrate=value;
 
-            } else if (pcmk__str_eq(name, PCMK__META_IS_MANAGED,
-                                    pcmk__str_none)) {
+            } else if (strcmp(name, PCMK__META_REMOTE_PORT) == 0) {
+                remote_port = value;
+
+            } else if (strcmp(name, PCMK__META_REMOTE_CONNECT_TIMEOUT) == 0) {
+                connect_timeout = value;
+
+            } else if (strcmp(name, PCMK__META_REMOTE_ALLOW_MIGRATE) == 0) {
+                remote_allow_migrate = value;
+
+            } else if (strcmp(name, PCMK__META_IS_MANAGED) == 0) {
                 is_managed = value;
             }
         }
