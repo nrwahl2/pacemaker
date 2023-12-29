@@ -279,6 +279,7 @@ bool pcmk__valid_sbd_timeout(const char *value);
 #define PCMK__OPT_TRANSITION_DELAY          "transition-delay"
 
 // Constants for meta-attribute names
+#define PCMK__META_ALLOW_MIGRATE            "allow-migrate"
 #define PCMK__META_ALLOW_UNHEALTHY_NODES    "allow-unhealthy-nodes"
 #define PCMK__META_CLONE_INSTANCE_NUM       "clone"
 #define PCMK__META_CLONE_MAX                "clone-max"
