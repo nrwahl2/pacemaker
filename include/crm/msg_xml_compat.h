@@ -25,7 +25,10 @@ extern "C" {
  *             release.
  */
 
-//! \deprecated Use PCMK_META_CLONE_MAX instead
+//! \deprecated Do not use
+#define PCMK_META_CLONE_MAX "clone-max"
+
+//! \deprecated Do not use
 #define XML_RSC_ATTR_INCARNATION_MAX PCMK_META_CLONE_MAX
 
 //! \deprecated Use PCMK_META_CLONE_MIN instead
