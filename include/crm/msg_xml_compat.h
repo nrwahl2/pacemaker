@@ -187,6 +187,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_RSC_ATTR_MAINTENANCE "maintenance"
 
+//! \deprecated Do not use
+#define XML_RSC_ATTR_REMOTE_NODE "remote-node"
+
 #ifdef __cplusplus
 }
 #endif
