@@ -31,7 +31,10 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_RSC_ATTR_INCARNATION_MAX PCMK_META_CLONE_MAX
 
-//! \deprecated Use PCMK_META_CLONE_MIN instead
+//! \deprecated Do not use
+#define PCMK_META_CLONE_MIN "clone-min"
+
+//! \deprecated Do not use
 #define XML_RSC_ATTR_INCARNATION_MIN PCMK_META_CLONE_MIN
 
 //! \deprecated Use PCMK_META_CLONE_NODE_MAX instead
