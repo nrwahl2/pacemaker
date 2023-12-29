@@ -67,7 +67,10 @@ extern "C" {
 //! \deprecated Use PCMK_META_MIGRATION_THRESHOLD instead
 #define XML_RSC_ATTR_FAIL_STICKINESS PCMK_META_MIGRATION_THRESHOLD
 
-//! \deprecated Use PCMK_META_FAILURE_TIMEOUT instead
+//! \deprecated Do not use
+#define PCMK_META_FAILURE_TIMEOUT "failure-timeout"
+
+//! \deprecated Do not use
 #define XML_RSC_ATTR_FAIL_TIMEOUT PCMK_META_FAILURE_TIMEOUT
 
 //! \deprecated Use PCMK_XA_PROMOTED_NODE_MAX_LEGACY instead
