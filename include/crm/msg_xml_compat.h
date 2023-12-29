@@ -148,6 +148,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_RSC_ATTR_ORDERED "ordered"
 
+//! \deprecated Do not use
+#define XML_RSC_ATTR_INTERLEAVE "interleave"
+
 #ifdef __cplusplus
 }
 #endif
