@@ -220,6 +220,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_RSC_ATTR_REMOTE_NODE "remote-node"
 
+//! \deprecated Do not use
+#define XML_RSC_ATTR_CRITICAL "critical"
+
 #ifdef __cplusplus
 }
 #endif
