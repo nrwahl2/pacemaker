@@ -140,6 +140,7 @@ bool pcmk__valid_sbd_timeout(const char *value);
 #define PCMK__META_ENABLED                  "enabled"
 #define PCMK__META_FAILURE_TIMEOUT          "failure-timeout"
 #define PCMK__META_MIGRATION_THRESHOLD      "migration-threshold"
+#define PCMK__META_ORDERED                  "ordered"
 #define PCMK__META_PROMOTED_MAX             "promoted-max"
 #define PCMK__META_PROMOTED_NODE_MAX        "promoted-node-max"
 
