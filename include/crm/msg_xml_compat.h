@@ -163,6 +163,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_RSC_ATTR_TARGET_ROLE "target-role"
 
+//! \deprecated Do not use
+#define XML_RSC_ATTR_UNIQUE "globally-unique"
+
 #ifdef __cplusplus
 }
 #endif
