@@ -205,6 +205,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_RSC_ATTR_MULTIPLE "multiple-active"
 
+//! \deprecated Do not use
+#define XML_RSC_ATTR_REQUIRES "requires"
+
 #ifdef __cplusplus
 }
 #endif
