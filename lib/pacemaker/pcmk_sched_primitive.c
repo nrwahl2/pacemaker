@@ -1508,9 +1508,9 @@ pcmk__primitive_add_graph_meta(const pcmk_resource_t *rsc, xmlNode *xml)
     }
 
     // Not sure if this one is really needed ...
-    value = g_hash_table_lookup(rsc->meta, XML_RSC_ATTR_REMOTE_NODE);
+    value = g_hash_table_lookup(rsc->meta, PCMK__META_REMOTE_NODE);
     if (value != NULL) {
-        name = crm_meta_name(XML_RSC_ATTR_REMOTE_NODE);
+        name = crm_meta_name(PCMK__META_REMOTE_NODE);
         crm_xml_add(xml, name, value);
         free(name);
     }

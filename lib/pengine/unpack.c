@@ -542,8 +542,9 @@ expand_remote_rsc_meta(xmlNode *xml_obj, xmlNode *parent, pcmk_scheduler_t *data
             const char *value = crm_element_value(attr, XML_NVPAIR_ATTR_VALUE);
             const char *name = crm_element_value(attr, XML_NVPAIR_ATTR_NAME);
 
-            if (pcmk__str_eq(name, XML_RSC_ATTR_REMOTE_NODE, pcmk__str_casei)) {
+            if (pcmk__str_eq(name, PCMK__META_REMOTE_NODE, pcmk__str_none)) {
                 remote_name = value;
+
             } else if (pcmk__str_eq(name, "remote-addr", pcmk__str_casei)) {
                 remote_server = value;
             } else if (pcmk__str_eq(name, "remote-port", pcmk__str_casei)) {
