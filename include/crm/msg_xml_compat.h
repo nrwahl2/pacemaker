@@ -169,6 +169,9 @@ extern "C" {
 //! \deprecated Do not use
 #define PCMK_META_ENABLED "enabled"
 
+//! \deprecated Do not use
+#define XML_RSC_ATTR_TARGET "container-attribute-target"
+
 #ifdef __cplusplus
 }
 #endif
