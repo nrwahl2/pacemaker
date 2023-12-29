@@ -833,7 +833,7 @@ pe__unpack_resource(xmlNode *xml_obj, pcmk_resource_t **rsc,
         (*rsc)->stickiness = char2score(value);
     }
 
-    value = g_hash_table_lookup((*rsc)->meta, PCMK_META_MIGRATION_THRESHOLD);
+    value = g_hash_table_lookup((*rsc)->meta, PCMK__META_MIGRATION_THRESHOLD);
     if (value != NULL) {
         (*rsc)->migration_threshold = char2score(value);
         if ((*rsc)->migration_threshold < 0) {
@@ -842,7 +842,7 @@ pe__unpack_resource(xmlNode *xml_obj, pcmk_resource_t **rsc,
              * instead.
              */
             pcmk__warn_once(pcmk__wo_neg_threshold,
-                            PCMK_META_MIGRATION_THRESHOLD
+                            PCMK__META_MIGRATION_THRESHOLD
                             " must be non-negative, using 1 instead");
             (*rsc)->migration_threshold = 1;
         }
