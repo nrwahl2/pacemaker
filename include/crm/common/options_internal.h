@@ -150,6 +150,7 @@ bool pcmk__valid_sbd_timeout(const char *value);
 #define PCMK__META_PROMOTABLE               "promotable"
 #define PCMK__META_PROMOTED_MAX             "promoted-max"
 #define PCMK__META_PROMOTED_NODE_MAX        "promoted-node-max"
+#define PCMK__META_REQUIRES                 "requires"
 #define PCMK__META_RESOURCE_STICKINESS      "resource-stickiness"
 #define PCMK__META_TARGET_ROLE              "target-role"
 
