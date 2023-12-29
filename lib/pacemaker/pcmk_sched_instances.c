@@ -1478,7 +1478,7 @@ can_interleave_actions(const pcmk_action_t *first, const pcmk_action_t *then)
     }
 
     interleave = crm_is_true(g_hash_table_lookup(rsc->meta,
-                                                 XML_RSC_ATTR_INTERLEAVE));
+                                                 PCMK__META_INTERLEAVE));
     pcmk__rsc_trace(rsc, "'%s then %s' will %sbe interleaved (based on %s)",
                     first->uuid, then->uuid, (interleave? "" : "not "),
                     rsc->id);

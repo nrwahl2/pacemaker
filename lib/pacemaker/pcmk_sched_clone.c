@@ -210,7 +210,7 @@ can_interleave(const pcmk__colocation_t *colocation)
 
     // Only the dependent needs to be marked for interleaving
     if (!crm_is_true(g_hash_table_lookup(dependent->meta,
-                                         XML_RSC_ATTR_INTERLEAVE))) {
+                                         PCMK__META_INTERLEAVE))) {
         return false;
     }
 

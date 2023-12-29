@@ -595,7 +595,7 @@ add_restart_orderings_for_probe(pcmk_action_t *probe, pcmk_action_t *after)
     if ((after->rsc != NULL)
         && (after->rsc->variant > pcmk_rsc_variant_group)) {
         const char *interleave_s = g_hash_table_lookup(after->rsc->meta,
-                                                       XML_RSC_ATTR_INTERLEAVE);
+                                                       PCMK__META_INTERLEAVE);
 
         interleave = crm_is_true(interleave_s);
         if (interleave) {
