@@ -506,15 +506,17 @@ add_hash_param(GHashTable * hash, const char *name, const char *value)
 {
     CRM_CHECK(hash != NULL, return);
 
+    /* @TODO Either overwrite existing value or update trace message to reflect
+     * that we don't
+     */
     crm_trace("Adding name='%s' value='%s' to hash table",
               pcmk__s(name, "<null>"), pcmk__s(value, "<null>"));
+
     if (name == NULL || value == NULL) {
         return;
+    }
 
-    } else if (pcmk__str_eq(value, "#default", pcmk__str_casei)) {
-        return;
-
-    } else if (g_hash_table_lookup(hash, name) == NULL) {
+    if (g_hash_table_lookup(hash, name) == NULL) {
         g_hash_table_insert(hash, strdup(name), strdup(value));
     }
 }
