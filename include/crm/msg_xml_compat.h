@@ -160,6 +160,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_RSC_ATTR_MANAGED "is-managed"
 
+//! \deprecated Do not use
+#define XML_RSC_ATTR_TARGET_ROLE "target-role"
+
 #ifdef __cplusplus
 }
 #endif
