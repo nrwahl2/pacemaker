@@ -290,6 +290,7 @@ bool pcmk__valid_sbd_timeout(const char *value);
 #define PCMK__META_FAILURE_TIMEOUT          "failure-timeout"
 #define PCMK__META_GLOBALLY_UNIQUE          "globally-unique"
 #define PCMK__META_INTERLEAVE               "interleave"
+#define PCMK__META_INTERNAL_RSC             "internal_rsc"
 #define PCMK__META_IS_MANAGED               "is-managed"
 #define PCMK__META_MIGRATION_THRESHOLD      "migration-threshold"
 #define PCMK__META_MULTIPLE_ACTIVE          "multiple-active"
