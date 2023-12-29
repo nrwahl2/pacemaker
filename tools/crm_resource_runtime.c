@@ -969,7 +969,7 @@ static void
 check_managed(resource_checks_t *checks)
 {
     const char *managed_s = g_hash_table_lookup(checks->rsc->meta,
-                                                XML_RSC_ATTR_MANAGED);
+                                                PCMK__META_IS_MANAGED);
 
     if ((managed_s != NULL) && !crm_is_true(managed_s)) {
         checks->flags |= rsc_unmanaged;
