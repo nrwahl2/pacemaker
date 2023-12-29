@@ -624,7 +624,7 @@ pcmk__clone_add_graph_meta(const pcmk_resource_t *rsc, xmlNode *xml)
     crm_xml_add_int(xml, name, pe__clone_max(rsc));
     free(name);
 
-    name = crm_meta_name(PCMK_META_CLONE_NODE_MAX);
+    name = crm_meta_name(PCMK__META_CLONE_NODE_MAX);
     crm_xml_add_int(xml, name, pe__clone_node_max(rsc));
     free(name);
 
