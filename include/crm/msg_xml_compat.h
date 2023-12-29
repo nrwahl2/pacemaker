@@ -175,6 +175,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_RSC_ATTR_RESTART "restart-type"
 
+//! \deprecated Do not use
+#define XML_RSC_ATTR_ORDERED "ordered"
+
 #ifdef __cplusplus
 }
 #endif
