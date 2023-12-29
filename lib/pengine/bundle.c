@@ -1016,7 +1016,7 @@ pe__unpack_bundle(pcmk_resource_t *rsc, pcmk_scheduler_t *scheduler)
     }
 
     // Use 0 for default, minimum, and invalid promoted-max
-    value = crm_element_value(xml_obj, PCMK_META_PROMOTED_MAX);
+    value = crm_element_value(xml_obj, PCMK__META_PROMOTED_MAX);
     if (value == NULL) {
         // @COMPAT deprecated since 2.0.0
         value = crm_element_value(xml_obj, "masters");
@@ -1146,7 +1146,8 @@ pe__unpack_bundle(pcmk_resource_t *rsc, pcmk_scheduler_t *scheduler)
                                   XML_RSC_ATTR_PROMOTABLE, XML_BOOLEAN_TRUE);
 
             value = pcmk__itoa(bundle_data->promoted_max);
-            crm_create_nvpair_xml(xml_set, NULL, PCMK_META_PROMOTED_MAX, value);
+            crm_create_nvpair_xml(xml_set, NULL,
+                                  PCMK__META_PROMOTED_MAX, value);
             free(value);
         }
 
