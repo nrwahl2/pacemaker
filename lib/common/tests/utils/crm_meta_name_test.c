@@ -27,7 +27,7 @@ standard_usage(void **state)
     assert_string_equal(s, "CRM_meta_notify");
     free(s);
 
-    s = crm_meta_name(XML_RSC_ATTR_STICKINESS);
+    s = crm_meta_name(PCMK__META_RESOURCE_STICKINESS);
     assert_string_equal(s, "CRM_meta_resource_stickiness");
     free(s);
 
