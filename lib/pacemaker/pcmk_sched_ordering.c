@@ -297,7 +297,7 @@ get_minimum_first_instances(const pcmk_resource_t *rsc, const xmlNode *xml)
         return 0;
     }
 
-    clone_min = g_hash_table_lookup(rsc->meta, PCMK_META_CLONE_MIN);
+    clone_min = g_hash_table_lookup(rsc->meta, PCMK__META_CLONE_MIN);
     if (clone_min != NULL) {
         int clone_min_int = 0;
 
