@@ -283,7 +283,7 @@ pe__create_clone_child(pcmk_resource_t *rsc, pcmk_scheduler_t *scheduler)
         pe__set_resource_flags_recursive(child_rsc, pcmk_rsc_removed);
     }
 
-    add_hash_param(child_rsc->meta, PCMK_META_CLONE_MAX, inc_max);
+    add_hash_param(child_rsc->meta, PCMK__META_CLONE_MAX, inc_max);
     pcmk__rsc_trace(rsc, "Added %s instance %s", rsc->id, child_rsc->id);
 
   bail:
@@ -359,7 +359,7 @@ clone_unpack(pcmk_resource_t *rsc, pcmk_scheduler_t *scheduler)
     /* Use number of nodes (but always at least 1, which is handy for crm_verify
      * for a CIB without nodes) as default, but 0 for minimum and invalid
      */
-    clone_data->clone_max = unpack_meta_int(rsc, PCMK_META_CLONE_MAX, NULL,
+    clone_data->clone_max = unpack_meta_int(rsc, PCMK__META_CLONE_MAX, NULL,
                                             QB_MAX(1, g_list_length(scheduler->nodes)));
 
     if (crm_is_true(g_hash_table_lookup(rsc->meta, XML_RSC_ATTR_ORDERED))) {

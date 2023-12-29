@@ -1131,7 +1131,7 @@ pe__unpack_bundle(pcmk_resource_t *rsc, pcmk_scheduler_t *scheduler)
                               XML_RSC_ATTR_ORDERED, XML_BOOLEAN_TRUE);
 
         value = pcmk__itoa(bundle_data->nreplicas);
-        crm_create_nvpair_xml(xml_set, NULL, PCMK_META_CLONE_MAX, value);
+        crm_create_nvpair_xml(xml_set, NULL, PCMK__META_CLONE_MAX, value);
         free(value);
 
         value = pcmk__itoa(bundle_data->nreplicas_per_host);
