@@ -50,11 +50,6 @@ extern "C" {
 
 #define PCMK_XA_FORMAT                      "format"
 
-/* This has been deprecated as a CIB <clone> element attribute (alias for
- * "promoted-node-max") since 2.0.0.
- */
-#define PCMK_XA_PROMOTED_NODE_MAX_LEGACY    "master-node-max"
-
 
 /*
  * Older constants that don't follow current naming
