@@ -61,7 +61,6 @@ extern "C" {
  * Meta attributes
  */
 
-#define PCMK_META_CLONE_NODE_MAX            "clone-node-max"
 #define PCMK_META_ENABLED                   "enabled"
 #define PCMK_META_FAILURE_TIMEOUT           "failure-timeout"
 #define PCMK_META_MIGRATION_THRESHOLD       "migration-threshold"
