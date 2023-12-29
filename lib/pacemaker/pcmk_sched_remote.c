@@ -718,9 +718,11 @@ pcmk__add_bundle_meta_to_xml(xmlNode *args_xml, const pcmk_action_t *action)
     }
 
     if (host != NULL) {
-        hash2metafield((gpointer) XML_RSC_ATTR_TARGET,
-                       (gpointer) g_hash_table_lookup(action->rsc->meta,
-                                                      XML_RSC_ATTR_TARGET),
+        gpointer target = g_hash_table_lookup(action->rsc->meta,
+                                              PCMK__META_CONTAINER_ATTR_TARGET);
+
+        hash2metafield((gpointer) PCMK__META_CONTAINER_ATTR_TARGET,
+                       target,
                        (gpointer) args_xml);
         hash2metafield((gpointer) PCMK__ENV_PHYSICAL_HOST,
                        (gpointer) host->details->uname,

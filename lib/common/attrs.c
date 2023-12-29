@@ -39,7 +39,7 @@ const char *
 pcmk__node_attr_target(const char *name)
 {
     if (name == NULL || pcmk__strcase_any_of(name, "auto", "localhost", NULL)) {
-        char *target_var = crm_meta_name(XML_RSC_ATTR_TARGET);
+        char *target_var = crm_meta_name(PCMK__META_CONTAINER_ATTR_TARGET);
         char *phys_var = crm_meta_name(PCMK__ENV_PHYSICAL_HOST);
         const char *target = getenv(target_var);
         const char *host_physical = getenv(phys_var);
