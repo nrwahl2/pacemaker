@@ -178,6 +178,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_RSC_ATTR_REQUIRES "requires"
 
+//! \deprecated Do not use
+#define XML_RSC_ATTR_CONTAINER "container"
+
 #ifdef __cplusplus
 }
 #endif
