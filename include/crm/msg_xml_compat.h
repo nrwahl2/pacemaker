@@ -148,6 +148,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_CONFIG_ATTR_SHUTDOWN_LOCK_LIMIT "shutdown-lock-limit"
 
+//! \deprecated Do not use
+#define PCMK_META_ENABLED "enabled"
+
 #ifdef __cplusplus
 }
 #endif
