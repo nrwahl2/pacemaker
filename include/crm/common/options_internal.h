@@ -152,6 +152,7 @@ bool pcmk__valid_sbd_timeout(const char *value);
 #define PCMK__META_MULTIPLE_ACTIVE          "multiple-active"
 #define PCMK__META_NOTIFY                   "notify"
 #define PCMK__META_ORDERED                  "ordered"
+#define PCMK__META_PRIORITY                 "priority"
 #define PCMK__META_PROMOTABLE               "promotable"
 #define PCMK__META_PROMOTED_MAX             "promoted-max"
 #define PCMK__META_PROMOTED_NODE_MAX        "promoted-node-max"
