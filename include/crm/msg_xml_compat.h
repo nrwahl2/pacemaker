@@ -196,6 +196,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_RSC_ATTR_UNIQUE "globally-unique"
 
+//! \deprecated Do not use
+#define XML_RSC_ATTR_NOTIFY "notify"
+
 #ifdef __cplusplus
 }
 #endif
