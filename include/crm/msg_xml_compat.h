@@ -181,6 +181,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_RSC_ATTR_INTERLEAVE "interleave"
 
+//! \deprecated Do not use
+#define XML_RSC_ATTR_INCARNATION "clone"
+
 #ifdef __cplusplus
 }
 #endif
