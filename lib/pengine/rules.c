@@ -389,15 +389,7 @@ populate_hash(xmlNode * nvpair_list, GHashTable * hash, gboolean overwrite, xmlN
 
             old_value = g_hash_table_lookup(hash, name);
 
-            if (pcmk__str_eq(value, "#default", pcmk__str_casei)) {
-                if (old_value) {
-                    crm_trace("Letting %s default (removing explicit value \"%s\")",
-                              name, value);
-                    g_hash_table_remove(hash, name);
-                }
-                continue;
-
-            } else if (old_value == NULL) {
+            if (old_value == NULL) {
                 crm_trace("Setting %s=\"%s\"", name, value);
                 g_hash_table_insert(hash, strdup(name), strdup(value));
 
