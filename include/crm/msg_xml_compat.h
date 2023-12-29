@@ -118,6 +118,9 @@ extern "C" {
 //! \deprecated Use name member directly
 #define TYPE(x) (((x) == NULL)? NULL : (const char *) ((x)->name))
 
+//! \deprecated Do not use
+#define PCMK_META_ENABLED "enabled"
+
 #ifdef __cplusplus
 }
 #endif
