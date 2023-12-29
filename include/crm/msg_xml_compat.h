@@ -169,6 +169,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_RSC_ATTR_NOTIFY "notify"
 
+//! \deprecated Do not use
+#define XML_RSC_ATTR_STICKINESS "resource-stickiness"
+
 #ifdef __cplusplus
 }
 #endif
