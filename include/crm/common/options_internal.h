@@ -289,6 +289,7 @@ bool pcmk__valid_sbd_timeout(const char *value);
 #define PCMK__META_MIGRATION_THRESHOLD      "migration-threshold"
 #define PCMK__META_PROMOTED_MAX             "promoted-max"
 #define PCMK__META_PROMOTED_NODE_MAX        "promoted-node-max"
+#define PCMK__META_RESTART_TYPE             "restart-type"
 
 // @COMPAT Deprecated alias for PCMK__META_PROMOTED_MAX since 2.0.0
 #define PCMK__META_PROMOTED_MAX_LEGACY      "master-max"

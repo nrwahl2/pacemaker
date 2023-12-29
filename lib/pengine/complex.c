@@ -782,7 +782,7 @@ pe__unpack_resource(xmlNode *xml_obj, pcmk_resource_t **rsc,
         pe__set_resource_flags(*rsc, pcmk_rsc_unique);
     }
 
-    value = g_hash_table_lookup((*rsc)->meta, XML_RSC_ATTR_RESTART);
+    value = g_hash_table_lookup((*rsc)->meta, PCMK__META_RESTART_TYPE);
     if (pcmk__str_eq(value, "restart", pcmk__str_casei)) {
         (*rsc)->restart_type = pe_restart_restart;
         pcmk__rsc_trace(*rsc, "%s dependency restart handling: restart",
