@@ -285,6 +285,7 @@ bool pcmk__valid_sbd_timeout(const char *value);
 #define PCMK__META_CLONE_NODE_MAX           "clone-node-max"
 #define PCMK__META_ENABLED                  "enabled"
 #define PCMK__META_FAILURE_TIMEOUT          "failure-timeout"
+#define PCMK__META_MIGRATION_THRESHOLD      "migration-threshold"
 
 // Constants for enumerated values for various options
 #define PCMK__VALUE_CLUSTER                 "cluster"
