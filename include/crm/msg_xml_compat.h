@@ -154,6 +154,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_RSC_ATTR_INCARNATION "clone"
 
+//! \deprecated Do not use
+#define XML_RSC_ATTR_PROMOTABLE "promotable"
+
 #ifdef __cplusplus
 }
 #endif
