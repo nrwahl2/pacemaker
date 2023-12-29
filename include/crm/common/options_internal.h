@@ -139,6 +139,7 @@ bool pcmk__valid_sbd_timeout(const char *value);
 #define PCMK__META_CLONE_NODE_MAX           "clone-node-max"
 #define PCMK__META_CONTAINER                "container"
 #define PCMK__META_CONTAINER_ATTR_TARGET    "container-attribute-target"
+#define PCMK__META_CRITICAL                 "critical"
 #define PCMK__META_ENABLED                  "enabled"
 #define PCMK__META_FAILURE_TIMEOUT          "failure-timeout"
 #define PCMK__META_GLOBALLY_UNIQUE          "globally-unique"
