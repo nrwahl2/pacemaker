@@ -223,6 +223,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_RSC_ATTR_CRITICAL "critical"
 
+//! \deprecated Do not use
+#define XML_OP_ATTR_ALLOW_MIGRATE "allow-migrate"
+
 #ifdef __cplusplus
 }
 #endif
