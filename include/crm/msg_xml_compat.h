@@ -157,6 +157,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_RSC_ATTR_PROMOTABLE "promotable"
 
+//! \deprecated Do not use
+#define XML_RSC_ATTR_MANAGED "is-managed"
+
 #ifdef __cplusplus
 }
 #endif
