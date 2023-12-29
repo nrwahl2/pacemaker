@@ -353,7 +353,7 @@ clone_unpack(pcmk_resource_t *rsc, pcmk_scheduler_t *scheduler)
     /* clone_data->xml_obj_child = NULL; */
 
     // Use 1 as default but 0 for minimum and invalid
-    clone_data->clone_node_max = unpack_meta_int(rsc, PCMK_META_CLONE_NODE_MAX,
+    clone_data->clone_node_max = unpack_meta_int(rsc, PCMK__META_CLONE_NODE_MAX,
                                                  NULL, 1);
 
     /* Use number of nodes (but always at least 1, which is handy for crm_verify
@@ -373,7 +373,7 @@ clone_unpack(pcmk_resource_t *rsc, pcmk_scheduler_t *scheduler)
     if (!pcmk_is_set(rsc->flags, pcmk_rsc_unique)
         && (clone_data->clone_node_max > 1)) {
 
-        pcmk__config_err("Ignoring " PCMK_META_CLONE_NODE_MAX " of %d for %s "
+        pcmk__config_err("Ignoring " PCMK__META_CLONE_NODE_MAX " of %d for %s "
                          "because anonymous clones support only one instance "
                          "per node", clone_data->clone_node_max, rsc->id);
         clone_data->clone_node_max = 1;
