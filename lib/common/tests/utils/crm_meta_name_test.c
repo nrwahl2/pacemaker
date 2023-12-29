@@ -23,7 +23,7 @@ standard_usage(void **state)
 {
     char *s = NULL;
 
-    s = crm_meta_name(XML_RSC_ATTR_NOTIFY);
+    s = crm_meta_name(PCMK__META_NOTIFY);
     assert_string_equal(s, "CRM_meta_notify");
     free(s);
 
