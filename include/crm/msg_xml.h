@@ -58,13 +58,6 @@ extern "C" {
 
 
 /*
- * Meta attributes
- */
-
-#define PCMK_META_PROMOTED_NODE_MAX         "promoted-node-max"
-
-
-/*
  * Older constants that don't follow current naming
  */
 

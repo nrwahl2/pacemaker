@@ -49,7 +49,10 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_RSC_ATTR_PROMOTED_MAX PCMK_META_PROMOTED_MAX
 
-//! \deprecated Use PCMK_META_PROMOTED_NODE_MAX instead
+//! \deprecated Do not use
+#define PCMK_META_PROMOTED_NODE_MAX "promoted-node-max"
+
+//! \deprecated Do not use
 #define XML_RSC_ATTR_PROMOTED_NODEMAX PCMK_META_PROMOTED_NODE_MAX
 
 //! \deprecated Use PCMK_STONITH_PROVIDES instead
