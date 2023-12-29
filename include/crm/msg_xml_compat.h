@@ -172,6 +172,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_RSC_ATTR_STICKINESS "resource-stickiness"
 
+//! \deprecated Do not use
+#define XML_RSC_ATTR_MULTIPLE "multiple-active"
+
 #ifdef __cplusplus
 }
 #endif
