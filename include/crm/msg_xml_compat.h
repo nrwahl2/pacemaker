@@ -184,6 +184,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_RSC_ATTR_INTERNAL_RSC "internal_rsc"
 
+//! \deprecated Do not use
+#define XML_RSC_ATTR_MAINTENANCE "maintenance"
+
 #ifdef __cplusplus
 }
 #endif
