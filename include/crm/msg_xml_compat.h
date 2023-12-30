@@ -202,6 +202,9 @@ extern "C" {
 //! \deprecated Use \c XML_BOOLEAN_FALSE instead
 #define XML_BOOLEAN_NO XML_BOOLEAN_FALSE
 
+//! \deprecated Do not use
+#define XML_RSC_ATTR_REMOTE_RA_ADDR "addr"
+
 #ifdef __cplusplus
 }
 #endif
