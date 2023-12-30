@@ -869,7 +869,7 @@ pe__unpack_resource(xmlNode *xml_obj, pcmk_resource_t **rsc,
          *
          * @TODO Evaluate per node before using
          */
-        value = g_hash_table_lookup(params, XML_REMOTE_ATTR_RECONNECT_INTERVAL);
+        value = g_hash_table_lookup(params, PCMK__REMOTE_RA_RECONNECT_INTERVAL);
         if (value) {
             /* reconnect delay works by setting failure_timeout and preventing the
              * connection from starting until the failure is cleared. */
