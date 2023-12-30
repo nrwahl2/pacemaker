@@ -28,11 +28,11 @@ meta_data() {
   <version>1.1</version>
   <shortdesc lang="en">Pacemaker Remote connection</shortdesc>
   <parameters>
-    <parameter name="server" unique-group="address">
+    <parameter name="addr" unique-group="address">
       <longdesc lang="en">
-       Server location to connect to (IP address or resolvable host name)
+       Address to connect to (IP address or resolvable host name)
       </longdesc>
-      <shortdesc lang="en">Remote hostname</shortdesc>
+      <shortdesc lang="en">Remote hostname or IP address</shortdesc>
       <content type="string"/>
     </parameter>
     <parameter name="port" unique-group="address">
@@ -51,6 +51,16 @@ meta_data() {
       </longdesc>
       <shortdesc lang="en">reconnect interval</shortdesc>
       <content type="string" default="0"/>
+    </parameter>
+    <parameter name="server" unique-group="address">
+      <deprecated>
+        <replaced-with name="addr"/>
+      </deprecated>
+      <longdesc lang="en">
+       Server location to connect to (IP address or resolvable host name)
+      </longdesc>
+      <shortdesc lang="en">Remote hostname</shortdesc>
+      <content type="string"/>
     </parameter>
   </parameters>
   <actions>
