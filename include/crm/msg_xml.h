@@ -217,7 +217,6 @@ extern "C" {
 
 #  define XML_CIB_TAG_RSC_TEMPLATE	"template"
 
-#  define XML_RSC_ATTR_REMOTE_RA_SERVER "server"
 #  define XML_RSC_ATTR_REMOTE_RA_PORT   "port"
 
 /* @TODO These are op attrs that are never set anywhere. Evaluate whether they
