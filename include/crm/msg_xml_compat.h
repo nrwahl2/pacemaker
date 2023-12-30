@@ -211,6 +211,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_RSC_ATTR_REMOTE_RA_PORT "port"
 
+//! \deprecated Do not use
+#define XML_REMOTE_ATTR_RECONNECT_INTERVAL "reconnect_interval"
+
 #ifdef __cplusplus
 }
 #endif

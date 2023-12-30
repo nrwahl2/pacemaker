@@ -225,8 +225,6 @@ extern "C" {
 #  define XML_RSC_ATTR_CLEAR_OP         "clear_failure_op"
 #  define XML_RSC_ATTR_CLEAR_INTERVAL   "clear_failure_interval"
 
-#  define XML_REMOTE_ATTR_RECONNECT_INTERVAL "reconnect_interval"
-
 #  define XML_OP_ATTR_ON_FAIL		"on-fail"
 #  define XML_OP_ATTR_START_DELAY	"start-delay"
 #  define XML_OP_ATTR_ORIGIN		"interval-origin"
