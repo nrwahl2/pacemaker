@@ -208,6 +208,9 @@ extern "C" {
 //! \deprecated Do not use
 #define XML_RSC_ATTR_REMOTE_RA_SERVER "server"
 
+//! \deprecated Do not use
+#define XML_RSC_ATTR_REMOTE_RA_PORT "port"
+
 #ifdef __cplusplus
 }
 #endif
