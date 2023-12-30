@@ -179,6 +179,7 @@ bool pcmk__valid_sbd_timeout(const char *value);
 
 // Constants for remote resource instance attribute names
 #define PCMK__REMOTE_RA_ADDR                "addr"
+#define PCMK__REMOTE_RA_PORT                "port"
 
 /* @COMPAT Deprecated alias for PCMK__REMOTE_ATTR_ADDR (remove at rolling
  * upgrade break)
