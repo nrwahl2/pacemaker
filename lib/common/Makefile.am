@@ -30,8 +30,9 @@ CFLAGS		= $(CFLAGS_COPY:-Wcast-qual=) -fPIC
 # changes the order so the subdirectories are processed afterwards.
 SUBDIRS = . tests
 
-noinst_HEADERS		= crmcommon_private.h \
-			  mock_private.h
+noinst_HEADERS		= crmcommon_private.h 	\
+			  mock_private.h	\
+			  options_private.h
 
 libcrmcommon_la_LDFLAGS	= -version-info 46:0:12
 

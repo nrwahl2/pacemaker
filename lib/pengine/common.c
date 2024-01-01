@@ -25,270 +25,6 @@ check_placement_strategy(const char *value)
                            "balanced", NULL);
 }
 
-static pcmk__cluster_option_t pe_opts[] = {
-    /* name, old name, type, allowed values,
-     * default value, validator,
-     * short description,
-     * long description
-     */
-    {
-        PCMK__OPT_NO_QUORUM_POLICY, NULL, "select",
-            "stop, freeze, ignore, demote, suicide",
-        "stop", pcmk__valid_no_quorum_policy,
-        N_("What to do when the cluster does not have quorum"),
-        NULL
-    },
-    {
-        PCMK__OPT_SYMMETRIC_CLUSTER, NULL, "boolean", NULL,
-        "true", pcmk__valid_boolean,
-        N_("Whether resources can run on any node by default"),
-        NULL
-    },
-    {
-        PCMK__OPT_MAINTENANCE_MODE, NULL, "boolean", NULL,
-        "false", pcmk__valid_boolean,
-        N_("Whether the cluster should refrain from monitoring, starting, "
-            "and stopping resources"),
-        NULL
-    },
-    {
-        PCMK__OPT_START_FAILURE_IS_FATAL, NULL, "boolean", NULL,
-        "true", pcmk__valid_boolean,
-        N_("Whether a start failure should prevent a resource from being "
-            "recovered on the same node"),
-        N_("When true, the cluster will immediately ban a resource from a node "
-            "if it fails to start there. When false, the cluster will instead "
-            "check the resource's fail count against its migration-threshold.")
-    },
-    {
-        PCMK__OPT_ENABLE_STARTUP_PROBES, NULL, "boolean", NULL,
-        "true", pcmk__valid_boolean,
-        N_("Whether the cluster should check for active resources during start-up"),
-        NULL
-    },
-    {
-        PCMK__OPT_SHUTDOWN_LOCK, NULL, "boolean", NULL,
-        "false", pcmk__valid_boolean,
-        N_("Whether to lock resources to a cleanly shut down node"),
-        N_("When true, resources active on a node when it is cleanly shut down "
-            "are kept \"locked\" to that node (not allowed to run elsewhere) "
-            "until they start again on that node after it rejoins (or for at "
-            "most shutdown-lock-limit, if set). Stonith resources and "
-            "Pacemaker Remote connections are never locked. Clone and bundle "
-            "instances and the promoted role of promotable clones are "
-            "currently never locked, though support could be added in a future "
-            "release.")
-    },
-    {
-        PCMK__OPT_SHUTDOWN_LOCK_LIMIT, NULL, "time", NULL,
-        "0", pcmk__valid_interval_spec,
-        N_("Do not lock resources to a cleanly shut down node longer than "
-           "this"),
-        N_("If shutdown-lock is true and this is set to a nonzero time "
-            "duration, shutdown locks will expire after this much time has "
-            "passed since the shutdown was initiated, even if the node has not "
-            "rejoined.")
-    },
-
-    // Fencing-related options
-    {
-        PCMK__OPT_STONITH_ENABLED, NULL, "boolean", NULL,
-        "true", pcmk__valid_boolean,
-        N_("*** Advanced Use Only *** "
-            "Whether nodes may be fenced as part of recovery"),
-        N_("If false, unresponsive nodes are immediately assumed to be harmless, "
-            "and resources that were active on them may be recovered "
-            "elsewhere. This can result in a \"split-brain\" situation, "
-            "potentially leading to data loss and/or service unavailability.")
-    },
-    {
-        PCMK__OPT_STONITH_ACTION, NULL, "select", "reboot, off, poweroff",
-        PCMK_ACTION_REBOOT, pcmk__is_fencing_action,
-        N_("Action to send to fence device when a node needs to be fenced "
-            "(\"poweroff\" is a deprecated alias for \"off\")"),
-        NULL
-    },
-    {
-        PCMK__OPT_STONITH_TIMEOUT, NULL, "time", NULL,
-        "60s", pcmk__valid_interval_spec,
-        N_("How long to wait for on, off, and reboot fence actions to complete "
-            "by default"),
-        NULL
-    },
-    {
-        PCMK__OPT_HAVE_WATCHDOG, NULL, "boolean", NULL,
-        "false", pcmk__valid_boolean,
-        N_("Whether watchdog integration is enabled"),
-        N_("This is set automatically by the cluster according to whether SBD "
-            "is detected to be in use. User-configured values are ignored. "
-            "The value `true` is meaningful if diskless SBD is used and "
-            "`stonith-watchdog-timeout` is nonzero. In that case, if fencing "
-            "is required, watchdog-based self-fencing will be performed via "
-            "SBD without requiring a fencing resource explicitly configured.")
-    },
-    {
-        PCMK__OPT_CONCURRENT_FENCING, NULL, "boolean", NULL,
-        PCMK__CONCURRENT_FENCING_DEFAULT, pcmk__valid_boolean,
-        N_("Allow performing fencing operations in parallel"),
-        NULL
-    },
-    {
-        PCMK__OPT_STARTUP_FENCING, NULL, "boolean", NULL,
-        "true", pcmk__valid_boolean,
-        N_("*** Advanced Use Only *** Whether to fence unseen nodes at start-up"),
-        N_("Setting this to false may lead to a \"split-brain\" situation, "
-            "potentially leading to data loss and/or service unavailability.")
-    },
-    {
-        PCMK__OPT_PRIORITY_FENCING_DELAY, NULL, "time", NULL,
-        "0", pcmk__valid_interval_spec,
-        N_("Apply fencing delay targeting the lost nodes with the highest total resource priority"),
-        N_("Apply specified delay for the fencings that are targeting the lost "
-            "nodes with the highest total resource priority in case we don't "
-            "have the majority of the nodes in our cluster partition, so that "
-            "the more significant nodes potentially win any fencing match, "
-            "which is especially meaningful under split-brain of 2-node "
-            "cluster. A promoted resource instance takes the base priority + 1 "
-            "on calculation if the base priority is not 0. Any static/random "
-            "delays that are introduced by `pcmk_delay_base/max` configured "
-            "for the corresponding fencing resources will be added to this "
-            "delay. This delay should be significantly greater than, safely "
-            "twice, the maximum `pcmk_delay_base/max`. By default, priority "
-            "fencing delay is disabled.")
-    },
-    {
-        PCMK__OPT_NODE_PENDING_TIMEOUT, NULL, "time", NULL,
-        "0", pcmk__valid_interval_spec,
-        N_("How long to wait for a node that has joined the cluster to join "
-           "the controller process group"),
-        N_("Fence nodes that do not join the controller process group within "
-           "this much time after joining the cluster, to allow the cluster "
-           "to continue managing resources. A value of 0 means never fence "
-           "pending nodes. Setting the value to 2h means fence nodes after "
-           "2 hours.")
-    },
-    {
-        PCMK__OPT_CLUSTER_DELAY, NULL, "time", NULL,
-        "60s", pcmk__valid_interval_spec,
-        N_("Maximum time for node-to-node communication"),
-        N_("The node elected Designated Controller (DC) will consider an action "
-            "failed if it does not get a response from the node executing the "
-            "action within this time (after considering the action's own "
-            "timeout). The \"correct\" value will depend on the speed and "
-            "load of your network and cluster nodes.")
-    },
-    {
-        PCMK__OPT_BATCH_LIMIT, NULL, "integer", NULL,
-        "0", pcmk__valid_int,
-        N_("Maximum number of jobs that the cluster may execute in parallel "
-            "across all nodes"),
-        N_("The \"correct\" value will depend on the speed and load of your "
-            "network and cluster nodes. If set to 0, the cluster will "
-            "impose a dynamically calculated limit when any node has a "
-            "high load.")
-    },
-    {
-        PCMK__OPT_MIGRATION_LIMIT, NULL, "integer", NULL,
-        "-1", pcmk__valid_int,
-        N_("The number of live migration actions that the cluster is allowed "
-            "to execute in parallel on a node (-1 means no limit)")
-    },
-
-    /* Orphans and stopping */
-    {
-        PCMK__OPT_STOP_ALL_RESOURCES, NULL, "boolean", NULL,
-        "false", pcmk__valid_boolean,
-        N_("Whether the cluster should stop all active resources"),
-        NULL
-    },
-    {
-        PCMK__OPT_STOP_ORPHAN_RESOURCES, NULL, "boolean", NULL,
-        "true", pcmk__valid_boolean,
-        N_("Whether to stop resources that were removed from the configuration"),
-        NULL
-    },
-    {
-        PCMK__OPT_STOP_ORPHAN_ACTIONS, NULL, "boolean", NULL,
-        "true", pcmk__valid_boolean,
-        N_("Whether to cancel recurring actions removed from the configuration"),
-        NULL
-    },
-    {
-        PCMK__OPT_REMOVE_AFTER_STOP, NULL, "boolean", NULL,
-        "false", pcmk__valid_boolean,
-        N_("*** Deprecated *** Whether to remove stopped resources from "
-            "the executor"),
-        N_("Values other than default are poorly tested and potentially dangerous."
-            " This option will be removed in a future release.")
-    },
-
-    /* Storing inputs */
-    {
-        PCMK__OPT_PE_ERROR_SERIES_MAX, NULL, "integer", NULL,
-        "-1", pcmk__valid_int,
-        N_("The number of scheduler inputs resulting in errors to save"),
-        N_("Zero to disable, -1 to store unlimited.")
-    },
-    {
-        PCMK__OPT_PE_WARN_SERIES_MAX, NULL, "integer", NULL,
-        "5000", pcmk__valid_int,
-        N_("The number of scheduler inputs resulting in warnings to save"),
-        N_("Zero to disable, -1 to store unlimited.")
-    },
-    {
-        PCMK__OPT_PE_INPUT_SERIES_MAX, NULL, "integer", NULL,
-        "4000", pcmk__valid_int,
-        N_("The number of scheduler inputs without errors or warnings to save"),
-        N_("Zero to disable, -1 to store unlimited.")
-    },
-
-    /* Node health */
-    {
-        PCMK__OPT_NODE_HEALTH_STRATEGY, NULL, "select",
-        PCMK__VALUE_NONE ", " PCMK__VALUE_MIGRATE_ON_RED ", "
-            PCMK__VALUE_ONLY_GREEN ", " PCMK__VALUE_PROGRESSIVE ", "
-            PCMK__VALUE_CUSTOM,
-        PCMK__VALUE_NONE, pcmk__validate_health_strategy,
-        N_("How cluster should react to node health attributes"),
-        N_("Requires external entities to create node attributes (named with "
-            "the prefix \"#health\") with values \"red\", "
-            "\"yellow\", or \"green\".")
-    },
-    {
-        PCMK__OPT_NODE_HEALTH_BASE, NULL, "integer", NULL,
-        "0", pcmk__valid_int,
-        N_("Base health score assigned to a node"),
-        N_("Only used when \"node-health-strategy\" is set to \"progressive\".")
-    },
-    {
-        PCMK__OPT_NODE_HEALTH_GREEN, NULL, "integer", NULL,
-        "0", pcmk__valid_int,
-        N_("The score to use for a node health attribute whose value is \"green\""),
-        N_("Only used when \"node-health-strategy\" is set to \"custom\" or \"progressive\".")
-    },
-    {
-        PCMK__OPT_NODE_HEALTH_YELLOW, NULL, "integer", NULL,
-        "0", pcmk__valid_int,
-        N_("The score to use for a node health attribute whose value is \"yellow\""),
-        N_("Only used when \"node-health-strategy\" is set to \"custom\" or \"progressive\".")
-    },
-    {
-        PCMK__OPT_NODE_HEALTH_RED, NULL, "integer", NULL,
-        "-INFINITY", pcmk__valid_int,
-        N_("The score to use for a node health attribute whose value is \"red\""),
-        N_("Only used when \"node-health-strategy\" is set to \"custom\" or \"progressive\".")
-    },
-
-    /*Placement Strategy*/
-    {
-        PCMK__OPT_PLACEMENT_STRATEGY, NULL, "select",
-            "default, utilization, minimal, balanced",
-        "default", check_placement_strategy,
-        N_("How the cluster should allocate resources to nodes"),
-        NULL
-    },
-};
-
 void
 pe_metadata(pcmk__output_t *out)
 {
@@ -296,8 +32,8 @@ pe_metadata(pcmk__output_t *out)
     const char *desc_long = "Cluster options used by Pacemaker's scheduler";
 
     gchar *s = pcmk__format_option_metadata("pacemaker-schedulerd", desc_short,
-                                            desc_long, pe_opts,
-                                            PCMK__NELEM(pe_opts));
+                                            desc_long,
+                                            pcmk__opt_context_schedulerd);
     out->output_xml(out, "metadata", s);
     g_free(s);
 }
@@ -305,13 +41,13 @@ pe_metadata(pcmk__output_t *out)
 void
 verify_pe_options(GHashTable * options)
 {
-    pcmk__validate_cluster_options(options, pe_opts, PCMK__NELEM(pe_opts));
+    pcmk__validate_cluster_options(options);
 }
 
 const char *
 pe_pref(GHashTable * options, const char *name)
 {
-    return pcmk__cluster_option(options, pe_opts, PCMK__NELEM(pe_opts), name);
+    return pcmk__cluster_option(options, name);
 }
 
 const char *

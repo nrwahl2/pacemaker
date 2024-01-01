@@ -21,6 +21,8 @@
 
 #include <crm/crm.h>
 
+#include "options_private.h"
+
 void
 pcmk__cli_help(char cmd)
 {
@@ -293,27 +295,23 @@ cluster_option_value(GHashTable *options, bool (*validate)(const char *),
  * \internal
  * \brief Get the value of a cluster option
  *
- * \param[in,out] options      Name/value pairs for configured options
- * \param[in]     option_list  Possible cluster options
- * \param[in]     len          Length of \p option_list
- * \param[in]     name         (Primary) option name to look for
+ * \param[in,out] options  Name/value pairs for configured options
+ * \param[in]     name     (Primary) option name to look for
  *
  * \return Option value
  */
 const char *
-pcmk__cluster_option(GHashTable *options,
-                     const pcmk__cluster_option_t *option_list,
-                     int len, const char *name)
+pcmk__cluster_option(GHashTable *options, const char *name)
 {
-    const char *value = NULL;
+    CRM_CHECK(name != NULL, return NULL);
 
-    for (int lpc = 0; lpc < len; lpc++) {
-        if (pcmk__str_eq(name, option_list[lpc].name, pcmk__str_casei)) {
-            value = cluster_option_value(options, option_list[lpc].is_valid,
-                                         option_list[lpc].name,
-                                         option_list[lpc].alt_name,
-                                         option_list[lpc].default_value);
-            return value;
+    for (int lpc = 0; lpc < PCMK__NELEM(cluster_options); lpc++) {
+        if (pcmk__str_eq(name, cluster_options[lpc].name, pcmk__str_none)) {
+            return cluster_option_value(options,
+                                        cluster_options[lpc].is_valid,
+                                        cluster_options[lpc].name,
+                                        cluster_options[lpc].alt_name,
+                                        cluster_options[lpc].default_value);
         }
     }
     CRM_CHECK(FALSE, crm_err("Bug: looking for unknown option '%s'", name));
@@ -384,13 +382,36 @@ add_desc(GString *s, const char *tag, const char *desc, const char *values,
     free(escaped_en);
 }
 
+/*!
+ * \internal
+ * \brief Format cluster options as an OCF-compliant XML meta-data string
+ *
+ * \param[in] name         Name of the daemon whose options to format
+ * \param[in] desc_short   Short description of the daemon
+ * \param[in] desc_long    Long description of the daemon
+ * \param[in] filter       If not \c pcmk__opt_context_none, include only
+ *                         options that have this context flag set
+ *
+ * \return A string containing OCF-compliant meta-data XML of all non-filtered
+ *         cluster options
+ *
+ * \note The caller is responsible for freeing the return value using
+ *       \c g_free().
+ */
 gchar *
 pcmk__format_option_metadata(const char *name, const char *desc_short,
                              const char *desc_long,
-                             pcmk__cluster_option_t *option_list, int len)
+                             enum pcmk__opt_context filter)
 {
-    /* big enough to hold "pacemaker-schedulerd metadata" output */
-    GString *s = g_string_sized_new(13000);
+    // Large enough to hold all of cluster_options
+    GString *s = g_string_sized_new(25600);
+    const pcmk__cluster_option_t *option_list = cluster_options;
+    size_t len = PCMK__NELEM(cluster_options);
+
+    if (filter == pcmk__opt_context_fenced) {
+        list = stonith_instance_attrs;
+        len = PCMK__NELEM(stonith_instance_attrs);
+    }
 
     pcmk__g_strcat(s,
                    "<?xml version=\"1.0\"?>\n"
@@ -410,6 +431,10 @@ pcmk__format_option_metadata(const char *name, const char *desc_short,
         const char *opt_default = option_list[lpc].default_value;
         const char *opt_desc_short = option_list[lpc].description_short;
         const char *opt_desc_long = option_list[lpc].description_long;
+
+        if (!pcmk_is_set(option_list[lpc].context, filter)) {
+            continue;
+        }
 
         // The standard requires long and short parameter descriptions
         CRM_ASSERT((opt_desc_short != NULL) || (opt_desc_long != NULL));
@@ -460,13 +485,12 @@ pcmk__format_option_metadata(const char *name, const char *desc_short,
 }
 
 void
-pcmk__validate_cluster_options(GHashTable *options,
-                               pcmk__cluster_option_t *option_list, int len)
+pcmk__validate_cluster_options(GHashTable *options)
 {
-    for (int lpc = 0; lpc < len; lpc++) {
-        cluster_option_value(options, option_list[lpc].is_valid,
-                             option_list[lpc].name,
-                             option_list[lpc].alt_name,
-                             option_list[lpc].default_value);
+    for (int lpc = 0; lpc < PCMK__NELEM(cluster_options); lpc++) {
+        cluster_option_value(options, cluster_options[lpc].is_valid,
+                             cluster_options[lpc].name,
+                             cluster_options[lpc].alt_name,
+                             cluster_options[lpc].default_value);
     }
 }

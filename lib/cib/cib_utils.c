@@ -865,28 +865,6 @@ cib_native_notify(gpointer data, gpointer user_data)
     crm_trace("Callback invoked...");
 }
 
-static pcmk__cluster_option_t cib_opts[] = {
-    /* name, legacy name, type, allowed values,
-     * default value, validator,
-     * short description,
-     * long description
-     */
-    {
-        PCMK__OPT_ENABLE_ACL, NULL, "boolean", NULL,
-        "false", pcmk__valid_boolean,
-        N_("Enable Access Control Lists (ACLs) for the CIB"),
-        NULL
-    },
-    {
-        PCMK__OPT_CLUSTER_IPC_LIMIT, NULL, "integer", NULL,
-        "500", pcmk__valid_positive_int,
-        N_("Maximum IPC message backlog before disconnecting a cluster daemon"),
-        N_("Raise this if log has \"Evicting client\" messages for cluster daemon"
-            " PIDs (a good value is the number of resources in the cluster"
-            " multiplied by the number of nodes).")
-    },
-};
-
 void
 cib_metadata(void)
 {
@@ -895,8 +873,7 @@ cib_metadata(void)
                             "Information Base manager";
 
     gchar *s = pcmk__format_option_metadata("pacemaker-based", desc_short,
-                                            desc_long, cib_opts,
-                                            PCMK__NELEM(cib_opts));
+                                            desc_long, pcmk__opt_context_based);
     printf("%s", s);
     g_free(s);
 }
@@ -904,14 +881,13 @@ cib_metadata(void)
 static void
 verify_cib_options(GHashTable *options)
 {
-    pcmk__validate_cluster_options(options, cib_opts, PCMK__NELEM(cib_opts));
+    pcmk__validate_cluster_options(options);
 }
 
 const char *
 cib_pref(GHashTable * options, const char *name)
 {
-    return pcmk__cluster_option(options, cib_opts, PCMK__NELEM(cib_opts),
-                                name);
+    return pcmk__cluster_option(options, name);
 }
 
 gboolean
