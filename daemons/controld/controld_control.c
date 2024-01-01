@@ -30,7 +30,6 @@ static crm_trigger_t *config_read_trigger = NULL;
 extern gboolean crm_connect_corosync(crm_cluster_t * cluster);
 #endif
 
-void crm_shutdown(int nsig);
 static gboolean crm_read_options(gpointer user_data);
 
 /*	 A_HA_CONNECT	*/
@@ -330,6 +329,40 @@ do_exit(long long action,
     }
     verify_stopped(cur_state, LOG_ERR);
     crmd_exit(exit_code);
+}
+
+static void
+crm_shutdown(int nsig)
+{
+    const char *value = NULL;
+    guint default_period_ms = 0;
+
+    if ((controld_globals.mainloop == NULL)
+        || !g_main_loop_is_running(controld_globals.mainloop)) {
+        crmd_exit(CRM_EX_OK);
+        return;
+    }
+
+    if (pcmk_is_set(controld_globals.fsa_input_register, R_SHUTDOWN)) {
+        crm_err("Escalating shutdown");
+        register_fsa_input_before(C_SHUTDOWN, I_ERROR, NULL);
+        return;
+    }
+
+    controld_set_fsa_input_flags(R_SHUTDOWN);
+    register_fsa_input(C_SHUTDOWN, I_SHUTDOWN, NULL);
+
+    /* If shutdown timer doesn't have a period set, use the default
+     *
+     * @TODO: Evaluate whether this is still necessary. As long as
+     * config_query_callback() has been run at least once, it doesn't look like
+     * anything could have changed the timer period since then.
+     */
+    value = pcmk__cluster_option(NULL, controller_options,
+                                 PCMK__NELEM(controller_options),
+                                 PCMK__OPT_SHUTDOWN_ESCALATION);
+    pcmk__parse_interval_spec(value, &default_period_ms);
+    controld_shutdown_start_countdown(default_period_ms);
 }
 
 static void sigpipe_ignore(int nsig) { return; }
@@ -836,38 +869,4 @@ do_read_config(long long action,
 {
     throttle_init();
     controld_trigger_config();
-}
-
-void
-crm_shutdown(int nsig)
-{
-    const char *value = NULL;
-    guint default_period_ms = 0;
-
-    if ((controld_globals.mainloop == NULL)
-        || !g_main_loop_is_running(controld_globals.mainloop)) {
-        crmd_exit(CRM_EX_OK);
-        return;
-    }
-
-    if (pcmk_is_set(controld_globals.fsa_input_register, R_SHUTDOWN)) {
-        crm_err("Escalating shutdown");
-        register_fsa_input_before(C_SHUTDOWN, I_ERROR, NULL);
-        return;
-    }
-
-    controld_set_fsa_input_flags(R_SHUTDOWN);
-    register_fsa_input(C_SHUTDOWN, I_SHUTDOWN, NULL);
-
-    /* If shutdown timer doesn't have a period set, use the default
-     *
-     * @TODO: Evaluate whether this is still necessary. As long as
-     * config_query_callback() has been run at least once, it doesn't look like
-     * anything could have changed the timer period since then.
-     */
-    value = pcmk__cluster_option(NULL, controller_options,
-                                 PCMK__NELEM(controller_options),
-                                 PCMK__OPT_SHUTDOWN_ESCALATION);
-    pcmk__parse_interval_spec(value, &default_period_ms);
-    controld_shutdown_start_countdown(default_period_ms);
 }
