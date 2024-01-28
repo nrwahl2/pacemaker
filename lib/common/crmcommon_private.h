@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 the Pacemaker project contributors
+ * Copyright 2018-2024 the Pacemaker project contributors
  *
  * The version control history for this file may have further details.
  *
@@ -272,6 +272,9 @@ pcmk__ipc_methods_t *pcmk__schedulerd_api_methods(void);
 G_GNUC_INTERNAL
 int pcmk__bare_output_new(pcmk__output_t **out, const char *fmt_name,
                           const char *filename, char **argv);
+
+G_GNUC_INTERNAL
+void pcmk__register_option_messages(pcmk__output_t *out);
 
 G_GNUC_INTERNAL
 void pcmk__register_patchset_messages(pcmk__output_t *out);
