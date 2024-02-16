@@ -489,7 +489,9 @@ main(int argc, char **argv)
     if (pcmk__str_eq(args->output_ty, "text", pcmk__str_null_matches) &&
         !pcmk_is_set(options.flags, pcmk_sim_show_scores) &&
         !pcmk_is_set(options.flags, pcmk_sim_show_utilization)) {
-        pcmk__force_args(context, &error, "%s --text-fancy", g_get_prgname());
+
+        pcmk__output_text_set_fancy(out, true);
+
     } else if (pcmk__str_eq(args->output_ty, "xml", pcmk__str_none)) {
         pcmk__force_args(context, &error, "%s --xml-simple-list",
                          g_get_prgname());

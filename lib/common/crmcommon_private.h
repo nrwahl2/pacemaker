@@ -279,6 +279,8 @@ void pcmk__register_option_messages(pcmk__output_t *out);
 G_GNUC_INTERNAL
 void pcmk__register_patchset_messages(pcmk__output_t *out);
 
+G_GNUC_INTERNAL
+bool pcmk__output_text_get_fancy(pcmk__output_t *out);
 
 /*
  * Utils
