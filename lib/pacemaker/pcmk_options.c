@@ -89,3 +89,23 @@ pcmk__list_fence_attrs(pcmk__output_t *out, bool all)
 
     return pcmk__output_fence_attrs(out, name, desc_short, desc_long, all);
 }
+
+// Documented in header
+int
+pcmk_list_fence_attrs(xmlNode **xml, bool all)
+{
+    pcmk__output_t *out = NULL;
+    int rc = pcmk_rc_ok;
+
+    rc = pcmk__xml_output_new(&out, xml);
+    if (rc != pcmk_rc_ok) {
+        return rc;
+    }
+
+    pcmk__register_lib_messages(out);
+
+    rc = pcmk__list_fence_attrs(out, all);
+
+    pcmk__xml_output_finish(out, pcmk_rc2exitc(rc), xml);
+    return rc;
+}
