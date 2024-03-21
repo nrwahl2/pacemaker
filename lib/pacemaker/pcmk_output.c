@@ -2141,6 +2141,13 @@ attribute_default(pcmk__output_t *out, va_list args)
 
     GString *s = g_string_sized_new(50);
 
+    char *value_esc = NULL;
+
+    if (pcmk__xml_needs_escape(value, true)) {
+        value_esc = pcmk__xml_escape(value, true);
+        value = value_esc;
+    }
+
     if (!pcmk__str_empty(scope)) {
         pcmk__g_strcat(s, PCMK_XA_SCOPE "=\"", scope, "\" ", NULL);
     }
@@ -2158,8 +2165,9 @@ attribute_default(pcmk__output_t *out, va_list args)
     pcmk__g_strcat(s, PCMK_XA_VALUE "=\"", pcmk__s(value, ""), "\"", NULL);
 
     out->info(out, "%s", s->str);
-    g_string_free(s, TRUE);
 
+    g_string_free(s, TRUE);
+    free(value_esc);
     return pcmk_rc_ok;
 }
 
