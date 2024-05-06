@@ -23,13 +23,16 @@ extern "C" {
  * \ingroup core
  */
 
-bool xml_acl_enabled(const xmlNode *xml);
 void xml_acl_disable(xmlNode *xml);
 bool xml_acl_denied(const xmlNode *xml);
 bool xml_acl_filtered_copy(const char *user, xmlNode* acl_source, xmlNode *xml,
                            xmlNode **result);
 
 bool pcmk_acl_required(const char *user);
+
+#if !defined(PCMK_ALLOW_DEPRECATED) || (PCMK_ALLOW_DEPRECATED == 1)
+#include <crm/common/acl_compat.h>
+#endif
 
 #ifdef __cplusplus
 }
