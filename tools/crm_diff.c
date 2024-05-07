@@ -155,25 +155,6 @@ apply_patchset(xmlNode *input, const xmlNode *patchset, bool check_version)
     return pcmk_rc_ok;
 }
 
-static void
-log_patch_cib_versions(xmlNode *patch)
-{
-    int add[] = { 0, 0, 0 };
-    int del[] = { 0, 0, 0 };
-
-    const char *fmt = NULL;
-    const char *digest = NULL;
-
-    pcmk__xml_patchset_versions(patch, del, add);
-    fmt = crm_element_value(patch, PCMK_XA_FORMAT);
-    digest = crm_element_value(patch, PCMK__XA_DIGEST);
-
-    if (add[2] != del[2] || add[1] != del[1] || add[0] != del[0]) {
-        crm_info("Patch: --- %d.%d.%d %s", del[0], del[1], del[2], fmt);
-        crm_info("Patch: +++ %d.%d.%d %s", add[0], add[1], add[2], digest);
-    }
-}
-
 /*!
  * \internal
  * \brief Remove CIB version details from an XML patchset
@@ -268,10 +249,7 @@ generate_patchset(xmlNode *source, xmlNode *target, bool as_cib,
         pcmk__xml_patchset_add_digest(patchset, source, target);
     }
 
-    if (as_cib) {
-        log_patch_cib_versions(patchset);
-
-    } else if (no_version) {
+    if (no_version) {
         strip_patchset_cib_versions(patchset);
     }
 
