@@ -321,12 +321,17 @@ main(int argc, char **argv)
         pcmk__cli_help('v');
     }
 
-    if (options.patch && options.no_version) {
-        fprintf(stderr, "warning: -u/--no-version ignored with -p/--patch\n");
-    } else if (options.as_cib && options.no_version) {
-        fprintf(stderr, "error: -u/--no-version incompatible with -c/--cib\n");
-        exit_code = CRM_EX_USAGE;
-        goto done;
+    if (options.no_version) {
+        if (options.as_cib) {
+            exit_code = CRM_EX_USAGE;
+            g_set_error(&error, PCMK__EXITC_ERROR, exit_code,
+                        "-u/--no-version is incompatible with -c/--cib");
+            goto done;
+        }
+        if (options.patch) {
+            fprintf(stderr,
+                    "Warning: -u/--no-version is ignored with -p/--patch\n");
+        }
     }
 
     if (options.source_string != NULL) {
@@ -338,6 +343,13 @@ main(int argc, char **argv)
 
     } else if (options.source_file != NULL) {
         source = pcmk__xml_read(options.source_file);
+
+    } else {
+        exit_code = CRM_EX_USAGE;
+        g_set_error(&error, PCMK__EXITC_ERROR, exit_code,
+                    "One of --original, --original-string, or --stdin must be "
+                    "specified");
+        goto done;
     }
 
     if (options.target_string) {
@@ -349,16 +361,25 @@ main(int argc, char **argv)
 
     } else if (options.target_file != NULL) {
         target = pcmk__xml_read(options.target_file);
+
+    } else {
+        exit_code = CRM_EX_USAGE;
+        g_set_error(&error, PCMK__EXITC_ERROR, exit_code,
+                    "One of --new, --new-string, --patch, or --stdin must be "
+                    "specified");
+        goto done;
     }
 
     if (source == NULL) {
-        fprintf(stderr, "Could not parse the first XML fragment\n");
         exit_code = CRM_EX_DATAERR;
+        g_set_error(&error, PCMK__EXITC_ERROR, exit_code,
+                    "Failed to parse original XML");
         goto done;
     }
     if (target == NULL) {
-        fprintf(stderr, "Could not parse the second XML fragment\n");
         exit_code = CRM_EX_DATAERR;
+        g_set_error(&error, PCMK__EXITC_ERROR, exit_code,
+                    "Failed to parse %s XML", (options.patch? "patch" : "new"));
         goto done;
     }
 
