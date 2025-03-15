@@ -489,30 +489,6 @@ pcmk__xml_commit_changes(xmlDoc *doc)
 
 /*!
  * \internal
- * \brief Find first child XML node matching another given XML node
- *
- * \param[in] haystack  XML whose children should be checked
- * \param[in] needle    XML to match (comment content or element name and ID)
- */
-static xmlNode *
-match_xml(const xmlNode *haystack, const xmlNode *needle)
-{
-    CRM_CHECK(needle != NULL, return NULL);
-
-    if (needle->type == XML_COMMENT_NODE) {
-        return pcmk__xc_match_child(haystack, needle, true);
-
-    } else {
-        const char *id = pcmk__xe_id(needle);
-        const char *attr = (id == NULL)? NULL : PCMK_XA_ID;
-
-        return pcmk__xe_first_child(haystack, (const char *) needle->name, attr,
-                                    id);
-    }
-}
-
-/*!
- * \internal
  * \brief Create a new XML document
  *
  * \return Newly allocated XML document (guaranteed not to be \c NULL)
@@ -1367,10 +1343,236 @@ mark_child_moved(xmlNode *old_child, xmlNode *new_parent, xmlNode *new_child,
     pcmk__set_xml_flags(nodepriv, pcmk__xf_skip);
 }
 
+/*!
+ * \internal
+ * \brief Create a \c GList containing all children of an XML node
+ *
+ * \param[in] xml  XML node
+ *
+ * \return List of children of \p xml, in document order
+ */
+static GList *
+children_to_list(const xmlNode *xml)
+{
+    GList *child_list = NULL;
+
+    for (xmlNode *child = pcmk__xml_first_child(xml); child != NULL;
+         child = pcmk__xml_next(child)) {
+
+        child_list = g_list_prepend(child_list, child);
+    }
+    return g_list_reverse(child_list);
+}
+
+/*!
+ * \internal
+ * \brief Check whether a new XML child comment matches an old XML child comment
+ *
+ * Two comments match if they have the same position among their siblings and
+ * the same contents.
+ *
+ * If \p new_comment has the \c pcmk__xf_skip flag set, then it is automatically
+ * considered not to match.
+ *
+ * \param[in] old_comment  Old XML child element
+ * \param[in] new_comment  New XML child element
+ *
+ * \retval \c true if \p old_comment matches \p new_comment
+ * \retval \c false otherwise
+ */
+static bool
+new_comment_matches(const xmlNode *old_comment, const xmlNode *new_comment)
+{
+    xml_node_private_t *nodepriv = new_comment->_private;
+
+    if (pcmk_is_set(nodepriv->flags, pcmk__xf_skip)) {
+        /* @TODO Should we also return false if old_coment has pcmk__xf_skip
+         * set? This preserves existing behavior at time of writing.
+         */
+        return false;
+    }
+    if (pcmk__xml_position(old_comment, pcmk__xf_skip)
+        != pcmk__xml_position(new_comment, pcmk__xf_skip)) {
+        return false;
+    }
+    return pcmk__xc_matches(old_comment, new_comment);
+}
+
+/*!
+ * \internal
+ * \brief Check whether a new XML child element matches an old XML child element
+ *
+ * Two elements match if they have the same name and, if \p match_ids is
+ * \c true, the same ID. (Both IDs can be \c NULL in this case.)
+ *
+ * \param[in] old_element  Old XML child element
+ * \param[in] new_element  New XML child element
+ * \param[in] match_ids    If \c true, require IDs to match (or both be \c NULL)
+ *
+ * \retval \c true if \p old_element matches \p new_element
+ * \retval \c false otherwise
+ */
+static bool
+new_element_matches(const xmlNode *old_element, const xmlNode *new_element,
+                    bool match_ids)
+{
+    if (!pcmk__xe_is(new_element, (const char *) old_element->name)) {
+        return false;
+    }
+    return !match_ids
+           || pcmk__str_eq(pcmk__xe_id(old_element), pcmk__xe_id(new_element),
+                           pcmk__str_none);
+}
+
+/*!
+ * \internal
+ * \brief User data for \c new_child_matches()
+ */
+struct new_child_matches_data {
+    xmlNode *old_child; //!< Old child to match against
+    bool match_ids;     //!< Require element IDs to match
+};
+
+/*!
+ * \internal
+ * \brief Check whether a new XML child node matches an old XML child node
+ *
+ * Node types must be the same in order to match.
+ *
+ * For comments, a match is a comment at the same position with the same
+ * content.
+ *
+ * For elements, a match is an element with the same name and, if required, the
+ * same ID. (Both IDs can be \c NULL in this case.)
+ *
+ * For other node types, there is no match.
+ *
+ * \param[in] a  New XML child node (<tt>xmlNode *</tt>)
+ * \param[in] b  Old XML child node and whether to require IDs to match
+ *               (<tt>struct new_child_matches_data *</tt>)
+ *
+ * \retval 0 if \p a matches according to \p b
+ * \retval 1 otherwise
+ *
+ * \note This function is suitable for use with \c g_list_find_custom().
+ */
+static int
+new_child_matches(gconstpointer a, gconstpointer b)
+{
+    const xmlNode *new_child = a;
+    struct new_child_matches_data *data = (struct new_child_matches_data *) b;
+    const xmlNode *old_child = data->old_child;
+    const bool match_ids = data->match_ids;
+
+    if (old_child->type != new_child->type) {
+        return 1;
+    }
+
+    switch (old_child->type) {
+        case XML_COMMENT_NODE:
+            return new_comment_matches(old_child, new_child)? 0 : 1;
+        case XML_ELEMENT_NODE:
+            return new_element_matches(old_child, new_child, match_ids)? 0 : 1;
+        default:
+            return 1;
+    }
+}
+
+/*!
+ * \internal
+ * \brief Find matching XML node pairs between old and new XML's children
+ *
+ * A node that is part of a matching pair is removed from its respective list
+ * (\p *old_children or \p *new_children) and added to \p *matches with its
+ * match.
+ *
+ * \param[in,out]  old_children  Children of old XML
+ * \param[in,out]  new_children  Children of new XML
+ * \param[in,out]  matches       Where to prepend pairs of matching nodes from
+ *                               \p old_children and \p new_children
+ * \param[in]      comments_ids  If \c true, match comments and require element
+ *                               IDs to match; otherwise, skip comments and
+ *                               match elements by name only
+ */
+static void
+find_matching_children(GList **old_children, GList **new_children,
+                       GList **matches, bool comments_ids)
+{
+    // Save next pointer because we unlink iter on match
+    for (GList *iter = *old_children, *next = g_list_next(*old_children);
+         iter != NULL;
+         iter = next, next = g_list_next(next)) {
+
+        xmlNode *old_child = iter->data;
+
+        struct new_child_matches_data data = {
+            .old_child = old_child,
+            .match_ids = comments_ids,
+        };
+        GList *match = NULL;
+
+        if (!comments_ids && (old_child->type == XML_COMMENT_NODE)) {
+            continue;
+        }
+
+        match = g_list_find_custom(*new_children, &data, new_child_matches);
+        if (match == NULL) {
+            continue;
+        }
+
+        /* Steal iter and match from *old_children and *new_children,
+         * respectively, and prepend to *matches.
+         *
+         * Order should eventually be (iter, match), with pairs appearing in
+         * document order. We will reverse the order of *matches in the caller
+         * after finding all matches.
+         */
+        *old_children = g_list_remove_link(*old_children, iter);
+        *new_children = g_list_remove_link(*new_children, match);
+
+        *matches = g_list_concat(iter, *matches);
+        *matches = g_list_concat(match, *matches);
+    }
+}
+
+/*!
+ * \internal
+ * \brief Find changed XML node pairs between old and new XML's children
+ *
+ * \param[in]  old_xml  Old XML
+ * \param[in]  new_xml  New XML
+ * \param[out] matches  Pairs of matching nodes from \p old_xml and \p new_xml
+ * \param[out] deleted  Nodes in \p old_xml that have no match in \p new_xml
+ * \param[out] created  Nodes in \p new_xml that have no match in \p old_xml
+ */
+static void
+find_changed_children(const xmlNode *old_xml, const xmlNode *new_xml,
+                      GList **matches, GList **deleted, GList **created)
+{
+    GList *old_children = children_to_list(old_xml);
+    GList *new_children = children_to_list(new_xml);
+
+    find_matching_children(&old_children, &new_children, matches, true);
+    find_matching_children(&old_children, &new_children, matches, false);
+
+    // Matches were prepended (via concat) in (new_child, old_child) order
+    *matches = g_list_reverse(*matches);
+
+    // Nodes remaining in old_children had no match among new_children
+    *deleted = old_children;
+
+    // Nodes remaining in new_children had no match among old_children
+    *created = new_children;
+}
+
 // Given original and new XML, mark new XML portions that have changed
 static void
 mark_xml_changes(xmlNode *old_xml, xmlNode *new_xml)
 {
+    GList *matches = NULL;
+    GList *deleted = NULL;
+    GList *created = NULL;
+
     xml_node_private_t *nodepriv = NULL;
 
     pcmk__assert(new_xml != NULL);
@@ -1386,46 +1588,57 @@ mark_xml_changes(xmlNode *old_xml, xmlNode *new_xml)
 
     xml_diff_attrs(old_xml, new_xml);
 
-    // Check for differences compared to the original children
-    for (xmlNode *old_child = pcmk__xml_first_child(old_xml); old_child != NULL;
-         old_child = pcmk__xml_next(old_child)) {
+    find_changed_children(old_xml, new_xml, &matches, &deleted, &created);
 
-        xmlNode *new_child = match_xml(new_xml, old_child);
+    // Recurse through matching children (iterate in pairs)
+    for (GList *iter = matches; (iter != NULL) && (iter->next != NULL);
+         iter = iter->next->next) {
 
-        if (new_child != NULL) {
-            int old_pos = pcmk__xml_position(old_child, pcmk__xf_skip);
-            int new_pos = pcmk__xml_position(new_child, pcmk__xf_skip);
+        xmlNode *old_child = iter->data;
+        xmlNode *new_child = iter->next->data;
+        int old_pos = 0;
+        int new_pos = 0;
 
-            mark_xml_changes(old_child, new_child);
+        pcmk__assert((old_child != NULL) && (new_child != NULL)
+                     && (old_child->type == new_child->type));
 
-            if (old_pos != new_pos) {
-                mark_child_moved(old_child, new_xml, new_child, old_pos,
-                                 new_pos);
-            }
+        if (old_child->type == XML_COMMENT_NODE) {
+            // Comments don't match unless their positions and contents match
+            continue;
+        }
 
-        } else {
-            mark_child_deleted(old_child, new_xml);
+        mark_xml_changes(old_child, new_child);
+
+        old_pos = pcmk__xml_position(old_child, pcmk__xf_skip);
+        new_pos = pcmk__xml_position(new_child, pcmk__xf_skip);
+
+        if (old_pos != new_pos) {
+            mark_child_moved(old_child, new_xml, new_child, old_pos, new_pos);
         }
     }
 
-    // Check for newly created children
-    for (xmlNode *new_child = pcmk__xml_first_child(new_xml),
-                 *next = pcmk__xml_next(new_child);
-         new_child != NULL;
-         new_child = next, next = pcmk__xml_next(new_child)) {
+    // Mark unmatched old children as deleted
+    for (GList *iter = deleted; iter != NULL; iter = iter->next) {
+        xmlNode *old_child = iter->data;
 
-        xmlNode *old_child = match_xml(old_xml, new_child);
-
-        if (old_child == NULL) {
-            // This is a newly created child
-            nodepriv = new_child->_private;
-            pcmk__set_xml_flags(nodepriv, pcmk__xf_skip);
-            mark_xml_tree_dirty_created(new_child);
-
-            // Check whether creation was allowed; may free new_child
-            pcmk__apply_creation_acl(new_child, true);
-        }
+        mark_child_deleted(old_child, new_xml);
     }
+
+    // Mark unmatched new children as created
+    for (GList *iter = created; iter != NULL; iter = iter->next) {
+        xmlNode *new_child = iter->data;
+
+        nodepriv = new_child->_private;
+        pcmk__set_xml_flags(nodepriv, pcmk__xf_skip);
+        mark_xml_tree_dirty_created(new_child);
+
+        // Check whether creation was allowed; may free new_child
+        pcmk__apply_creation_acl(new_child, true);
+    }
+
+    g_list_free(matches);
+    g_list_free(deleted);
+    g_list_free(created);
 }
 
 void
