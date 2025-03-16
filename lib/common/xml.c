@@ -1573,18 +1573,7 @@ mark_xml_changes(xmlNode *old_xml, xmlNode *new_xml)
     GList *deleted = NULL;
     GList *created = NULL;
 
-    xml_node_private_t *nodepriv = NULL;
-
-    pcmk__assert(new_xml != NULL);
-
-    nodepriv = new_xml->_private;
-    pcmk__assert(nodepriv != NULL);
-
-    if (pcmk_is_set(nodepriv->flags, pcmk__xf_processed)) {
-        // Avoid re-comparing nodes
-        return;
-    }
-    pcmk__set_xml_flags(nodepriv, pcmk__xf_processed);
+    pcmk__assert((old_xml != NULL) && (new_xml != NULL));
 
     xml_diff_attrs(old_xml, new_xml);
 
@@ -1627,8 +1616,8 @@ mark_xml_changes(xmlNode *old_xml, xmlNode *new_xml)
     // Mark unmatched new children as created
     for (GList *iter = created; iter != NULL; iter = iter->next) {
         xmlNode *new_child = iter->data;
+        xml_node_private_t *nodepriv = new_child->_private;
 
-        nodepriv = new_child->_private;
         pcmk__set_xml_flags(nodepriv, pcmk__xf_skip);
         mark_xml_tree_dirty_created(new_child);
 
