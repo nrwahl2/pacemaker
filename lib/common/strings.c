@@ -350,23 +350,22 @@ pcmk__guint_from_hash(GHashTable *table, const char *key, guint default_val,
  * \return Standard Pacemaker return code
  */
 int
-pcmk__parse_ms(const char *input, long long *dest)
+pcmk__parse_ms(const char *input, long long *result)
 {
-    long long result = 0;
     char *units = NULL; // Do not free; will point to part of input
     long long multiplier = 1000;
     long long divisor = 1;
     int rc = pcmk_rc_ok;
 
-    CRM_CHECK(input != NULL, return EINVAL);
+    CRM_CHECK((input != NULL) && (result != NULL), return EINVAL);
 
     // Skip initial whitespace
     for (; isspace(*input); input++);
 
-    rc = scan_ll(input, &result, 0, &units);
+    rc = scan_ll(input, result, 0, &units);
 
-    if ((rc == ERANGE) && (result > 0)) {
-        crm_warn("'%s' will be clipped to %lld", input, result);
+    if ((rc == ERANGE) && (*result > 0)) {
+        crm_warn("'%s' will be clipped to %lld", input, *result);
 
         /* Continue through rest of body before returning ERANGE
          *
@@ -378,11 +377,6 @@ pcmk__parse_ms(const char *input, long long *dest)
         crm_warn("'%s' is not a valid time duration: %s", input,
                  pcmk_rc_str(rc));
         return rc;
-    }
-
-    if (result < 0) {
-        crm_warn("'%s' is not a valid time duration: Negative", input);
-        return pcmk_rc_bad_input;
     }
 
     /* If the number is a decimal, scan_ll() reads only the integer part. Skip
@@ -433,15 +427,12 @@ pcmk__parse_ms(const char *input, long long *dest)
     }
 
     // Apply units, capping at LLONG_MAX
-    if (result > (LLONG_MAX / multiplier)) {
-        result = LLONG_MAX;
+    if (*result > (LLONG_MAX / multiplier)) {
+        *result = LLONG_MAX;
     } else {
-        result = (result * multiplier) / divisor;
+        *result = (*result * multiplier) / divisor;
     }
 
-    if (dest != NULL) {
-        *dest = result;
-    }
     return rc;
 }
 
