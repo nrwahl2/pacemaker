@@ -20,7 +20,7 @@ static void fencing_history_synced(stonith_t *st, stonith_event_t *st_event);
 #define DEFAULT_FENCING_MAX_ATTEMPTS 10
 
 static bool fence_reaction_panic = false;
-static unsigned long int fencing_max_attempts = DEFAULT_FENCING_MAX_ATTEMPTS;
+static unsigned int fencing_max_attempts = DEFAULT_FENCING_MAX_ATTEMPTS;
 
 /*
  * Fencing failure counting
@@ -40,17 +40,25 @@ static GHashTable *fencing_fail_counts = NULL;
 static void
 update_fencing_max_attempts(const char *value)
 {
-    int score = 0;
-    int rc = pcmk_parse_score(value, &score, DEFAULT_FENCING_MAX_ATTEMPTS);
+    /* value is not really a score, and red/yellow/green is not allowed.
+     * However, (+|-)INFINITY is allowed and need to be parsed, and we can
+     * arbitrarily cap the actual value at INFINITY.
+     */
+    int value_i = 0;
+    int rc = pcmk_parse_score(value, &value_i, DEFAULT_FENCING_MAX_ATTEMPTS);
 
     // The option validator ensures invalid values shouldn't be possible
-    CRM_CHECK((rc == pcmk_rc_ok) && (score > 0), return);
+    CRM_CHECK(rc == pcmk_rc_ok, return);
 
-    if (fencing_max_attempts != score) {
-        crm_debug("Maximum fencing attempts per transition is now %d (was %lu)",
-                  score, fencing_max_attempts);
+    if (value_i < 0) {
+        value_i = 0;
     }
-    fencing_max_attempts = score;
+
+    if (fencing_max_attempts != value_i) {
+        crm_debug("Maximum fencing attempts per transition is now %d (was %u)",
+                  value_i, fencing_max_attempts);
+    }
+    fencing_max_attempts = value_i;
 }
 
 /*!
@@ -98,7 +106,7 @@ too_many_fencing_failures(const char *target)
     GHashTableIter iter;
     gpointer value = NULL;
 
-    if (fencing_fail_counts == NULL) {
+    if ((fencing_max_attempts == 0) || (fencing_fail_counts == NULL)) {
         return false;
     }
 

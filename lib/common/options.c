@@ -299,10 +299,11 @@ static const pcmk__cluster_option_t cluster_options[] = {
     {
         PCMK_OPT_FENCING_MAX_ATTEMPTS, PCMK_OPT_STONITH_MAX_ATTEMPTS,
             PCMK_VALUE_SCORE, NULL,
-        "10", pcmk__valid_positive_int,
+        "10", pcmk__valid_int,
         pcmk__opt_controld,
         N_("How many times fencing can fail before it will no longer be "
-            "immediately re-attempted on a target"),
+            "immediately re-attempted on a target (0 or a negative value for "
+            "no limit)"),
         NULL,
     },
     {
@@ -1207,27 +1208,6 @@ pcmk__valid_int(const char *value)
            && (pcmk_str_is_infinity(value)
                || pcmk_str_is_minus_infinity(value)
                || (pcmk__scan_ll(value, NULL, 0LL) == pcmk_rc_ok));
-}
-
-/*!
- * \internal
- * \brief Check whether a string represents a valid positive integer
- *
- * Valid values include \c INFINITY and all 64-bit positive integers.
- *
- * \param[in] value  String to validate
- *
- * \return \c true if \p value is a valid positive integer, or \c false
- *         otherwise
- */
-bool
-pcmk__valid_positive_int(const char *value)
-{
-    long long num = 0LL;
-
-    return pcmk_str_is_infinity(value)
-           || ((pcmk__scan_ll(value, &num, 0LL) == pcmk_rc_ok)
-               && (num > 0));
 }
 
 /*!
