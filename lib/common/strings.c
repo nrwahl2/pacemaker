@@ -949,6 +949,30 @@ pcmk__str_in_list(const gchar *s, const GList *lst, uint32_t flags)
     return FALSE;
 }
 
+/*!
+ * \internal
+ * \brief Check whether a string is in an array of <tt>gchar *</tt>
+ *
+ * \param[in] strv  <tt>NULL</tt>-terminated array of strings to search
+ * \param[in] str   String to search for
+ *
+ * \return \c true if \p str is an element of \p strv, or \c false otherwise
+ */
+bool
+pcmk__g_strv_contains(gchar **strv, const gchar *str)
+{
+    // @COMPAT Replace with calls to g_strv_contains() when we require glib 2.44
+    CRM_CHECK((strv != NULL) && (str != NULL), return false);
+
+    for (; *strv != NULL; strv++) {
+        if (pcmk__str_eq(*strv, str, pcmk__str_none)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 static bool
 str_any_of(const char *s, va_list args, uint32_t flags)
 {
