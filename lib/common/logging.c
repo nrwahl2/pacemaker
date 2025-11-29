@@ -193,7 +193,6 @@ remove_glib_log_handler(gpointer key, gpointer value, gpointer user_data)
  * \param[in] daemon        The daemon ID included in error messages
  * \param[in] use_pid       Cached result of getpid() call, for efficiency
  * \param[in] use_nodename  Cached result of uname() call, for efficiency
- *
  */
 
 /* XXX __attribute__((nonnull)) for use_nodename parameter */
@@ -877,11 +876,10 @@ crm_priority2int(const char *name)
         {"debug", LOG_DEBUG},
         {NULL, -1}
     };
-    int lpc;
 
-    for (lpc = 0; name != NULL && p_names[lpc].name != NULL; lpc++) {
-        if (pcmk__str_eq(p_names[lpc].name, name, pcmk__str_none)) {
-            return p_names[lpc].priority;
+    for (int i = 0; (name != NULL) && (p_names[i].name != NULL); i++) {
+        if (pcmk__str_eq(p_names[i].name, name, pcmk__str_none)) {
+            return p_names[i].priority;
         }
     }
     return crm_log_priority;
@@ -938,7 +936,6 @@ crm_log_preinit(const char *entity, int argc, char *const *argv)
     /* Configure libqb logging with nothing turned on */
 
     struct utsname res;
-    int lpc = 0;
     int32_t qb_facility = 0;
     pid_t pid = getpid();
     const char *nodename = "localhost";
@@ -1003,13 +1000,13 @@ crm_log_preinit(const char *entity, int argc, char *const *argv)
      * Pacemaker and threads do not mix well (due to the amount of forking)
      */
     qb_log_tags_stringify_fn_set(crm_quark_to_string);
-    for (lpc = QB_LOG_SYSLOG; lpc < QB_LOG_TARGET_MAX; lpc++) {
-        qb_log_ctl(lpc, QB_LOG_CONF_THREADED, QB_FALSE);
+    for (int i = QB_LOG_SYSLOG; i < QB_LOG_TARGET_MAX; i++) {
+        qb_log_ctl(i, QB_LOG_CONF_THREADED, QB_FALSE);
 #ifdef HAVE_qb_log_conf_QB_LOG_CONF_ELLIPSIS
         // End truncated lines with '...'
-        qb_log_ctl(lpc, QB_LOG_CONF_ELLIPSIS, QB_TRUE);
+        qb_log_ctl(i, QB_LOG_CONF_ELLIPSIS, QB_TRUE);
 #endif
-        set_format_string(lpc, crm_system_name, pid, nodename);
+        set_format_string(i, crm_system_name, pid, nodename);
     }
 
 #ifdef ENABLE_NLS
