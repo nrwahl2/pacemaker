@@ -55,11 +55,7 @@ static gchar **trace_formats = NULL;
 static gchar **trace_functions = NULL;
 
 static unsigned int crm_log_priority = LOG_NOTICE;
-static guint pcmk__log_id = 0;
-static guint pcmk__glib_log_id = 0;
-static guint pcmk__gio_log_id = 0;
-static guint pcmk__gmodule_log_id = 0;
-static guint pcmk__gthread_log_id = 0;
+static GHashTable *log_handler_ids = NULL;
 static pcmk__output_t *logger_out = NULL;
 
 pcmk__config_error_func pcmk__config_error_handler = NULL;
@@ -139,9 +135,52 @@ handle_glib_message(const gchar *log_domain, GLogLevelFlags log_level,
     do_crm_log(log_level, "%s: %s", log_domain, message);
 }
 
-#ifndef NAME_MAX
-#  define NAME_MAX 256
-#endif
+/*!
+ * \internal
+ * \brief Set \c handle_glib_message() as the handler for a GLib log domain
+ *
+ * The handler will be set for all log levels, including fatal and recursive
+ * messages.
+ *
+ * \param[in] log_domain  Log domain
+ */
+static void
+set_glib_log_handler(const char *log_domain)
+{
+    const GLogLevelFlags flags = G_LOG_LEVEL_MASK
+                                 |G_LOG_FLAG_FATAL
+                                 |G_LOG_FLAG_RECURSION;
+    const guint id = g_log_set_handler(log_domain, flags, handle_glib_message,
+                                       NULL);
+
+    if (log_handler_ids == NULL) {
+        log_handler_ids = pcmk__strkey_table(free, NULL);
+    }
+    g_hash_table_insert(log_handler_ids, pcmk__str_copy(log_domain),
+                        GUINT_TO_POINTER(id));
+}
+
+/*!
+ * \internal
+ * \brief Remove a GLib log handler
+ *
+ * \param[in,out] key        Handler log domain
+ * \param[in]     value      Handler ID
+ * \param[in]     user_data  Ignored
+ *
+ * \return \c TRUE (to remove the entry from the \c log_handler_ids table)
+ *
+ * \note This is a \c GHRFunc for use with \c g_hash_table_foreach_remove().
+ */
+static gboolean
+remove_glib_log_handler(gpointer key, gpointer value, gpointer user_data)
+{
+    const gchar *log_domain = key;
+    guint handler_id = GPOINTER_TO_UINT(value);
+
+    g_log_remove_handler(log_domain, handler_id);
+    return TRUE;
+}
 
 /*!
  * \internal
@@ -164,20 +203,12 @@ crm_trigger_blackbox(int nsig)
 void
 crm_log_deinit(void)
 {
-    if (pcmk__log_id == 0) {
-        return;
+    if (log_handler_ids != NULL) {
+        g_hash_table_foreach_remove(log_handler_ids, remove_glib_log_handler,
+                                    NULL);
+        g_hash_table_destroy(log_handler_ids);
+        log_handler_ids = NULL;
     }
-
-    g_log_remove_handler(G_LOG_DOMAIN, pcmk__log_id);
-    pcmk__log_id = 0;
-    g_log_remove_handler("GLib", pcmk__glib_log_id);
-    pcmk__glib_log_id = 0;
-    g_log_remove_handler("GLib-GIO", pcmk__gio_log_id);
-    pcmk__gio_log_id = 0;
-    g_log_remove_handler("GModule", pcmk__gmodule_log_id);
-    pcmk__gmodule_log_id = 0;
-    g_log_remove_handler("GThread", pcmk__gthread_log_id);
-    pcmk__gthread_log_id = 0;
 }
 
 /*!
@@ -930,9 +961,6 @@ crm_log_preinit(const char *entity, int argc, char *const *argv)
     pid_t pid = getpid();
     const char *nodename = "localhost";
     static bool have_logging = false;
-    const GLogLevelFlags log_levels = G_LOG_LEVEL_MASK
-                                      |G_LOG_FLAG_FATAL
-                                      |G_LOG_FLAG_RECURSION;
 
     if (have_logging) {
         return;
@@ -955,18 +983,13 @@ crm_log_preinit(const char *entity, int argc, char *const *argv)
     umask(S_IWGRP | S_IWOTH | S_IROTH);
 
     /* Add a log handler for messages from our log domain at any log level. */
-    pcmk__log_id = g_log_set_handler(G_LOG_DOMAIN, log_levels,
-                                     handle_glib_message, NULL);
+    set_glib_log_handler(G_LOG_DOMAIN);
 
     /* Add a log handler for messages from the GLib domains at any log level. */
-    pcmk__glib_log_id = g_log_set_handler("GLib", log_levels,
-                                          handle_glib_message, NULL);
-    pcmk__gio_log_id = g_log_set_handler("GLib-GIO", log_levels,
-                                         handle_glib_message, NULL);
-    pcmk__gmodule_log_id = g_log_set_handler("GModule", log_levels,
-                                             handle_glib_message, NULL);
-    pcmk__gthread_log_id = g_log_set_handler("GThread", log_levels,
-                                             handle_glib_message, NULL);
+    set_glib_log_handler("GLib");
+    set_glib_log_handler("GLib-GIO");
+    set_glib_log_handler("GModule");
+    set_glib_log_handler("GThread");
 
     /* glib should not abort for any messages from the Pacemaker domain, but
      * other domains are still free to specify their own behavior.  However,
