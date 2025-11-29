@@ -187,35 +187,41 @@ remove_glib_log_handler(gpointer key, gpointer value, gpointer user_data)
 
 /*!
  * \internal
- * \brief Set the log format string based on the passed-in method
+ * \brief Set the log format string based on the given target
  *
- * \param[in] method        The detail level of the log output
- * \param[in] daemon        The daemon ID included in error messages
- * \param[in] use_pid       Cached result of getpid() call, for efficiency
- * \param[in] use_nodename  Cached result of uname() call, for efficiency
+ * \param[in] target     Log target (detail level)
+ * \param[in] pid        PID of current process
+ * \param[in] node_name  Local node's name (for use in log output)
  */
-
-/* XXX __attribute__((nonnull)) for use_nodename parameter */
 static void
-set_format_string(int method, const char *daemon, pid_t use_pid,
-                  const char *use_nodename)
+set_format_string(int target, pid_t pid, const char *node_name)
 {
+    /* Format specifiers used here:
+     * - %b: message
+     * - %f: file name
+     * - %g: tag, or "" if none
+     * - %l: line number
+     * - %n: function name
+     * - %p: priority (for example, "error" or "debug")
+     * - %t: timestamp at seconds resolution
+     * - %T: timestamp at milliseconds resolution
+     */
     GString *fmt = NULL;
 
-    if (method == QB_LOG_SYSLOG) {
+    if (target == QB_LOG_SYSLOG) {
         // The system log gets a simplified, user-friendly format
-        qb_log_ctl(method, QB_LOG_CONF_EXTENDED, QB_FALSE);
-        qb_log_format_set(method, "%g %p: %b");
+        qb_log_ctl(target, QB_LOG_CONF_EXTENDED, QB_FALSE);
+        qb_log_format_set(target, "%g %p: %b");
         return;
     }
 
     // Everything else gets more detail, for advanced troubleshooting
     fmt = g_string_sized_new(256);
 
-    if (method > QB_LOG_STDERR) {
-        // If logging to file, prefix with timestamp, node name, daemon ID
+    if (target > QB_LOG_STDERR) {
+        // If logging to a file, prefix with timestamp, node, system, and PID
         g_string_append_printf(fmt, TIMESTAMP_FORMAT_SPEC " %s %-20s[%lld] ",
-                               use_nodename, daemon, (long long) use_pid);
+                               node_name, crm_system_name, (long long) pid);
     }
 
     // Add function name (in parentheses)
@@ -229,7 +235,7 @@ set_format_string(int method, const char *daemon, pid_t use_pid,
     // Add tag (if any), priority, and actual message
     g_string_append(fmt, " %g\t%p: %b");
 
-    qb_log_format_set(method, fmt->str);
+    qb_log_format_set(target, fmt->str);
     g_string_free(fmt, TRUE);
 }
 
@@ -1004,7 +1010,7 @@ crm_log_preinit(const char *entity, int argc, char *const *argv)
         // End truncated lines with '...'
         qb_log_ctl(i, QB_LOG_CONF_ELLIPSIS, QB_TRUE);
 #endif
-        set_format_string(i, crm_system_name, pid, nodename);
+        set_format_string(i, pid, nodename);
     }
 
 #ifdef ENABLE_NLS
