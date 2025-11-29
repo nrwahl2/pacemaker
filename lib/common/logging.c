@@ -57,6 +57,9 @@ static gchar **trace_files = NULL;
 static gchar **trace_formats = NULL;
 static gchar **trace_functions = NULL;
 
+// Whether tracing is enabled for some file, format, function, or tag
+static bool tracing_objects = false;
+
 static unsigned int crm_log_priority = LOG_NOTICE;
 static pcmk__output_t *logger_out = NULL;
 
@@ -203,15 +206,13 @@ remove_glib_log_handlers(void)
  *
  * \return \c true if tracing is enabled globally or for any file, function,
  *         format, or tag; or \c false otherwise
+ *
+ * \note \c init_tracing() must have been called already.
  */
-static bool
+static inline bool
 tracing_enabled(void)
 {
-    return (crm_log_level == LOG_TRACE)
-           || (pcmk__env_option(PCMK__ENV_TRACE_FILES) != NULL)
-           || (pcmk__env_option(PCMK__ENV_TRACE_FUNCTIONS) != NULL)
-           || (pcmk__env_option(PCMK__ENV_TRACE_FORMATS) != NULL)
-           || (pcmk__env_option(PCMK__ENV_TRACE_TAGS) != NULL);
+    return (crm_log_level == LOG_TRACE) || tracing_objects;
 }
 
 /*!
@@ -787,14 +788,17 @@ init_tracing(void)
 
     if (files != NULL) {
         trace_files = g_strsplit(files, ",", 0);
+        tracing_objects = true;
     }
 
     if (formats != NULL) {
         trace_formats = g_strsplit(formats, ",", 0);
+        tracing_objects = true;
     }
 
     if (functions != NULL) {
         trace_functions = g_strsplit(functions, ",", 0);
+        tracing_objects = true;
     }
 
     if (tags != NULL) {
@@ -807,6 +811,7 @@ init_tracing(void)
 
             pcmk__info("Created GQuark %lld from token '%s' in '%s'",
                        (long long) g_quark_from_string(*tag), *tag, tags);
+            tracing_objects = true;
         }
 
         // We have the GQuarks, so we don't need the array anymore
@@ -832,6 +837,8 @@ cleanup_tracing(void)
 
     g_strfreev(trace_functions);
     trace_functions = NULL;
+
+    tracing_objects = false;
 }
 
 gboolean
