@@ -65,8 +65,6 @@ pcmk__config_warning_func pcmk__config_warning_handler = NULL;
 void *pcmk__config_error_context = NULL;
 void *pcmk__config_warning_context = NULL;
 
-static gboolean crm_tracing_enabled(void);
-
 /*!
  * \internal
  * \brief Info for setting/removing our GLib log handler for a domain
@@ -201,6 +199,23 @@ remove_glib_log_handlers(void)
 
 /*!
  * \internal
+ * \brief Check whether tracing is enabled anywhere
+ *
+ * \return \c true if tracing is enabled globally or for any file, function,
+ *         format, or tag; or \c false otherwise
+ */
+static bool
+tracing_enabled(void)
+{
+    return (crm_log_level == LOG_TRACE)
+           || (pcmk__env_option(PCMK__ENV_TRACE_FILES) != NULL)
+           || (pcmk__env_option(PCMK__ENV_TRACE_FUNCTIONS) != NULL)
+           || (pcmk__env_option(PCMK__ENV_TRACE_FORMATS) != NULL)
+           || (pcmk__env_option(PCMK__ENV_TRACE_TAGS) != NULL);
+}
+
+/*!
+ * \internal
  * \brief Set the log format string based on the given target
  *
  * \param[in] target     Log target (detail level)
@@ -240,7 +255,7 @@ set_format_string(int target, pid_t pid, const char *node_name)
 
     // Add function name (in parentheses)
     g_string_append(fmt, "(%n");
-    if (crm_tracing_enabled()) {
+    if (tracing_enabled()) {
         // When tracing, add file and line number
         g_string_append(fmt, "@%f:%l");
     }
@@ -866,16 +881,6 @@ crm_update_callsites(void)
                     pcmk__s(pcmk__env_option(PCMK__ENV_TRACE_TAGS), "<null>"));
     }
     qb_log_filter_fn_set(crm_log_filter);
-}
-
-static gboolean
-crm_tracing_enabled(void)
-{
-    return (crm_log_level == LOG_TRACE)
-            || (pcmk__env_option(PCMK__ENV_TRACE_FILES) != NULL)
-            || (pcmk__env_option(PCMK__ENV_TRACE_FUNCTIONS) != NULL)
-            || (pcmk__env_option(PCMK__ENV_TRACE_FORMATS) != NULL)
-            || (pcmk__env_option(PCMK__ENV_TRACE_TAGS) != NULL);
 }
 
 static int
