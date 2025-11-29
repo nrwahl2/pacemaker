@@ -28,8 +28,9 @@
 #include <time.h>
 #include <libgen.h>
 #include <signal.h>
-#include <bzlib.h>
 
+#include <bzlib.h>
+#include <glib.h>                   // g_*, G_*, etc.
 #include <qb/qbdefs.h>
 
 #include <crm/crm.h>
@@ -68,48 +69,71 @@ void *pcmk__config_warning_context = NULL;
 
 static gboolean crm_tracing_enabled(void);
 
-static void
-crm_glib_handler(const gchar * log_domain, GLogLevelFlags flags, const gchar * message,
-                 gpointer user_data)
+/*!
+ * \internal
+ * \brief Convert a GLib log level to a syslog log level
+ *
+ * \param[in] log_level  GLib log level
+ *
+ * \return The syslog level corresponding to \p log_level
+ */
+static uint8_t
+log_level_from_glib(GLogLevelFlags log_level)
 {
-    int log_level = LOG_WARNING;
-    GLogLevelFlags msg_level = (flags & G_LOG_LEVEL_MASK);
-    static struct qb_log_callsite *glib_cs = NULL;
-
-    if (glib_cs == NULL) {
-        glib_cs = qb_log_callsite_get(__func__, __FILE__, "glib-handler",
-                                      LOG_DEBUG, __LINE__, crm_trace_nonlog);
-    }
-
-    switch (msg_level) {
+    switch (log_level & G_LOG_LEVEL_MASK) {
         case G_LOG_LEVEL_CRITICAL:
-            log_level = LOG_CRIT;
-
-            if (!crm_is_callsite_active(glib_cs, LOG_DEBUG, crm_trace_nonlog)) {
-                /* log and record how we got here */
-                crm_abort(__FILE__, __func__, __LINE__, message, TRUE, TRUE);
-            }
-            break;
+            return LOG_CRIT;
 
         case G_LOG_LEVEL_ERROR:
-            log_level = LOG_ERR;
-            break;
+            return LOG_ERR;
+
         case G_LOG_LEVEL_MESSAGE:
-            log_level = LOG_NOTICE;
-            break;
+            return LOG_NOTICE;
+
         case G_LOG_LEVEL_INFO:
-            log_level = LOG_INFO;
-            break;
+            return LOG_INFO;
+
         case G_LOG_LEVEL_DEBUG:
-            log_level = LOG_DEBUG;
-            break;
+            return LOG_DEBUG;
 
         case G_LOG_LEVEL_WARNING:
-        case G_LOG_FLAG_RECURSION:
-        case G_LOG_FLAG_FATAL:
-        case G_LOG_LEVEL_MASK:
-            log_level = LOG_WARNING;
-            break;
+            return LOG_WARNING;
+
+        default:
+            // Should never happen
+            return LOG_ERR;
+    }
+}
+
+/*!
+ * \internal
+ * \brief Handle a log message from GLib
+ *
+ * \param[in] log_domain  Log domain of the message
+ * \param[in] log_level   Log level of the message (including fatal and
+ *                        recursion flags)
+ * \param[in] message     Message to process
+ * \param[in] user_data   Ignored
+ */
+static void
+handle_glib_message(const gchar *log_domain, GLogLevelFlags log_level,
+                    const gchar *message, gpointer user_data)
+{
+    uint8_t syslog_level = log_level_from_glib(log_level);
+
+    if (syslog_level == LOG_CRIT) {
+        static struct qb_log_callsite *glib_cs = NULL;
+
+        if (glib_cs == NULL) {
+            glib_cs = qb_log_callsite_get(__func__, __FILE__, "glib-handler",
+                                          LOG_DEBUG, __LINE__,
+                                          crm_trace_nonlog);
+        }
+
+        if (!crm_is_callsite_active(glib_cs, LOG_DEBUG, crm_trace_nonlog)) {
+            // Abort and dump core for diagnostics
+            crm_abort(__FILE__, __func__, __LINE__, message, true, true);
+        }
     }
 
     do_crm_log(log_level, "%s: %s", log_domain, message);
@@ -906,7 +930,9 @@ crm_log_preinit(const char *entity, int argc, char *const *argv)
     pid_t pid = getpid();
     const char *nodename = "localhost";
     static bool have_logging = false;
-    GLogLevelFlags log_levels;
+    const GLogLevelFlags log_levels = G_LOG_LEVEL_MASK
+                                      |G_LOG_FLAG_FATAL
+                                      |G_LOG_FLAG_RECURSION;
 
     if (have_logging) {
         return;
@@ -929,13 +955,18 @@ crm_log_preinit(const char *entity, int argc, char *const *argv)
     umask(S_IWGRP | S_IWOTH | S_IROTH);
 
     /* Add a log handler for messages from our log domain at any log level. */
-    log_levels = G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL | G_LOG_FLAG_RECURSION;
-    pcmk__log_id = g_log_set_handler(G_LOG_DOMAIN, log_levels, crm_glib_handler, NULL);
+    pcmk__log_id = g_log_set_handler(G_LOG_DOMAIN, log_levels,
+                                     handle_glib_message, NULL);
+
     /* Add a log handler for messages from the GLib domains at any log level. */
-    pcmk__glib_log_id = g_log_set_handler("GLib", log_levels, crm_glib_handler, NULL);
-    pcmk__gio_log_id = g_log_set_handler("GLib-GIO", log_levels, crm_glib_handler, NULL);
-    pcmk__gmodule_log_id = g_log_set_handler("GModule", log_levels, crm_glib_handler, NULL);
-    pcmk__gthread_log_id = g_log_set_handler("GThread", log_levels, crm_glib_handler, NULL);
+    pcmk__glib_log_id = g_log_set_handler("GLib", log_levels,
+                                          handle_glib_message, NULL);
+    pcmk__gio_log_id = g_log_set_handler("GLib-GIO", log_levels,
+                                         handle_glib_message, NULL);
+    pcmk__gmodule_log_id = g_log_set_handler("GModule", log_levels,
+                                             handle_glib_message, NULL);
+    pcmk__gthread_log_id = g_log_set_handler("GThread", log_levels,
+                                             handle_glib_message, NULL);
 
     /* glib should not abort for any messages from the Pacemaker domain, but
      * other domains are still free to specify their own behavior.  However,
