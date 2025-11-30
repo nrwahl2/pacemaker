@@ -303,7 +303,10 @@ chown_logfile(const char *filename, int logfd)
 
     // Get the log file's current ownership and permissions
     if (fstat(logfd, &st) < 0) {
-        return errno;
+        rc = errno;
+        pcmk__warn("Logging to '%s' is disabled because fstat() failed: %s",
+                   filename, strerror(rc));
+        return rc;
     }
 
     // Any other errors don't prevent file from being used as log
@@ -385,8 +388,8 @@ set_logfile_permissions(const char *filename, FILE *logfile)
     fd = fileno(logfile);
     if (fd < 0) {
         rc = errno;
-        pcmk__warn("Couldn't get file descriptor for logging to '%s': %s",
-                   filename, strerror(rc));
+        pcmk__warn("Logging to '%s' is disabled because couldn't get file "
+                   "descriptor: %s", filename, strerror(rc));
         return rc;
     }
 
@@ -486,8 +489,7 @@ pcmk__add_logfile(const char *filename)
 
     rc = set_logfile_permissions(filename, logfile);
     if (rc != pcmk_rc_ok) {
-        pcmk__warn("Logging to '%s' is disabled: %s " QB_XS " permissions",
-                   filename, strerror(rc));
+        // Warning has already been logged
         fclose(logfile);
         return rc;
     }
