@@ -335,19 +335,39 @@ chmod_logfile(const char *filename, int logfd)
     }
 }
 
-// If we're root, correct a log file's permissions if needed
+/*!
+ * \internal
+ * \brief If we're root, ensure a log file has correct permissions and ownership
+ *
+ * \param[in] filename  Log file name (for logging only)
+ * \param[in] logfile   Log file stream
+ *
+ * \return Standard Pacemaker return code
+ */
 static int
 set_logfile_permissions(const char *filename, FILE *logfile)
 {
-    if (geteuid() == 0) {
-        int logfd = fileno(logfile);
-        int rc = chown_logfile(filename, logfd);
+    int fd = 0;
+    int rc = pcmk_rc_ok;
 
-        if (rc != pcmk_rc_ok) {
-            return rc;
-        }
-        chmod_logfile(filename, logfd);
+    if (geteuid() != 0) {
+        return pcmk_rc_ok;
     }
+
+    fd = fileno(logfile);
+    if (fd < 0) {
+        rc = errno;
+        pcmk__warn("Couldn't get file descriptor for logging to '%s': %s",
+                   filename, strerror(rc));
+        return rc;
+    }
+
+    rc = chown_logfile(filename, fd);
+    if (rc != pcmk_rc_ok) {
+        return rc;
+    }
+
+    chmod_logfile(filename, fd);
     return pcmk_rc_ok;
 }
 
