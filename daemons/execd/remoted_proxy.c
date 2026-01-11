@@ -27,10 +27,9 @@
 
 #include "pacemaker-execd.h"            // lrmd_server_send_notify
 
-static qb_ipcs_service_t *cib_ro = NULL;
-static qb_ipcs_service_t *cib_rw = NULL;
-
 static qb_ipcs_service_t *attrd_ipcs = NULL;
+static qb_ipcs_service_t *based_ipcs_ro = NULL;
+static qb_ipcs_service_t *based_ipcs_rw = NULL;
 static qb_ipcs_service_t *controld_ipcs = NULL;
 static qb_ipcs_service_t *fencer_ipcs = NULL;
 static qb_ipcs_service_t *pacemakerd_ipcs = NULL;
@@ -133,6 +132,12 @@ attrd_proxy_accept(qb_ipcs_connection_t *c, uid_t uid, gid_t gid)
 }
 
 static int32_t
+based_proxy_accept(qb_ipcs_connection_t *c, uid_t uid, gid_t gid)
+{
+    return ipc_proxy_accept(c, uid, gid, PCMK__SERVER_BASED_RW);
+}
+
+static int32_t
 fencer_proxy_accept(qb_ipcs_connection_t *c, uid_t uid, gid_t gid)
 {
     return ipc_proxy_accept(c, uid, gid, "stonith-ng");
@@ -142,18 +147,6 @@ static int32_t
 pacemakerd_proxy_accept(qb_ipcs_connection_t *c, uid_t uid, gid_t gid)
 {
     return -EREMOTEIO;
-}
-
-static int32_t
-cib_proxy_accept_rw(qb_ipcs_connection_t *c, uid_t uid, gid_t gid)
-{
-    return ipc_proxy_accept(c, uid, gid, PCMK__SERVER_BASED_RW);
-}
-
-static int32_t
-cib_proxy_accept_ro(qb_ipcs_connection_t *c, uid_t uid, gid_t gid)
-{
-    return ipc_proxy_accept(c, uid, gid, PCMK__SERVER_BASED_RO);
 }
 
 int
@@ -438,6 +431,14 @@ static struct qb_ipcs_service_handlers attrd_proxy_callbacks = {
     .connection_destroyed = ipc_proxy_destroy
 };
 
+static struct qb_ipcs_service_handlers based_proxy_callbacks = {
+    .connection_accept = based_proxy_accept,
+    .connection_created = NULL,
+    .msg_process = ipc_proxy_dispatch,
+    .connection_closed = ipc_proxy_closed,
+    .connection_destroyed = ipc_proxy_destroy
+};
+
 static struct qb_ipcs_service_handlers fencer_proxy_callbacks = {
     .connection_accept = fencer_proxy_accept,
     .connection_created = NULL,
@@ -452,22 +453,6 @@ static struct qb_ipcs_service_handlers pacemakerd_proxy_callbacks = {
     .msg_process = NULL,
     .connection_closed = NULL,
     .connection_destroyed = NULL
-};
-
-static struct qb_ipcs_service_handlers cib_proxy_callbacks_ro = {
-    .connection_accept = cib_proxy_accept_ro,
-    .connection_created = NULL,
-    .msg_process = ipc_proxy_dispatch,
-    .connection_closed = ipc_proxy_closed,
-    .connection_destroyed = ipc_proxy_destroy
-};
-
-static struct qb_ipcs_service_handlers cib_proxy_callbacks_rw = {
-    .connection_accept = cib_proxy_accept_rw,
-    .connection_created = NULL,
-    .msg_process = ipc_proxy_dispatch,
-    .connection_closed = ipc_proxy_closed,
-    .connection_destroyed = ipc_proxy_destroy
 };
 
 void
@@ -518,9 +503,9 @@ ipc_proxy_init(void)
 {
     ipc_clients = pcmk__strkey_table(NULL, NULL);
 
-    pcmk__serve_based_ipc(&cib_ro, &cib_rw, &cib_proxy_callbacks_ro,
-                          &cib_proxy_callbacks_rw);
     pcmk__serve_attrd_ipc(&attrd_ipcs, &attrd_proxy_callbacks);
+    pcmk__serve_based_ipc(&based_ipcs_ro, &based_ipcs_rw,
+                          &based_proxy_callbacks, &based_proxy_callbacks);
 
     pcmk__serve_controld_ipc(&controld_ipcs, &crmd_proxy_callbacks);
     if (controld_ipcs == NULL) {
@@ -539,8 +524,8 @@ ipc_proxy_cleanup(void)
     g_clear_pointer(&ipc_clients, g_hash_table_destroy);
 
     g_clear_pointer(&attrd_ipcs, qb_ipcs_destroy);
-    g_clear_pointer(&cib_ro, qb_ipcs_destroy);
-    g_clear_pointer(&cib_rw, qb_ipcs_destroy);
+    g_clear_pointer(&based_ipcs_ro, qb_ipcs_destroy);
+    g_clear_pointer(&based_ipcs_rw, qb_ipcs_destroy);
     g_clear_pointer(&controld_ipcs, qb_ipcs_destroy);
     g_clear_pointer(&fencer_ipcs, qb_ipcs_destroy);
     g_clear_pointer(&pacemakerd_ipcs, qb_ipcs_destroy);
