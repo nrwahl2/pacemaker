@@ -246,7 +246,6 @@ crmd_exit(crm_exit_t exit_code)
 
         // Exit the main loop and free it when we return from this dispatch
         g_main_loop_quit(mloop);
-        g_main_loop_unref(mloop);
     }
 
     throttle_fini();
