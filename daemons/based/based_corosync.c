@@ -9,6 +9,7 @@
 
 #include <crm_internal.h>
 
+#include <inttypes.h>               // PRIu32
 #include <stdbool.h>
 #include <stddef.h>                 // NULL, size_t
 #include <stdint.h>                 // uint32_t
@@ -57,10 +58,17 @@ static void
 based_cpg_dispatch(cpg_handle_t handle, const struct cpg_name *group_name,
                    uint32_t nodeid, uint32_t pid, void *msg, size_t msg_len)
 {
-    xmlNode *xml = NULL;
+    char *data = NULL;
     const char *from = NULL;
-    char *data = pcmk__cpg_message_data(handle, nodeid, pid, msg, &from);
+    xmlNode *xml = NULL;
 
+    if (based_shutting_down()) {
+        pcmk__info("Ignoring CPG message from node %" PRIu32 " during shutdown",
+                   nodeid);
+        return;
+    }
+
+    data = pcmk__cpg_message_data(handle, nodeid, pid, msg, &from);
     if (data == NULL) {
         return;
     }
@@ -86,8 +94,8 @@ based_cpg_destroy(void *user_data)
         return;
     }
 
-    pcmk__crit("Exiting immediately after losing connection to cluster layer");
-    based_terminate(CRM_EX_DISCONNECT);
+    pcmk__crit("Exiting after losing connection to cluster layer");
+    based_quit_main_loop(CRM_EX_DISCONNECT);
 }
 #endif
 
