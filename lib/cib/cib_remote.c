@@ -172,9 +172,9 @@ cib_remote_perform_op(cib_t *cib, const char *op, const char *host,
         return -ENOMSG;
     }
 
-    /* The only reason we can receive an ACK here is if dispatch_common ->
+    /* The only reason we can receive an ACK here is if based_ipc_dispatch ->
      * pcmk__client_data2xml processed something that's not valid XML.
-     * dispatch_common does not return ACK, unlike other daemons.
+     * based_ipc_dispatch does not return ACK, unlike other daemons.
      */
     if (pcmk__xe_is(op_reply, PCMK__XE_ACK) && ack_is_failure(op_reply)) {
         pcmk__xml_free(op_reply);
@@ -526,9 +526,9 @@ cib_tls_signon(cib_t *cib, pcmk__remote_t *connection, gboolean event_channel)
         goto done;
     }
 
-    /* The only reason we can receive an ACK here is if dispatch_common ->
+    /* The only reason we can receive an ACK here is if based_ipc_dispatch ->
      * pcmk__client_data2xml processed something that's not valid XML.
-     * dispatch_common does not return ACK, unlike other daemons.
+     * based_ipc_dispatch does not return ACK, unlike other daemons.
      */
     if (pcmk__xe_is(answer, PCMK__XE_ACK) && ack_is_failure(answer)) {
         rc = -EPROTO;

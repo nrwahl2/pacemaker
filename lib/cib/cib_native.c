@@ -104,9 +104,9 @@ cib_native_perform_op_delegate(cib_t *cib, const char *op, const char *host,
         goto done;
     }
 
-    /* The only reason we can receive an ACK here is if dispatch_common ->
+    /* The only reason we can receive an ACK here is if based_ipc_dispatch ->
      * pcmk__client_data2xml processed something that's not valid XML.
-     * dispatch_common does not return ACK, unlike other daemons.
+     * based_ipc_dispatch does not return ACK, unlike other daemons.
      */
     if (pcmk__xe_is(op_reply, PCMK__XE_ACK) && ack_is_failure(op_reply)) {
         rc = -EPROTO;
@@ -339,9 +339,10 @@ cib_native_signon(cib_t *cib, const char *name, enum cib_conn_type type)
             goto done;
         }
 
-        /* The only reason we can receive an ACK here is if dispatch_common ->
-         * pcmk__client_data2xml processed something that's not valid XML.
-         * dispatch_common does not return ACK, unlike other daemons.
+        /* The only reason we can receive an ACK here is if
+         * based_ipc_dispatch -> pcmk__client_data2xml processed something
+         * that's not valid XML. based_ipc_dispatch does not return ACK, unlike
+         * other daemons.
          */
         if (pcmk__xe_is(reply, PCMK__XE_ACK) && ack_is_failure(reply)) {
             rc = -EPROTO;
