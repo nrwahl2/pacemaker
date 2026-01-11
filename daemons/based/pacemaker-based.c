@@ -370,7 +370,6 @@ main(int argc, char **argv)
         goto done;
     }
 
-    pcmk__cluster_init_node_caches();
     based_callbacks_init();
     based_io_init();
 
