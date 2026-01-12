@@ -219,8 +219,7 @@ based_ipc_dispatch(qb_ipcs_connection_t *c, void *data, size_t size)
         CRM_LOG_ASSERT(client->user != NULL);
         pcmk__update_acl_user(request.xml, PCMK__XA_CIB_USER, client->user);
 
-        based_process_request(request.xml, request.ipc_client);
-        pcmk__reset_request(&request);
+        based_handle_request(&request);
     }
 
 cleanup:
