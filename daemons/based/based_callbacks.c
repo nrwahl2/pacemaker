@@ -466,11 +466,13 @@ parse_peer_options(const cib__operation_t *operation, xmlNode *request,
  * \param[in] request  CIB request to forward
  *
  * \note This does nothing if running in stand-alone mode.
+ * \note \p request is modified within the function, but its initial state is
+ *       restored before returning. This probably doesn't matter, however.
  */
 static void
-forward_request(xmlNode *request)
+forward_request(pcmk__request_t *request)
 {
-    const char *host = pcmk__xe_get(request, PCMK__XA_CIB_HOST);
+    const char *host = pcmk__xe_get(request->xml, PCMK__XA_CIB_HOST);
     pcmk__node_status_t *peer = NULL;
 
     if (based_stand_alone()) {
@@ -482,10 +484,10 @@ forward_request(xmlNode *request)
     }
 
     // Set PCMK__XA_CIB_DELEGATED_FROM only temporarily
-    pcmk__xe_set(request, PCMK__XA_CIB_DELEGATED_FROM,
+    pcmk__xe_set(request->xml, PCMK__XA_CIB_DELEGATED_FROM,
                  based_cluster_node_name());
-    pcmk__cluster_send_message(peer, pcmk_ipc_based, request);
-    pcmk__xe_remove_attr(request, PCMK__XA_CIB_DELEGATED_FROM);
+    pcmk__cluster_send_message(peer, pcmk_ipc_based, request->xml);
+    pcmk__xe_remove_attr(request->xml, PCMK__XA_CIB_DELEGATED_FROM);
 }
 
 static int
@@ -751,7 +753,7 @@ based_handle_request(pcmk__request_t *request)
                 || !pcmk__str_eq(host, based_cluster_node_name(),
                                  pcmk__str_casei|pcmk__str_null_matches))) {
 
-            forward_request(request->xml);
+            forward_request(request);
             pcmk__reset_request(request);
             return pcmk_rc_ok;
         }
