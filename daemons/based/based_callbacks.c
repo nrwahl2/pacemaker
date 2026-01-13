@@ -317,6 +317,15 @@ parse_peer_options(const cib__operation_t *operation, pcmk__request_t *request,
                    bool *local_notify, bool *needs_reply, bool *process)
 {
     const char *local_node_name = based_cluster_node_name();
+
+    /* Don't send replies for modifying ops because they already get forwarded
+     * to all nodes. Also don't send a reply if the client specifically told us
+     * not to.
+     */
+    const bool can_reply = !operation->modifies_cib
+                           && !pcmk__is_set(request->call_options,
+                                            cib_discard_reply);
+
     const char *host = pcmk__xe_get(request->xml, PCMK__XA_CIB_HOST);
     const char *delegated = pcmk__xe_get(request->xml,
                                          PCMK__XA_CIB_DELEGATED_FROM);
@@ -360,6 +369,11 @@ parse_peer_options(const cib__operation_t *operation, pcmk__request_t *request,
 
         // sync_our_cib() sets PCMK__XA_CIB_ISREPLYTO
         delegated = reply_to;
+
+        /* @FIXME can_reply is always false here because cib__op_replace has
+         * modifies_cib=true. Should we be sending a reply here?
+         */
+        *needs_reply = can_reply;
 
     } else if (pcmk__str_eq(request->op, PCMK__CIB_REQUEST_UPGRADE,
                             pcmk__str_none)) {
@@ -406,7 +420,7 @@ parse_peer_options(const cib__operation_t *operation, pcmk__request_t *request,
     if (pcmk__str_eq(host, local_node_name, pcmk__str_casei)) {
         pcmk__trace("Processing %s request sent to us from %s", request->op,
                     originator);
-        *needs_reply = true;
+        *needs_reply = can_reply;
         return;
     }
 
@@ -418,7 +432,7 @@ parse_peer_options(const cib__operation_t *operation, pcmk__request_t *request,
     }
 
     if (!is_reply && pcmk__str_eq(request->op, CRM_OP_PING, pcmk__str_none)) {
-        *needs_reply = true;
+        *needs_reply = can_reply;
     }
 }
 
@@ -726,7 +740,6 @@ based_handle_request(pcmk__request_t *request)
     }
 
     if (pcmk__is_set(request->call_options, cib_discard_reply)) {
-        needs_reply = false;
         local_notify = false;
         pcmk__trace("Client is not interested in the reply");
     }
