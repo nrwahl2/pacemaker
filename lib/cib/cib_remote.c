@@ -195,10 +195,7 @@ cib_remote_perform_op(cib_t *cib, const char *op, const char *host,
         pcmk__log_xml_warn(op_reply, "failed");
     }
 
-    if (output_data == NULL) {
-        /* do nothing more */
-
-    } else if (!pcmk__is_set(call_options, cib_discard_reply)) {
+    if (output_data != NULL) {
         xmlNode *tmp = cib__get_calldata(op_reply);
 
         if (tmp == NULL) {
