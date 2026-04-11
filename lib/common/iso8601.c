@@ -178,25 +178,37 @@ year_days(int year)
     return is_leap_year(year)? 366 : 365;
 }
 
-/* From http://myweb.ecu.edu/mccartyr/ISOwdALG.txt :
+/*!
+ * \internal
+ * \brief Get day of week for January 1 of given year
  *
- * 5. Find the Jan1Weekday for Y (Monday=1, Sunday=7)
- *  YY = (Y-1) % 100
- *  C = (Y-1) - YY
- *  G = YY + YY/4
- *  Jan1Weekday = 1 + (((((C / 100) % 4) x 5) + G) % 7)
+ * \param[in] year  Year (between 1 and 9999)
+ *
+ * \return Day of week (in range 1-7) corresponding to January 1 of \p year
  */
 static int
 jan1_day_of_week(int year)
 {
-    int YY = (year - 1) % 100;
-    int C = (year - 1) - YY;
-    int G = YY + YY / 4;
-    int jan1 = 1 + (((((C / 100) % 4) * 5) + G) % 7);
+    gint day_of_week = 0;
+    GDateTime *dt = g_date_time_new_utc(year, 1, 1, 0, 0, 0);
 
-    pcmk__trace("YY=%d, C=%d, G=%d", YY, C, G);
-    pcmk__trace("January 1 %.4d: %d", year, jan1);
-    return jan1;
+    /* @COMPAT Remove this fallback when we can ensure that the year argument is
+     * always in the range 1 to 9999. At that point, simply assert (dt != NULL).
+     */
+    if (dt == NULL) {
+        int YY = (year - 1) % 100;
+        int C = (year - 1) - YY;
+        int G = YY + YY / 4;
+        int day_of_week = 1 + (((((C / 100) % 4) * 5) + G) % 7);
+
+        pcmk__trace("YY=%d, C=%d, G=%d", YY, C, G);
+        pcmk__trace("January 1 %.4d: %d", year, day_of_week);
+        return day_of_week;
+    }
+
+    day_of_week = g_date_time_get_day_of_week(dt);
+    g_date_time_unref(dt);
+    return day_of_week;
 }
 
 static int
