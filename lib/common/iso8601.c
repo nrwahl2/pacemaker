@@ -211,23 +211,43 @@ jan1_day_of_week(int year)
     return day_of_week;
 }
 
+/*!
+ * \internal
+ * \brief Get the number of ISO 8601 calendar weeks in the given year
+ *
+ * \param[in] year  Year (between 1 and 9999)
+ *
+ * \return Week number of the last ISO 8601 week in \p year
+ */
 static int
 weeks_in_year(int year)
 {
-    int weeks = 52;
-    int jan1 = jan1_day_of_week(year);
+    gint weeks = 0;
 
-    /* if jan1 == thursday */
-    if (jan1 == 4) {
-        weeks++;
-    } else {
-        jan1 = jan1_day_of_week(year + 1);
-        /* if dec31 == thursday aka. jan1 of next year is a friday */
-        if (jan1 == 5) {
-            weeks++;
+    /* Dec 28 is always in the last ISO 8601 week of the year
+     * (https://en.wikipedia.org/wiki/ISO_week_date#Last_week)
+     */
+    GDateTime *dt = g_date_time_new_utc(year, 12, 28, 0, 0, 0);
+
+    /* @COMPAT Remove this fallback when we can ensure that the year argument is
+     * always in the range 1 to 9999. At that point, simply assert (dt != NULL).
+     */
+    if (dt == NULL) {
+        // Jan 1 of this year is a Thursday
+        if (jan1_day_of_week(year) == 4) {
+            return 53;
         }
 
+        // If Jan 1 of next year is a Friday, Dec 31 of this year is a Thursday
+        if (jan1_day_of_week(year + 1) == 5) {
+            return 53;
+        }
+
+        return 52;
     }
+
+    weeks = g_date_time_get_week_of_year(dt);
+    g_date_time_unref(dt);
     return weeks;
 }
 
