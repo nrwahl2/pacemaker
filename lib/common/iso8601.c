@@ -1195,25 +1195,25 @@ parse_duration_element(const char **element, const char *duration_s,
     switch (**element) {
         case 'Y':
             duration->years = value;
-            break;
+            return pcmk_rc_ok;
 
         case 'M':
             if (!as_time) { // Months
                 duration->months = value;
-
-            } else { // Minutes
-                result = duration->seconds + (value * 60LL);
-                if ((result < INT_MIN) || (result > INT_MAX)) {
-                    pcmk__err("'%s' is not a valid ISO 8601 time duration "
-                              "because integer at '%s' is too %s", duration_s,
-                              start, ((result > 0)? "large" : "small"));
-                    return pcmk_rc_bad_input;
-                }
-
-                duration->seconds = (int) result;
+                return pcmk_rc_ok;
             }
 
-            break;
+            // Minutes
+            result = duration->seconds + (value * 60LL);
+            if ((result < INT_MIN) || (result > INT_MAX)) {
+                pcmk__err("'%s' is not a valid ISO 8601 time duration because "
+                          "integer at '%s' is too %s", duration_s, start,
+                          ((result > 0)? "large" : "small"));
+                return pcmk_rc_bad_input;
+            }
+
+            duration->seconds = (int) result;
+            return pcmk_rc_ok;
 
         case 'W':
             result = duration->days + (value * 7LL);
@@ -1225,7 +1225,7 @@ parse_duration_element(const char **element, const char *duration_s,
             }
 
             duration->days = (int) result;
-            break;
+            return pcmk_rc_ok;
 
         case 'D':
             result = duration->days + (long long) value;
@@ -1237,7 +1237,7 @@ parse_duration_element(const char **element, const char *duration_s,
             }
 
             duration->days = (int) result;
-            break;
+            return pcmk_rc_ok;
 
         case 'H':
             result = duration->seconds + ((long long) value * SECONDS_IN_HOUR);
@@ -1249,7 +1249,7 @@ parse_duration_element(const char **element, const char *duration_s,
             }
 
             duration->seconds = (int) result;
-            break;
+            return pcmk_rc_ok;
 
         case 'S':
             result = duration->seconds + (long long) value;
@@ -1261,7 +1261,7 @@ parse_duration_element(const char **element, const char *duration_s,
             }
 
             duration->seconds = (int) result;
-            break;
+            return pcmk_rc_ok;
 
         case '\0':
             pcmk__err("'%s' is not a valid ISO 8601 time duration because "
@@ -1273,8 +1273,6 @@ parse_duration_element(const char **element, const char *duration_s,
                       "'%c' is not a valid time unit", duration_s, **element);
             return pcmk_rc_bad_input;
     }
-
-    return pcmk_rc_ok;
 }
 
 /*!
