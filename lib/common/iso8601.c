@@ -170,17 +170,31 @@ days_in_month_year(int month, int year)
 static int
 get_ordinal_days(uint32_t year, uint32_t month, uint32_t day)
 {
-    int prev_month_days = 0;
+    GDate *date = NULL;
+    guint day_of_year = 0;
 
     CRM_CHECK((year >= 1) && (year <= INT_MAX)
               && (month >= 1) && (month <= 12)
               && (day >= 1) && (day <= 31), return 0);
 
-    for (int i = 1; i < month; i++) {
-        prev_month_days += days_in_month_year(i, year);
+    /* @COMPAT Remove this fallback when we can ensure that the year argument is
+     * always in the range 1 to UINT16_MAX and that month and day are valid.
+     */
+    if ((year > UINT16_MAX) || !g_date_valid_dmy(day, month, year)) {
+        int prev_month_days = 0;
+
+        for (int i = 1; i < month; i++) {
+            prev_month_days += days_in_month_year(i, year);
+        }
+
+        return prev_month_days + day;
     }
 
-    return prev_month_days + day;
+    date = g_date_new_dmy(day, month, year);
+    day_of_year = g_date_get_day_of_year(date);
+
+    g_date_free(date);
+    return (int) day_of_year;
 }
 
 static int
