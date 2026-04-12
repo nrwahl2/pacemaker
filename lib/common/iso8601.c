@@ -1800,15 +1800,14 @@ crm_time_add_days(crm_time_t *a_time, int extra)
 }
 
 void
-crm_time_add_months(crm_time_t * a_time, int extra)
+crm_time_add_months(crm_time_t *dt, int value)
 {
-    int lpc;
     uint32_t y, m, d, dmax;
 
-    crm_time_get_gregorian(a_time, &y, &m, &d);
+    crm_time_get_gregorian(dt, &y, &m, &d);
 
-    if (extra > 0) {
-        for (lpc = extra; lpc > 0; lpc--) {
+    if (value > 0) {
+        for (int i = value; i > 0; i--) {
             m++;
             if (m == 13) {
                 m = 1;
@@ -1816,7 +1815,7 @@ crm_time_add_months(crm_time_t * a_time, int extra)
             }
         }
     } else {
-        for (lpc = extra; lpc < 0; lpc++) {
+        for (int i = value; i < 0; i++) {
             m--;
             if (m == 0) {
                 m = 12;
@@ -1831,8 +1830,8 @@ crm_time_add_months(crm_time_t * a_time, int extra)
         d = dmax;
     }
 
-    a_time->years = y;
-    a_time->days = get_ordinal_days(y, m, d);
+    dt->years = y;
+    dt->days = get_ordinal_days(y, m, d);
 }
 
 void
