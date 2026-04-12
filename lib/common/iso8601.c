@@ -1177,43 +1177,26 @@ crm_time_as_string(const crm_time_t *dt, int flags)
 static int
 parse_int(const char *str, int *result)
 {
-    unsigned int lpc;
-    int offset = 0;
-    bool negate = false;
+    long long result_ll = 0;
+    char *end_text = NULL;
 
-    *result = 0;
+    if ((pcmk__scan_ll(str, &result_ll, 0) != pcmk_rc_ok)
+        || (result_ll <= INT_MIN) || (result_ll > INT_MAX)) {
 
-    // @TODO This cannot handle combinations of these characters
-    switch (str[0]) {
-        case '.':
-        case ',':
-            return 0; // Fractions are not supported
-
-        case '-':
-            negate = true;
-            offset = 1;
-            break;
-
-        case '+':
-            offset = 1;
-            break;
-
-        default:
-            break;
+        /* An unparsable string or an overflowed int is invalid. Note that
+         * INT_MIN is considered overflow as well. This behavior goes back to
+         * cccda695. It's convenient to preserve it, so that any potential
+         * negation later doesn't cause an overflow. In practice, values should
+         * not be this large, but nothing currently prevents it.
+         */
+        return 0;
     }
 
-    for (lpc = 0; (lpc < 10) && isdigit(str[offset]); lpc++) {
-        const int digit = str[offset++] - '0';
+    // This must succeed since pcmk__scan_ll() succeeded
+    strtoll(str, &end_text, 10);
 
-        if ((*result * 10LL + digit) > INT_MAX) {
-            return 0; // Overflow
-        }
-        *result = *result * 10 + digit;
-    }
-    if (negate) {
-        *result = -*result;
-    }
-    return (lpc > 0)? offset : 0;
+    *result = result_ll;
+    return end_text - str;
 }
 
 /*!
