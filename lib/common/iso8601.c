@@ -1151,7 +1151,6 @@ parse_int(const char *str, int *result)
             break;
 
         case '+':
-        case ':':
             offset = 1;
             break;
 
