@@ -88,8 +88,15 @@ crm_time_new_undefined(void)
 static bool
 is_leap_year(int year)
 {
-    return ((year % 4) == 0)
-           && (((year % 100) != 0) || (year % 400 == 0));
+    /* @COMPAT Remove this fallback when we can ensure that the year argument is
+     * always in the range 1 to 9999.
+     */
+    if ((year < 1) || (year > 9999)) {
+        return ((year % 4) == 0)
+                && (((year % 100) != 0) || (year % 400 == 0));
+    }
+
+    return g_date_is_leap_year(year);
 }
 
 /*!
