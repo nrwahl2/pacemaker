@@ -696,6 +696,7 @@ pe__unpack_dataset_nvpairs(const xmlNode *xml_obj, const char *set_name,
                            GHashTable *hash, const char *always_first,
                            pcmk_scheduler_t *scheduler)
 {
+    // pcmk__unpack_nvpair_blocks() requires crm_time_t until we update the API
     crm_time_t *next_change = NULL;
 
     CRM_CHECK((set_name != NULL) && (rule_input != NULL) && (hash != NULL)
@@ -714,9 +715,13 @@ pe__unpack_dataset_nvpairs(const xmlNode *xml_obj, const char *set_name,
                                hash, next_change, scheduler->input->doc);
 
     if (crm_time_is_defined(next_change)) {
-        time_t recheck = (time_t) crm_time_get_seconds_since_epoch(next_change);
+        GDateTime *dt = pcmk__get_g_date_time(next_change);
 
-        pcmk__update_recheck_time(recheck, scheduler, "rule evaluation");
+        if (dt != NULL) {
+            pcmk__update_recheck_time((time_t) g_date_time_to_unix(dt),
+                                      scheduler, "rule evaluation");
+            g_date_time_unref(dt);
+        }
     }
     crm_time_free(next_change);
 }
