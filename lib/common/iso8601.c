@@ -1910,8 +1910,8 @@ offset_text(int offset)
  * \note The caller is responsible for freeing the return value using
  *       \c g_date_time_unref().
  */
-static GDateTime *
-get_g_date_time(const crm_time_t *dt)
+GDateTime *
+pcmk__get_g_date_time(const crm_time_t *dt)
 {
     char *offset_s = offset_text(dt->offset);
     GTimeZone *tz = NULL;
@@ -1922,6 +1922,10 @@ get_g_date_time(const crm_time_t *dt)
     uint32_t seconds = 0;
 
     GDateTime *gdt = NULL;
+
+    if (dt == NULL) {
+        goto done;
+    }
 
     pcmk__assert(!dt->duration
                  && pcmk__time_valid_year(dt->years)
@@ -1994,7 +1998,7 @@ pcmk__time_format_hr(const char *format, const crm_time_t *dt, int usec)
     buf = g_string_sized_new(128);
 
     ha_get_tm_time(&tm, dt);
-    gdt = get_g_date_time(dt);
+    gdt = pcmk__get_g_date_time(dt);
     if (gdt == NULL) {
         goto done;
     }

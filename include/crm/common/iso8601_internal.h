@@ -66,6 +66,7 @@ struct crm_time_s {
     bool duration;
 };
 
+GDateTime *pcmk__get_g_date_time(const crm_time_t *dt);
 bool valid_time(const crm_time_t *dt);
 
 #ifdef __cplusplus

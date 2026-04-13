@@ -550,12 +550,13 @@ unpack_timeout(const char *value)
 // true if value contains valid, non-NULL interval origin for recurring op
 static bool
 unpack_interval_origin(const char *value, const xmlNode *xml_obj,
-                       guint interval_ms, const crm_time_t *now,
+                       guint interval_ms, GDateTime *now,
                        long long *start_delay)
 {
     long long result = 0;
     guint interval_sec = pcmk__timeout_ms2s(interval_ms);
     crm_time_t *origin = NULL;
+    GDateTime *origin_g = NULL;
 
     // Ignore unspecified values and non-recurring operations
     if ((value == NULL) || (interval_ms == 0) || (now == NULL)) {
@@ -564,7 +565,10 @@ unpack_interval_origin(const char *value, const xmlNode *xml_obj,
 
     // Parse interval origin from text
     origin = crm_time_new(value);
-    if (origin == NULL) {
+    origin_g = pcmk__get_g_date_time(origin);
+    crm_time_free(origin);
+
+    if (origin_g == NULL) {
         pcmk__config_err("Ignoring '" PCMK_META_INTERVAL_ORIGIN "' for "
                          "operation '%s' because '%s' is not valid",
                          pcmk__s(pcmk__xe_id(xml_obj), "(missing ID)"), value);
@@ -572,8 +576,8 @@ unpack_interval_origin(const char *value, const xmlNode *xml_obj,
     }
 
     // Get seconds since origin (negative if origin is in the future)
-    result = crm_time_get_seconds(now) - crm_time_get_seconds(origin);
-    crm_time_free(origin);
+    result = g_date_time_difference(now, origin_g) / G_TIME_SPAN_SECOND;
+    g_date_time_unref(origin_g);
 
     // Calculate seconds from closest interval to now
     result = result % interval_sec;
@@ -795,13 +799,18 @@ pcmk__unpack_action_meta(pcmk_resource_t *rsc, const pcmk_node_t *node,
         unpack_start_delay(str, meta);
     } else {
         long long start_delay = 0;
+        GDateTime *dt = pcmk__get_g_date_time(rsc->priv->scheduler->priv->now);
 
         str = g_hash_table_lookup(meta, PCMK_META_INTERVAL_ORIGIN);
-        if (unpack_interval_origin(str, action_config, interval_ms,
-                                   rsc->priv->scheduler->priv->now,
+
+        if (unpack_interval_origin(str, action_config, interval_ms, dt,
                                    &start_delay)) {
             g_hash_table_insert(meta, pcmk__str_copy(PCMK_META_START_DELAY),
                                 pcmk__assert_asprintf("%lld", start_delay));
+        }
+
+        if (dt != NULL) {
+            g_date_time_unref(dt);
         }
     }
     return meta;
