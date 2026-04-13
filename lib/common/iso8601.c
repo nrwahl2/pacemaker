@@ -1078,7 +1078,15 @@ time_as_string_common(const crm_time_t *dt, int usec, uint32_t flags)
         if (pcmk__is_set(flags, crm_time_seconds)) {
             seconds = crm_time_get_seconds(dt);
         } else {
-            seconds = crm_time_get_seconds_since_epoch(dt);
+            GDateTime *gdt = pcmk__get_g_date_time(dt);
+
+            if (gdt != NULL) {
+                seconds = g_date_time_to_unix(gdt);
+                g_date_time_unref(gdt);
+
+            } else {
+                seconds = crm_time_get_seconds_since_epoch(dt);
+            }
         }
 
         if (pcmk__is_set(flags, crm_time_usecs)) {
