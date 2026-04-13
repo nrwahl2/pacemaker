@@ -823,8 +823,8 @@ crm_time_get_seconds(const crm_time_t *dt)
 }
 
 #define EPOCH_SECONDS 62135596800ULL    /* Calculated using crm_time_get_seconds() */
-long long
-crm_time_get_seconds_since_epoch(const crm_time_t *dt)
+static long long
+seconds_since_epoch(const crm_time_t *dt)
 {
     return (dt == NULL)? 0 : (crm_time_get_seconds(dt) - EPOCH_SECONDS);
 }
@@ -1085,7 +1085,7 @@ time_as_string_common(const crm_time_t *dt, int usec, uint32_t flags)
                 g_date_time_unref(gdt);
 
             } else {
-                seconds = crm_time_get_seconds_since_epoch(dt);
+                seconds = seconds_since_epoch(dt);
             }
         }
 
@@ -2518,6 +2518,12 @@ crm_time_t *
 crm_time_parse_duration(const char *period_s)
 {
     return pcmk__time_parse_duration(period_s);
+}
+
+long long
+crm_time_get_seconds_since_epoch(const crm_time_t *dt)
+{
+    return seconds_since_epoch(dt);
 }
 
 // LCOV_EXCL_STOP

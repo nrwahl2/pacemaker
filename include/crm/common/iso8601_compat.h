@@ -86,6 +86,9 @@ crm_time_t *crm_time_calculate_duration(const crm_time_t *dt,
 //! \deprecated Do not use
 crm_time_t *crm_time_parse_duration(const char *duration_str);
 
+//! \deprecated Do not use
+long long crm_time_get_seconds_since_epoch(const crm_time_t *dt);
+
 #ifdef __cplusplus
 }
 #endif
