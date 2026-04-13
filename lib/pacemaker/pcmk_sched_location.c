@@ -380,10 +380,22 @@ unpack_rsc_location(xmlNode *xml_obj, pcmk_resource_t *rsc,
          * change, make sure the scheduler is re-run by that time.
          */
         if (crm_time_is_defined(next_change)) {
-            time_t t = (time_t) crm_time_get_seconds_since_epoch(next_change);
+            GDateTime *dt = pcmk__get_g_date_time(next_change);
+            time_t t = (time_t) g_date_time_to_unix(dt);
+
+            if (t == 0) {
+                /* g_date_time_to_unix() has logged an assertion in this case.
+                 *
+                 * @TODO Make next_change a GDateTime and drop this fallback.
+                 */
+                t = (time_t) crm_time_get_seconds_since_epoch(next_change);
+            }
 
             pcmk__update_recheck_time(t, rsc->priv->scheduler,
                                       "location rule evaluation");
+            if (dt != NULL) {
+                g_date_time_unref(dt);
+            }
         }
         crm_time_free(next_change);
     }
