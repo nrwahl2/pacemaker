@@ -278,6 +278,9 @@ pcmk_find_node(const pcmk_scheduler_t *scheduler, const char *node_name)
 time_t
 pcmk__scheduler_epoch_time(pcmk_scheduler_t *scheduler)
 {
+    GDateTime *now = NULL;
+    time_t epoch_time = 0;
+
     if (scheduler == NULL) {
         return time(NULL);
     }
@@ -285,7 +288,14 @@ pcmk__scheduler_epoch_time(pcmk_scheduler_t *scheduler)
         pcmk__trace("Scheduler 'now' set to current time");
         scheduler->priv->now = crm_time_new(NULL);
     }
-    return crm_time_get_seconds_since_epoch(scheduler->priv->now);
+
+    now = pcmk__get_g_date_time(scheduler->priv->now);
+    CRM_CHECK(now != NULL, return time(NULL));
+
+    epoch_time = (time_t) g_date_time_to_unix(now);
+    g_date_time_unref(now);
+
+    return epoch_time;
 }
 
 /*!
