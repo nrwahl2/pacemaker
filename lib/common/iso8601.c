@@ -1962,9 +1962,12 @@ pcmk__time_format_hr(const char *format, const crm_time_t *dt, int usec)
     struct tm tm = { 0, };
     GDateTime *gdt = NULL;
 
-    if (format == NULL) {
+    if ((format == NULL) || (dt == NULL)) {
         return NULL;
     }
+
+    // GDateTime requires the year to be in the range [1, 9999]
+    pcmk__assert(pcmk__time_valid_year(dt->years));
 
     buf = g_string_sized_new(128);
 
