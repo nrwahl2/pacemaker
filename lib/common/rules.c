@@ -235,7 +235,11 @@ pcmk__evaluate_date_spec(const xmlNode *date_spec, const crm_time_t *now)
  *                       initially)
  *
  * \return Standard Pacemaker return code
+ *
  * \note The caller is responsible for freeing \p *end using crm_time_free().
+ * \note The result object's \c years field may be out of the [1, 9999] range.
+ *       However, its \c days field should always be a valid day of \c years
+ *       (in range [1, 365], or [1, 366] for a leap year).
  */
 int
 pcmk__unpack_duration(const xmlNode *duration, const crm_time_t *start,

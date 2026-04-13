@@ -496,6 +496,10 @@ valid_time(const crm_time_t *dt)
  *                      \c PCMK__VALUE_EPOCH)
  *
  * \return New time object on success, NULL (and set errno) otherwise
+ *
+ * \note The result object's \c years field may be out of the [1, 9999] range.
+ *       However, its \c days field should always be a valid day of \c years
+ *       (in range [1, 365], or [1, 366] for a leap year).
  */
 static crm_time_t *
 parse_date(const char *date_str)
@@ -705,6 +709,10 @@ copy_time_to_utc(const crm_time_t *dt)
     return utc;
 }
 
+/* The result object's \c years field may be out of the [1, 9999] range.
+ * However, its \c days field should always be a valid day of \c years (in range
+ * [1, 365], or [1, 366] for a leap year).
+ */
 crm_time_t *
 crm_time_new(const char *date_time)
 {
@@ -1389,6 +1397,9 @@ invalid:
  * \internal
  * \brief Set one time object to another if the other is earlier
  *
+ * If the target object gets set, it is guaranteed to be set to a date/time in
+ * the range [0001-01-01T00:00:00, 9999-12-31T23:59:59].
+ *
  * \param[in,out] target  Time object to set
  * \param[in]     source  Time object to use if earlier
  */
@@ -1400,7 +1411,7 @@ pcmk__set_time_if_earlier(crm_time_t *target, const crm_time_t *source)
                       |crm_time_log_with_timezone;
 
     if ((target == NULL)
-        || (source == NULL)
+        || !crm_time_is_defined(source)
         || (crm_time_is_defined(target)
             && (crm_time_compare(source, target) >= 0))) {
 
@@ -1408,6 +1419,23 @@ pcmk__set_time_if_earlier(crm_time_t *target, const crm_time_t *source)
     }
 
     *target = *source;
+
+    /* source is set by crm_time_new() (via pcmk__xe_get_datetime()) or by
+     * pcmk__unpack_duration(). So its days field should always be a valid day
+     * of the year given by its years field. However, its years field may be out
+     * of range.
+     */
+    if (target->years > 9999) {
+        target->years = 9999;
+        target->days = year_days(9999);
+        target->seconds = SECONDS_IN_DAY - 1;
+
+    } else if (target->years < 1) {
+        target->years = 1;
+        target->days = 1;
+        target->seconds = 0;
+    }
+
     pcmk__time_log(LOG_TRACE, "source", source, flags);
     pcmk__time_log(LOG_TRACE, "target", target, flags);
 }
