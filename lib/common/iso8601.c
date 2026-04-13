@@ -1991,24 +1991,37 @@ offset_text(int offset)
 
 /*!
  * \internal
- * \brief Convert a <tt>struct tm</tt> to a \c GDateTime
+ * \brief Convert a \c crm_time_t to a \c GDateTime
  *
- * \param[in] tm      Time object to convert
- * \param[in] offset  Offset from UTC (in seconds)
+ * Currently this function supports only valid positive date/times with year
+ * representable by four digits. Durations are not supported.
+
+ * \param[in] dt  Pacemaker date/time object to convert
  *
- * \return Newly allocated \c GDateTime object corresponding to \p tm, or
+ * \return Newly allocated \c GDateTime object corresponding to \p dt, or
  *         \c NULL on error
  *
  * \note The caller is responsible for freeing the return value using
  *       \c g_date_time_unref().
  */
 static GDateTime *
-get_g_date_time(const struct tm *tm, int offset)
+get_g_date_time(const crm_time_t *dt)
 {
-    // Accept an offset argument in case tm lacks a tm_gmtoff member
-    char *offset_s = offset_text(offset);
+    char *offset_s = offset_text(dt->offset);
     GTimeZone *tz = NULL;
-    GDateTime *dt = NULL;
+    GDate date = { 0, };
+
+    uint32_t hours = 0;
+    uint32_t minutes = 0;
+    uint32_t seconds = 0;
+
+    GDateTime *gdt = NULL;
+
+    pcmk__assert(!dt->duration
+                 && (dt->years >= 1) && (dt->years <= 9999)
+                 && (dt->months == 0)
+                 && (dt->days >= 1) && (dt->days <= year_days(dt->years))
+                 && (dt->seconds >= 0) && (dt->seconds <= SECONDS_IN_DAY));
 
     // @COMPAT Starting in GLib 2.58, we can use g_time_zone_new_offset()
     tz = g_time_zone_new(offset_s);
@@ -2016,8 +2029,18 @@ get_g_date_time(const struct tm *tm, int offset)
         goto done;
     }
 
-    dt = g_date_time_new(tz, tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
-                         tm->tm_hour, tm->tm_min, tm->tm_sec);
+    /* Use a GDate to calculate months, since months are not set.
+     * @TODO Put this implementation into crm_time_get_gregorian()?
+     */
+    g_date_clear(&date, 1);
+    g_date_set_dmy(&date, 1, 1, dt->years);
+    g_date_add_days(&date, dt->days - 1);
+    pcmk__assert(g_date_valid(&date));
+
+    seconds_to_hms(dt->seconds, &hours, &minutes, &seconds);
+
+    gdt = g_date_time_new(tz, g_date_get_year(&date), g_date_get_month(&date),
+                          g_date_get_day(&date), hours, minutes, seconds);
 
 done:
     free(offset_s);
@@ -2026,7 +2049,7 @@ done:
         g_time_zone_unref(tz);
     }
 
-    return dt;
+    return gdt;
 }
 
 /*!
@@ -2066,7 +2089,7 @@ pcmk__time_format_hr(const char *format, const crm_time_t *dt, int usec)
     buf = g_string_sized_new(128);
 
     ha_get_tm_time(&tm, dt);
-    gdt = get_g_date_time(&tm, dt->offset);
+    gdt = get_g_date_time(dt);
     if (gdt == NULL) {
         goto done;
     }
