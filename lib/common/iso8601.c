@@ -1955,10 +1955,15 @@ pcmk__get_g_date_time(const crm_time_t *dt)
         goto done;
     }
 
-    pcmk__assert(!dt->duration
-                 && pcmk__time_valid_year(dt->years)
-                 && (dt->months == 0)
-                 && valid_time(dt));
+    // This should never be called with a duration (and so months is always 0)
+    pcmk__assert(!dt->duration);
+
+    // User-specified date/times may be out of range, particularly in years
+    if (!pcmk__time_valid_year(dt->years) || (dt->months != 0)
+        || !valid_time(dt)) {
+
+        goto done;
+    }
 
     // @COMPAT Starting in GLib 2.58, we can use g_time_zone_new_offset()
     tz = g_time_zone_new(offset_s);

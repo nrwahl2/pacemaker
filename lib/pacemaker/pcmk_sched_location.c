@@ -190,7 +190,7 @@ score_from_attr(const char *constraint_id, const char *attr_name,
  */
 static bool
 generate_location_rule(pcmk_resource_t *rsc, xmlNode *rule_xml,
-                       const char *discovery, crm_time_t *next_change,
+                       const char *discovery, GDateTime **next_change,
                        pcmk_rule_input_t *rule_input, const char *constraint_id)
 {
     const char *rule_id = NULL;
@@ -204,6 +204,9 @@ generate_location_rule(pcmk_resource_t *rsc, xmlNode *rule_xml,
     pcmk__location_t *location_rule = NULL;
     enum rsc_role_e role = pcmk_role_unknown;
     enum pcmk__combine combine = pcmk__combine_unknown;
+
+    // pcmk_evaluate_rule() requires a crm_time_t until we update the API
+    crm_time_t *next_change_crm = NULL;
 
     rule_xml = pcmk__xe_resolve_idref(rule_xml,
                                       rsc->priv->scheduler->input->doc);
@@ -258,6 +261,7 @@ generate_location_rule(pcmk_resource_t *rsc, xmlNode *rule_xml,
     CRM_CHECK(location_rule != NULL, return false);
 
     location_rule->role_filter = role;
+    next_change_crm = crm_time_new_undefined();
 
     for (iter = rsc->priv->scheduler->nodes;
          iter != NULL; iter = iter->next) {
@@ -270,7 +274,7 @@ generate_location_rule(pcmk_resource_t *rsc, xmlNode *rule_xml,
                                                rsc->priv->scheduler);
 
         if (pcmk_evaluate_rule(rule_xml, rule_input,
-                               next_change) != pcmk_rc_ok) {
+                               next_change_crm) != pcmk_rc_ok) {
             continue;
         }
 
@@ -290,6 +294,11 @@ generate_location_rule(pcmk_resource_t *rsc, xmlNode *rule_xml,
     }
 
     free(local_score_attr);
+
+    if (crm_time_is_defined(next_change_crm)) {
+        *next_change = pcmk__get_g_date_time(next_change_crm);
+    }
+    crm_time_free(next_change_crm);
 
     if (location_rule->nodes == NULL) {
         pcmk__trace("No matching nodes for location constraint rule %s", rule_id);
@@ -362,7 +371,7 @@ unpack_rsc_location(xmlNode *xml_obj, pcmk_resource_t *rsc,
         location->role_filter = role;
 
     } else {
-        crm_time_t *next_change = crm_time_new_undefined();
+        GDateTime *next_change = NULL;
         xmlNode *rule_xml = pcmk__xe_first_child(xml_obj, PCMK_XE_RULE, NULL,
                                                  NULL);
         pcmk_rule_input_t rule_input = {
@@ -373,31 +382,18 @@ unpack_rsc_location(xmlNode *xml_obj, pcmk_resource_t *rsc,
             .rsc_id_nmatches = rsc_id_nmatches,
         };
 
-        generate_location_rule(rsc, rule_xml, discovery, next_change,
+        generate_location_rule(rsc, rule_xml, discovery, &next_change,
                                &rule_input, id);
 
         /* If there is a point in the future when the evaluation of a rule will
          * change, make sure the scheduler is re-run by that time.
          */
-        if (crm_time_is_defined(next_change)) {
-            GDateTime *dt = pcmk__get_g_date_time(next_change);
-            time_t t = (time_t) g_date_time_to_unix(dt);
-
-            if (t == 0) {
-                /* g_date_time_to_unix() has logged an assertion in this case.
-                 *
-                 * @TODO Make next_change a GDateTime and drop this fallback.
-                 */
-                t = (time_t) crm_time_get_seconds_since_epoch(next_change);
-            }
-
-            pcmk__update_recheck_time(t, rsc->priv->scheduler,
+        if (next_change != NULL) {
+            pcmk__update_recheck_time((time_t) g_date_time_to_unix(next_change),
+                                      rsc->priv->scheduler,
                                       "location rule evaluation");
-            if (dt != NULL) {
-                g_date_time_unref(dt);
-            }
+            g_date_time_unref(next_change);
         }
-        crm_time_free(next_change);
     }
 }
 
