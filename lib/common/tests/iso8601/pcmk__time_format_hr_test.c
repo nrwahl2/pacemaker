@@ -9,7 +9,7 @@
 
 #include <crm_internal.h>
 
-#include <glib.h>   // GDateTime
+#include <glib.h>   // GDateTime, g_date_time_unref
 
 #include <stdio.h>  // NULL
 
@@ -26,6 +26,29 @@
 #define TIME_S HOUR_S ":" MINUTE_S ":" SECOND_S
 
 #define DATE_TIME_S DATE_S " " TIME_S
+
+static crm_time_t *dt = NULL;
+static GDateTime *gdt = NULL;
+
+static int
+setup(void **state)
+{
+    dt = crm_time_new(DATE_TIME_S);
+    gdt = pcmk__get_g_date_time(dt);
+
+    assert_non_null(dt);
+    assert_non_null(gdt);
+
+    return 0;
+}
+
+static int
+teardown(void **state)
+{
+    crm_time_free(dt);
+    g_date_time_unref(gdt);
+    return 0;
+}
 
 /*!
  * \internal
@@ -44,14 +67,7 @@ static void
 assert_hr_format(const char *format, const char *expected,
                  const char *alternate, int usec)
 {
-    crm_time_t *dt = crm_time_new(DATE_TIME_S);
-    GDateTime *gdt = pcmk__get_g_date_time(dt);
-    char *result = NULL;
-
-    assert_non_null(dt);
-    assert_non_null(gdt);
-
-    result = pcmk__time_format_hr(format, gdt, usec);
+    char *result = pcmk__time_format_hr(format, gdt, usec);
 
     if (expected == NULL) {
         assert_null(result);
@@ -209,7 +225,7 @@ with_frac(void **state)
     assert_hr_format("%H:%M:%S.%N", TIME_S ".", NULL, usec);
 }
 
-PCMK__UNIT_TEST(NULL, NULL,
+PCMK__UNIT_TEST(setup, teardown,
                 cmocka_unit_test(null_format),
                 cmocka_unit_test(no_specifiers),
                 cmocka_unit_test(without_frac),
