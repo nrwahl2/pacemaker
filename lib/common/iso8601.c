@@ -2005,7 +2005,6 @@ done:
  *                    \c g_date_time_format(), with additional support for
  *                    \c "%N" for fractional seconds
  * \param[in] dt      Time value to format (at seconds resolution)
- * \param[in] usec    Microseconds to add to \p dt when formatting
  *
  * \return Newly allocated string with formatted string, or \c NULL on error
  *
@@ -2016,7 +2015,7 @@ done:
  *       in a future release.
  */
 char *
-pcmk__time_format_hr(const char *format, GDateTime *dt, int usec)
+pcmk__time_format_hr(const char *format, GDateTime *dt)
 {
     int scanned_pos = 0; // How many characters of format have been parsed
     int printed_pos = 0; // How many characters of format have been processed
@@ -2137,6 +2136,8 @@ pcmk__time_format_hr(const char *format, GDateTime *dt, int usec)
         if (frac_digits != 0) {
             // Descending powers of 10 (10^5 down to 10^0)
             static const int powers[6] = { 1e5, 1e4, 1e3, 1e2, 1e1, 1e0 };
+
+            const int usec = g_date_time_get_microsecond(dt);
 
             // Sanity check to ensure array access is in bounds
             pcmk__assert((frac_digits > 0) && (frac_digits <= 6));

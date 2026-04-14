@@ -9,7 +9,7 @@
 
 #include <crm_internal.h>
 
-#include <glib.h>   // GDateTime, g_date_time_unref
+#include <glib.h>   // GDateTime, g_date_time_*, GTimeSpan
 
 #include <stdio.h>  // NULL
 
@@ -65,9 +65,15 @@ teardown(void **state)
  */
 static void
 assert_hr_format(const char *format, const char *expected,
-                 const char *alternate, int usec)
+                 const char *alternate, GTimeSpan usec)
 {
-    char *result = pcmk__time_format_hr(format, gdt, usec);
+    GDateTime *gdt_usec = g_date_time_add(gdt, usec);
+    char *result = NULL;
+
+    assert_non_null(gdt_usec);
+
+    result = pcmk__time_format_hr(format, gdt_usec);
+    g_date_time_unref(gdt_usec);
 
     if (expected == NULL) {
         assert_null(result);
@@ -89,9 +95,9 @@ assert_hr_format(const char *format, const char *expected,
 static void
 null_format(void **state)
 {
-    assert_null(pcmk__time_format_hr(NULL, NULL, 0));
+    assert_null(pcmk__time_format_hr(NULL, NULL));
 
-    // For pcmk__time_format_hr(NULL, dt, 0)
+    // For pcmk__time_format_hr(NULL, dt)
     assert_hr_format(NULL, NULL, NULL, 0);
 }
 
@@ -181,7 +187,7 @@ without_frac(void **state)
 static void
 with_frac(void **state)
 {
-    int usec = 123456;
+    GTimeSpan usec = 123456;
 
     // Display time with no fractional seconds component
     assert_hr_format("%Y-%m-%d %H:%M:%S.%6N", DATE_S " " TIME_S ".000000", NULL,

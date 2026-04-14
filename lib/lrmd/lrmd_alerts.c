@@ -147,8 +147,7 @@ exec_alert_list(lrmd_t *lrmd, const GList *alert_list,
         copy_params = alert_key2param(copy_params, PCMK__alert_key_recipient,
                                       entry->recipient);
 
-        str = pcmk__time_format_hr(entry->tstamp_format, now,
-                                   g_date_time_get_microsecond(now));
+        str = pcmk__time_format_hr(entry->tstamp_format, now);
         if (str != NULL) {
             copy_params = alert_key2param(copy_params,
                                           PCMK__alert_key_timestamp, str);

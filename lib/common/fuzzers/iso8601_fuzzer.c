@@ -29,7 +29,7 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     memcpy(ns, data, size);
 
     now = g_date_time_new_now_local();
-    result = pcmk__time_format_hr(ns, now, g_date_time_get_microsecond(now));
+    result = pcmk__time_format_hr(ns, now);
 
     free(ns);
     g_date_time_unref(now);
