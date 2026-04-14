@@ -1892,28 +1892,23 @@ crm_time_add_years(crm_time_t *dt, int value)
     }
 }
 
+// Does not modify source, but g_date_time_* functions take non-const arguments
 static void
-ha_get_tm_time(struct tm *target, const crm_time_t *source)
+get_tm_time(struct tm *target, GDateTime *source)
 {
-    *target = (struct tm) {
-        .tm_year = source->years - 1900,
-
-        /* source->days is day of year, but we assign it to tm_mday instead of
-         * tm_yday. mktime() fixes it. See the mktime(3) man page for details.
-         */
-        .tm_mday = source->days,
-
-        // mktime() converts this to hours/minutes/seconds appropriately
-        .tm_sec = source->seconds,
-
-        // Don't adjust DST here; let mktime() try to determine DST status
-        .tm_isdst = -1,
-
+    target->tm_sec = g_date_time_get_second(source);
+    target->tm_min = g_date_time_get_minute(source);
+    target->tm_hour = g_date_time_get_hour(source);
+    target->tm_mday = g_date_time_get_day_of_month(source);
+    target->tm_mon = g_date_time_get_month(source);
+    target->tm_year = g_date_time_get_year(source) - 1900;
+    target->tm_wday = g_date_time_get_day_of_week(source);
+    target->tm_yday = g_date_time_get_day_of_year(source);
+    target->tm_isdst = g_date_time_is_daylight_savings(source);
 #if defined(HAVE_STRUCT_TM_TM_GMTOFF)
-        .tm_gmtoff = source->offset
+    target->tm_gmtoff = g_date_time_get_utc_offset(source) / QB_TIME_US_IN_SEC;
 #endif
-    };
-    mktime(target);
+    target->tm_zone = g_date_time_get_timezone_abbreviation(source);
 }
 
 static char *
@@ -2036,13 +2031,13 @@ pcmk__time_format_hr(const char *format, const crm_time_t *dt, int usec)
     // GDateTime requires the year to be in the range [1, 9999]
     pcmk__assert(pcmk__time_valid_year(dt->years));
 
-    buf = g_string_sized_new(128);
-
-    ha_get_tm_time(&tm, dt);
     gdt = pcmk__get_g_date_time(dt);
     if (gdt == NULL) {
         goto done;
     }
+
+    get_tm_time(&tm, gdt);
+    buf = g_string_sized_new(128);
 
     while (format[scanned_pos] != '\0') {
         int fmt_pos = 0;        // Index after last character to pass as-is
