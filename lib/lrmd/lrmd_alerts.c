@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2025 the Pacemaker project contributors
+ * Copyright 2015-2026 the Pacemaker project contributors
  *
  * The version control history for this file may have further details.
  *
@@ -99,14 +99,7 @@ exec_alert_list(lrmd_t *lrmd, const GList *alert_list,
     bool any_success = false;
     bool any_failure = false;
     const char *kind_s = pcmk__alert_flag2text(kind);
-
-    struct timespec now_tv = { 0, };
-    crm_time_t *now_dt = NULL;
-    int now_usec = 0;
-
-    qb_util_timespec_from_epoch_get(&now_tv);
-    now_dt = pcmk__copy_timet(now_tv.tv_sec);
-    now_usec = now_tv.tv_nsec / QB_TIME_NS_IN_USEC;
+    GDateTime *now = g_date_time_new_now_local();
 
     params = alert_key2param(params, PCMK__alert_key_kind, kind_s);
     params = alert_key2param(params, PCMK__alert_key_version,
@@ -154,19 +147,21 @@ exec_alert_list(lrmd_t *lrmd, const GList *alert_list,
         copy_params = alert_key2param(copy_params, PCMK__alert_key_recipient,
                                       entry->recipient);
 
-        str = pcmk__time_format_hr(entry->tstamp_format, now_dt, now_usec);
+        str = pcmk__time_format_hr(entry->tstamp_format, now,
+                                   g_date_time_get_microsecond(now));
         if (str != NULL) {
             copy_params = alert_key2param(copy_params,
                                           PCMK__alert_key_timestamp, str);
             free(str);
         }
 
-        str = pcmk__assert_asprintf("%lld", (long long) now_tv.tv_sec);
+        str = pcmk__assert_asprintf("%" G_GINT64_FORMAT,
+                                    g_date_time_to_unix(now));
         copy_params = alert_key2param(copy_params,
                                       PCMK__alert_key_timestamp_epoch, str);
         free(str);
 
-        str = pcmk__assert_asprintf("%06d", now_usec);
+        str = pcmk__assert_asprintf("%06d", g_date_time_get_microsecond(now));
         copy_params = alert_key2param(copy_params,
                                       PCMK__alert_key_timestamp_usec, str);
         free(str);
@@ -184,7 +179,7 @@ exec_alert_list(lrmd_t *lrmd, const GList *alert_list,
         }
     }
 
-    crm_time_free(now_dt);
+    g_date_time_unref(now);
 
     if (any_failure) {
         return (any_success? -1 : -2);

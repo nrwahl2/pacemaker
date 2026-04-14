@@ -9,6 +9,8 @@
 
 #include <crm_internal.h>
 
+#include <glib.h>   // GDateTime
+
 #include <stdio.h>  // NULL
 
 #include <crm/common/unittest_internal.h>
@@ -43,11 +45,13 @@ assert_hr_format(const char *format, const char *expected,
                  const char *alternate, int usec)
 {
     crm_time_t *dt = crm_time_new(DATE_TIME_S);
+    GDateTime *gdt = pcmk__get_g_date_time(dt);
     char *result = NULL;
 
     assert_non_null(dt);
+    assert_non_null(gdt);
 
-    result = pcmk__time_format_hr(format, dt, usec);
+    result = pcmk__time_format_hr(format, gdt, usec);
 
     if (expected == NULL) {
         assert_null(result);

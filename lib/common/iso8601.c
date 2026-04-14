@@ -2009,12 +2009,14 @@ done:
  *
  * \return Newly allocated string with formatted string, or \c NULL on error
  *
+ * \note This is called only with the current local time. However, we accept the
+ *       time as an argument for unit testing purposes.
  * \note This function falls back to trying \c strftime() with a fixed-size
  *       buffer if \c g_date_time_format() fails. This fallback will be removed
  *       in a future release.
  */
 char *
-pcmk__time_format_hr(const char *format, const crm_time_t *dt, int usec)
+pcmk__time_format_hr(const char *format, GDateTime *dt, int usec)
 {
     int scanned_pos = 0; // How many characters of format have been parsed
     int printed_pos = 0; // How many characters of format have been processed
@@ -2022,21 +2024,12 @@ pcmk__time_format_hr(const char *format, const crm_time_t *dt, int usec)
     char *result = NULL;
 
     struct tm tm = { 0, };
-    GDateTime *gdt = NULL;
 
     if ((format == NULL) || (dt == NULL)) {
         return NULL;
     }
 
-    // GDateTime requires the year to be in the range [1, 9999]
-    pcmk__assert(pcmk__time_valid_year(dt->years));
-
-    gdt = pcmk__get_g_date_time(dt);
-    if (gdt == NULL) {
-        goto done;
-    }
-
-    get_tm_time(&tm, gdt);
+    get_tm_time(&tm, dt);
     buf = g_string_sized_new(128);
 
     while (format[scanned_pos] != '\0') {
@@ -2100,7 +2093,7 @@ pcmk__time_format_hr(const char *format, const crm_time_t *dt, int usec)
         }
 
         tmp_fmt_s = g_strndup(&format[printed_pos], fmt_pos - printed_pos);
-        date_s = g_date_time_format(gdt, tmp_fmt_s);
+        date_s = g_date_time_format(dt, tmp_fmt_s);
 
         if (date_s == NULL) {
             char compat_date_s[1024] = { '\0' };
@@ -2169,9 +2162,6 @@ done:
     }
     g_string_free(buf, TRUE);
 
-    if (gdt != NULL) {
-        g_date_time_unref(gdt);
-    }
     return result;
 }
 

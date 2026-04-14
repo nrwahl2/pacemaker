@@ -10,9 +10,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <time.h>                   // struct timespec
-
-#include <qb/qbutil.h>              // qb_util_timespec_from_epoch_get()
 
 #include <crm/common/util.h>
 #include <crm/common/internal.h>
@@ -21,8 +18,7 @@ int
 LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     char *ns = NULL;
-    struct timespec tv = { 0, };
-    crm_time_t *now = NULL;
+    GDateTime *now = NULL;
     char *result = NULL;
 
     // Ensure we have enough data.
@@ -32,13 +28,11 @@ LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     ns = pcmk__assert_alloc(size + 1, sizeof(char));
     memcpy(ns, data, size);
 
-    qb_util_timespec_from_epoch_get(&tv);
-    now = pcmk__copy_timet(tv.tv_sec);
-    result = pcmk__time_format_hr(ns, now,
-                                  (int) (tv.tv_nsec / QB_TIME_NS_IN_USEC));
-    crm_time_free(now);
-    free(result);
+    now = g_date_time_new_now_local();
+    result = pcmk__time_format_hr(ns, now, g_date_time_get_microsecond(now));
 
     free(ns);
+    g_date_time_unref(now);
+    free(result);
     return 0;
 }
