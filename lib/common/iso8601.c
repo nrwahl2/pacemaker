@@ -205,6 +205,49 @@ year_days(int year)
 
 /*!
  * \internal
+ * \brief Clip a date/time to the range of years [1, 9999]
+ *
+ * Clip \p dt so that it is within range
+ * [0001-01-01T00:00:00, 9999-12-31T23:59:59].
+ * * If <tt>dt->years</tt> is less than 1, set \p dt to 0001-01-01T00:00:00.
+ * * If <tt>dt->years</tt> is greater than 9999, set \p dt to
+ *   9999-12-31T23:59:59.
+ * * Otherwise, leave \p dt unchanged.
+ *
+ * \param[in,out] dt  Date/time object
+ *
+ * \retval \c pcmk_rc_before_range if the \c years field of \p dt is less than 1
+ * \retval \c pcmk_rc_after_range  if the \c years field of \p dt is greater
+ *                                 than 9999
+ * \retval \c pcmk_rc_ok           otherwise
+ *
+ * \note This function considers only the year. So, for example, a date/time
+ *       with \c years and \c seconds fields set to 0 and \c days field set to
+ *       700 would get clipped to 0001-01-01T00:00:00. The \c years field is out
+ *       of range, so the \c days field is ignored.
+ */
+int
+pcmk__time_clip(crm_time_t *dt)
+{
+    if (dt->years < 1) {
+        dt->years = 1;
+        dt->days = 1;
+        dt->seconds = 0;
+        return pcmk_rc_before_range;
+    }
+
+    if (dt->years > 9999) {
+        dt->years = 9999;
+        dt->days = year_days(9999);
+        dt->seconds = SECONDS_IN_DAY - 1;
+        return pcmk_rc_after_range;
+    }
+
+    return pcmk_rc_ok;
+}
+
+/*!
+ * \internal
  * \brief Get day of week for January 1 of given year
  *
  * \param[in] year  Year (between 1 and 9999)
@@ -1433,16 +1476,7 @@ pcmk__set_time_if_earlier(crm_time_t *target, const crm_time_t *source)
      * of the year given by its years field. However, its years field may be out
      * of range.
      */
-    if (target->years > 9999) {
-        target->years = 9999;
-        target->days = year_days(9999);
-        target->seconds = SECONDS_IN_DAY - 1;
-
-    } else if (target->years < 1) {
-        target->years = 1;
-        target->days = 1;
-        target->seconds = 0;
-    }
+    pcmk__time_clip(target);
 
     pcmk__time_log(LOG_TRACE, "source", source, flags);
     pcmk__time_log(LOG_TRACE, "target", target, flags);
