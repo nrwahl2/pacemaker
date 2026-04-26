@@ -1493,7 +1493,7 @@ pcmk_copy_time(const crm_time_t *source)
 
 /*!
  * \internal
- * \brief Convert a \c time_t time to a \c crm_time_t time
+ * \brief Convert a \c time_t time to a \c crm_time_t time (without clipping)
  *
  * \param[in] source_sec  Time to convert (as seconds since epoch)
  *
@@ -1502,8 +1502,8 @@ pcmk_copy_time(const crm_time_t *source)
  * \note The caller is responsible for freeing the return value using
  *       \c crm_time_free().
  */
-crm_time_t *
-pcmk__copy_timet(time_t source_sec)
+static crm_time_t *
+copy_timet(time_t source_sec)
 {
     const struct tm *source = localtime(&source_sec);
     crm_time_t *target = crm_time_new_undefined();
@@ -1544,6 +1544,27 @@ pcmk__copy_timet(time_t source_sec)
     target->offset += SECONDS_IN_HOUR * h_offset;
     target->offset += SECONDS_IN_MINUTE * m_offset;
 
+    return target;
+}
+
+/*!
+ * \internal
+ * \brief Convert a \c time_t time to a \c crm_time_t time (clipped)
+ *
+ * \param[in] source_sec  Time to convert (as seconds since epoch)
+ *
+ * \return Newly allocated \c crm_time_t object representing \p source_sec,
+ *         clipped to valid range (see \c pcmk__time_clip())
+ *
+ * \note The caller is responsible for freeing the return value using
+ *       \c crm_time_free().
+ */
+crm_time_t *
+pcmk__copy_timet(time_t source_sec)
+{
+    crm_time_t *target = copy_timet(source_sec);
+
+    pcmk__time_clip(target);
     return target;
 }
 
@@ -2400,7 +2421,8 @@ crm_time_set_timet(crm_time_t *target, const time_t *source_sec)
         return;
     }
 
-    source = pcmk__copy_timet(*source_sec);
+    // For backward compatibility, don't clip the time here
+    source = copy_timet(*source_sec);
     *target = *source;
     crm_time_free(source);
 }
