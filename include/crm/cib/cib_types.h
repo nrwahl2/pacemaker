@@ -54,6 +54,7 @@ enum cib_conn_type {
     //! \deprecated Use \c cib_command instead
     cib_query,
 
+    //! \deprecated Do not use
     cib_no_connection,
 
     //! \deprecated Use \c cib_command instead
