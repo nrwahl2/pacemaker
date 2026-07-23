@@ -24,7 +24,6 @@
 
 #include <crm/cib.h>                // cib_t, cib_remote_new
 #include <crm/cib/internal.h>       // cib__create_op, cib__extend_transaction
-#include <crm/common/internal.h>
 #include <crm/common/mainloop.h>    // mainloop_fd_callbacks
 #include <crm/common/results.h>     // pcmk_rc_str, pcmk_rc_*
 #include <crm/common/xml.h>         // PCMK_XA_*,

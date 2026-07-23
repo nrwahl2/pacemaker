@@ -22,7 +22,6 @@
 #include <libxml/tree.h>            // xmlNode
 
 #include <crm_config.h>             // CRM_CONFIG_DIR, CRM_DAEMON_USER
-#include <crm/common/internal.h>    // PCMK__EXITC_ERROR, pcmk__err, etc.
 #include <crm/common/ipc.h>         // crm_ipc_*
 #include <crm/common/logging.h>     // crm_log_*
 #include <crm/common/mainloop.h>    // mainloop_add_signal

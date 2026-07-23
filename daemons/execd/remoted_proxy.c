@@ -19,7 +19,6 @@
 #include <qb/qbipcs.h>                  // qb_ipcs_connection_t
 #include <qb/qblog.h>                   // QB_XS
 
-#include <crm/common/internal.h>
 #include <crm/common/ipc.h>             // crm_ipc_flags
 #include <crm/common/logging.h>         // CRM_CHECK, CRM_LOG_ASSERT
 #include <crm/common/results.h>         // pcmk_rc_*, pcmk_rc_str

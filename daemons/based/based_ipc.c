@@ -20,7 +20,6 @@
 #include <qb/qbipcs.h>                  // qb_ipcs_*
 
 #include <crm/cib.h>                    // cib_none, cib_sync_call
-#include <crm/common/internal.h>        // pcmk__client_*, pcmk__trace, etc.
 #include <crm/common/ipc.h>             // crm_ipc_client_response
 #include <crm/common/logging.h>         // CRM_CHECK(), CRM_LOG_ASSERT()
 #include <crm/common/results.h>         // CRM_EX_PROTOCOL, pcmk_rc_*

@@ -29,7 +29,6 @@
 
 #include <crm/cib/internal.h>       // cib_file_*
 #include <crm/cib/util.h>           // createEmptyCib
-#include <crm/common/internal.h>    // pcmk__assert_asprintf, PCMK__XE_*, etc.
 #include <crm/common/logging.h>     // CRM_CHECK
 #include <crm/common/mainloop.h>    // mainloop_*
 #include <crm/common/results.h>     // pcmk_legacy2rc, pcmk_rc_*

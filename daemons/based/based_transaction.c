@@ -17,7 +17,6 @@
 #include <libxml/tree.h>            // xmlNode
 
 #include <crm/cib/internal.h>       // cib__*
-#include <crm/common/internal.h>    // pcmk__client_t, pcmk__s, pcmk__xe_*, etc.
 #include <crm/common/logging.h>     // CRM_CHECK
 #include <crm/common/results.h>     // pcmk_rc_*
 

@@ -27,7 +27,6 @@
 #include <qb/qblog.h>               // QB_XS
 
 #include <crm_config.h>             // CRM_DAEMON_GROUP
-#include <crm/common/internal.h>    // pcmk__client_t, etc.
 #include <crm/common/logging.h>     // CRM_CHECK
 #include <crm/common/mainloop.h>    // mainloop_*
 #include <crm/common/results.h>     // pcmk_rc_*

@@ -20,7 +20,6 @@
 
 #include <crm_config.h>             // SUPPORT_COROSYNC
 #include <crm/cluster.h>            // pcmk_cluster_*
-#include <crm/common/internal.h>    // pcmk__err, pcmk__xml_free, etc.
 #include <crm/common/results.h>     // CRM_EX_DISCONNECT, pcmk_rc_ok
 
 #include "pacemaker-based.h"

@@ -21,7 +21,6 @@
 #include <libxml/tree.h>                // xmlNode
 
 #include <crm/cib.h>                    // cib_*
-#include <crm/common/internal.h>        // pcmk__xe_*, pcmk__xml_*, etc.
 #include <crm/common/ipc.h>             // crm_ipc_*
 #include <crm/common/iso8601.h>         // crm_time_*
 #include <crm/common/logging.h>         // CRM_CHECK, crm_log_xml_explicit
