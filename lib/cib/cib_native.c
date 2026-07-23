@@ -302,7 +302,6 @@ cib_native_signon(cib_t *cib, const char *name, enum cib_conn_type type)
     name = pcmk__s(crm_system_name, "client");
 
     cib->call_timeout = PCMK__IPC_TIMEOUT;
-    cib->state = cib_connected_command;
 
     native->source = mainloop_add_ipc_client(PCMK__SERVER_BASED_RW,
                                              G_PRIORITY_HIGH, 0, cib,
@@ -350,20 +349,22 @@ cib_native_signon(cib_t *cib, const char *name, enum cib_conn_type type)
     native->token = pcmk__xe_get_copy(reply, PCMK__XA_CIB_CLIENTID);
     if (native->token == NULL) {
         rc = -EPROTO;
+        goto done;
     }
+
+    pcmk__info("Successfully connected to CIB manager for %s", name);
+    cib->state = cib_connected_command;
 
 done:
     pcmk__xml_free(hello);
     pcmk__xml_free(reply);
 
-    if (rc == pcmk_ok) {
-        pcmk__info("Successfully connected to CIB manager for %s", name);
-        return pcmk_ok;
+    if (rc != pcmk_ok) {
+        pcmk__info("Connection to CIB manager for %s failed: %s", name,
+                   pcmk_strerror(rc));
+        cib_native_signoff(cib);
     }
 
-    pcmk__info("Connection to CIB manager for %s failed: %s", name,
-               pcmk_strerror(rc));
-    cib_native_signoff(cib);
     return rc;
 }
 
