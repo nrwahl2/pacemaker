@@ -285,6 +285,8 @@ cib_native_signon(cib_t *cib, const char *name, enum cib_conn_type type)
     const char *channel = NULL;
     cib_native_opaque_t *native = cib->variant_opaque;
     xmlNode *hello = NULL;
+    xmlNode *reply = NULL;
+    const char *msg_type = NULL;
 
     struct ipc_client_callbacks cib_callbacks = {
         .dispatch = cib_native_dispatch_internal,
@@ -327,50 +329,44 @@ cib_native_signon(cib_t *cib, const char *name, enum cib_conn_type type)
     rc = cib__create_op(cib, CRM_OP_REGISTER, NULL, NULL, NULL, cib_sync_call,
                         NULL, name, &hello);
     rc = pcmk_rc2legacy(rc);
+    if (rc != pcmk_ok) {
+        goto done;
+    }
 
-    if (rc == pcmk_ok) {
-        xmlNode *reply = NULL;
-        const char *msg_type = NULL;
+    if (crm_ipc_send(native->ipc, hello, crm_ipc_client_response, -1,
+                     &reply) <= 0) {
+        rc = -ECOMM;
+        goto done;
+    }
 
-        if (crm_ipc_send(native->ipc, hello, crm_ipc_client_response, -1,
-                         &reply) <= 0) {
-            rc = -ECOMM;
-            goto done;
-        }
+    /* The only reason we can receive an ACK here is if based_ipc_dispatch ->
+     * pcmk__client_data2xml processed something that's not valid XML.
+     * based_ipc_dispatch does not return ACK, unlike other daemons.
+     */
+    if (pcmk__xe_is(reply, PCMK__XE_ACK) && ack_is_failure(reply)) {
+        rc = -EPROTO;
+        goto done;
+    }
 
-        /* The only reason we can receive an ACK here is if
-         * based_ipc_dispatch -> pcmk__client_data2xml processed something
-         * that's not valid XML. based_ipc_dispatch does not return ACK, unlike
-         * other daemons.
-         */
-        if (pcmk__xe_is(reply, PCMK__XE_ACK) && ack_is_failure(reply)) {
+    msg_type = pcmk__xe_get(reply, PCMK__XA_CIB_OP);
+
+    pcmk__log_xml_trace(reply, "reg-reply");
+
+    if (!pcmk__str_eq(msg_type, CRM_OP_REGISTER, pcmk__str_casei)) {
+        pcmk__info("Reply to CIB registration message has unknown type '%s'",
+                   msg_type);
+        rc = -EPROTO;
+
+    } else {
+        native->token = pcmk__xe_get_copy(reply, PCMK__XA_CIB_CLIENTID);
+        if (native->token == NULL) {
             rc = -EPROTO;
-            pcmk__xml_free(reply);
-            goto done;
         }
-
-        msg_type = pcmk__xe_get(reply, PCMK__XA_CIB_OP);
-
-        pcmk__log_xml_trace(reply, "reg-reply");
-
-        if (!pcmk__str_eq(msg_type, CRM_OP_REGISTER, pcmk__str_casei)) {
-            pcmk__info("Reply to CIB registration message has unknown type "
-                       "'%s'",
-                       msg_type);
-            rc = -EPROTO;
-
-        } else {
-            native->token = pcmk__xe_get_copy(reply, PCMK__XA_CIB_CLIENTID);
-            if (native->token == NULL) {
-                rc = -EPROTO;
-            }
-        }
-
-        pcmk__xml_free(reply);
     }
 
 done:
     pcmk__xml_free(hello);
+    pcmk__xml_free(reply);
 
     if (rc == pcmk_ok) {
         pcmk__info("Successfully connected to CIB manager for %s", name);
