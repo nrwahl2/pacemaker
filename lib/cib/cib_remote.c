@@ -541,7 +541,7 @@ cib_tls_signon(cib_t *cib, pcmk__remote_t *connection, gboolean event_channel)
     msg_type = pcmk__xe_get(answer, PCMK__XA_CIB_OP);
     tmp_ticket = pcmk__xe_get(answer, PCMK__XA_CIB_CLIENTID);
 
-    if (!pcmk__str_eq(msg_type, CRM_OP_REGISTER, pcmk__str_casei)) {
+    if (!pcmk__str_eq(msg_type, CRM_OP_REGISTER, pcmk__str_none)) {
         pcmk__err("Invalid registration message: %s", msg_type);
         rc = -EPROTO;
 
