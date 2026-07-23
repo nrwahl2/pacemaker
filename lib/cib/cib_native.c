@@ -283,13 +283,12 @@ cib_native_signoff(cib_t *cib)
  *
  * \param[in,out] cib   CIB connection (client)
  * \param[in]     name  Ignored
- * \param[in]     type  Type of CIB connection
+ * \param[in]     type  Ignored
  */
 static int
 cib_native_signon(cib_t *cib, const char *name, enum cib_conn_type type)
 {
     int rc = pcmk_ok;
-    const char *channel = NULL;
     cib_native_opaque_t *native = cib->variant_opaque;
     xmlNode *hello = NULL;
     xmlNode *reply = NULL;
@@ -303,25 +302,10 @@ cib_native_signon(cib_t *cib, const char *name, enum cib_conn_type type)
     name = pcmk__s(crm_system_name, "client");
 
     cib->call_timeout = PCMK__IPC_TIMEOUT;
+    cib->state = cib_connected_command;
 
-    switch (type) {
-        case cib_command:
-        case cib_command_nonblocking:
-        case cib_query:
-            /* @COMPAT cib_command_nonblocking and cib_query are deprecated
-             * since 3.0.2
-             */
-            cib->state = cib_connected_command;
-            channel = PCMK__SERVER_BASED_RW;
-            break;
-
-        default:
-            return -ENOTCONN;
-    }
-
-    pcmk__trace("Connecting %s channel", channel);
-
-    native->source = mainloop_add_ipc_client(channel, G_PRIORITY_HIGH, 0, cib,
+    native->source = mainloop_add_ipc_client(PCMK__SERVER_BASED_RW,
+                                             G_PRIORITY_HIGH, 0, cib,
                                              &cib_callbacks);
     native->ipc = mainloop_get_ipc_client(native->source);
 

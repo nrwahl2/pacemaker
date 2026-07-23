@@ -150,7 +150,7 @@ typedef struct cib_api_operations_s {
      *
      * \param[in,out] cib   CIB connection (client)
      * \param[in]     name  Ignored
-     * \param[in]     type  Type of CIB connection
+     * \param[in]     type  Ignored
      */
     int (*signon) (cib_t *cib, const char *name, enum cib_conn_type type);
 
