@@ -348,20 +348,19 @@ cib_native_signon(cib_t *cib, const char *name, enum cib_conn_type type)
         goto done;
     }
 
-    msg_type = pcmk__xe_get(reply, PCMK__XA_CIB_OP);
-
     pcmk__log_xml_trace(reply, "reg-reply");
+    msg_type = pcmk__xe_get(reply, PCMK__XA_CIB_OP);
 
     if (!pcmk__str_eq(msg_type, CRM_OP_REGISTER, pcmk__str_casei)) {
         pcmk__info("Reply to CIB registration message has unknown type '%s'",
                    msg_type);
         rc = -EPROTO;
+        goto done;
+    }
 
-    } else {
-        native->token = pcmk__xe_get_copy(reply, PCMK__XA_CIB_CLIENTID);
-        if (native->token == NULL) {
-            rc = -EPROTO;
-        }
+    native->token = pcmk__xe_get_copy(reply, PCMK__XA_CIB_CLIENTID);
+    if (native->token == NULL) {
+        rc = -EPROTO;
     }
 
 done:
