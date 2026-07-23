@@ -239,9 +239,6 @@ crmd_exit(crm_exit_t exit_code)
     if (mloop != NULL) {
         GMainContext *ctx = g_main_loop_get_context(controld_globals.mainloop);
 
-        // Don't re-enter this block
-        controld_globals.mainloop = NULL;
-
         // Try to drain the main loop before closing it
         for (int i = 0; (i < 10) && g_main_context_pending(ctx); i++) {
             g_main_context_dispatch(ctx);
