@@ -273,7 +273,6 @@ cib_native_signoff(cib_t *cib)
 
     cib->cmds->end_transaction(cib, false, cib_none);
     cib->state = cib_disconnected;
-    cib->type = cib_no_connection;
 
     return pcmk_ok;
 }

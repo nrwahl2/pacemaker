@@ -547,7 +547,6 @@ file_signon(cib_t *cib, const char *name, enum cib_conn_type type)
         pcmk__debug("Opened connection to local file '%s' for %s",
                     private->filename, name);
         cib->state = cib_connected_command;
-        cib->type = cib_command;
         register_client(cib);
 
     } else {
@@ -657,7 +656,6 @@ file_signoff(cib_t *cib)
 
     pcmk__debug("Disconnecting from the CIB manager");
     cib->state = cib_disconnected;
-    cib->type = cib_no_connection;
     unregister_client(cib);
     cib->cmds->end_transaction(cib, false, cib_none);
 

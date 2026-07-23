@@ -612,7 +612,6 @@ done:
         pcmk__info("Opened connection to %s:%d for %s", private->server,
                    private->port, name);
         cib->state = cib_connected_command;
-        cib->type = cib_command;
 
     } else {
         pcmk__info("Connection to %s:%d for %s failed: %s\n", private->server,
@@ -632,7 +631,6 @@ cib_remote_signoff(cib_t *cib)
 
     cib->cmds->end_transaction(cib, false, cib_none);
     cib->state = cib_disconnected;
-    cib->type = cib_no_connection;
 
     return rc;
 }
