@@ -278,6 +278,14 @@ cib_native_signoff(cib_t *cib)
     return pcmk_ok;
 }
 
+/*!
+ * \internal
+ * \brief Sign on a native client to the CIB API
+ *
+ * \param[in,out] cib   CIB connection (client)
+ * \param[in]     name  Ignored
+ * \param[in]     type  Type of CIB connection
+ */
 static int
 cib_native_signon(cib_t *cib, const char *name, enum cib_conn_type type)
 {
@@ -293,9 +301,7 @@ cib_native_signon(cib_t *cib, const char *name, enum cib_conn_type type)
         .destroy = cib_native_destroy,
     };
 
-    if (name == NULL) {
-        name = pcmk__s(crm_system_name, "client");
-    }
+    name = pcmk__s(crm_system_name, "client");
 
     cib->call_timeout = PCMK__IPC_TIMEOUT;
 

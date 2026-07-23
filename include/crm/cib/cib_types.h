@@ -144,6 +144,13 @@ typedef struct cib_api_operations_s {
      * and type (always use cib_command -- cib_file and cib_remote already do
      * this).
      */
+    /*!
+     * \brief Sign on a client to the CIB API
+     *
+     * \param[in,out] cib   CIB connection (client)
+     * \param[in]     name  Ignored
+     * \param[in]     type  Type of CIB connection
+     */
     int (*signon) (cib_t *cib, const char *name, enum cib_conn_type type);
 
     // NOTE: sbd (as of at least 1.5.2) uses this

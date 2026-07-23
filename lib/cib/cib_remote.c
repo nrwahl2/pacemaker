@@ -568,15 +568,21 @@ done:
     return rc;
 }
 
+/*!
+ * \internal
+ * \brief Sign on a native client to the CIB API
+ *
+ * \param[in,out] cib   CIB connection (client)
+ * \param[in]     name  Ignored
+ * \param[in]     type  Ignored
+ */
 static int
 cib_remote_signon(cib_t *cib, const char *name, enum cib_conn_type type)
 {
     int rc = pcmk_ok;
     cib_remote_opaque_t *private = cib->variant_opaque;
 
-    if (name == NULL) {
-        name = pcmk__s(crm_system_name, "client");
-    }
+    name = pcmk__s(crm_system_name, "client");
 
     if (private->passwd == NULL) {
         if (private->out == NULL) {
