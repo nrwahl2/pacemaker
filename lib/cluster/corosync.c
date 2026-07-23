@@ -28,7 +28,6 @@
 #include <qb/qblog.h>               // QB_XS
 
 #include <crm/cluster.h>            // pcmk_cluster_*, etc.
-#include <crm/cluster/internal.h>   // pcmk__cluster_private_t members
 #include <crm/common/internal.h>    // pcmk__corosync2rc, pcmk__err, etc.
 #include <crm/common/ipc.h>         // crm_ipc_is_authentic_process
 #include <crm/common/logging.h>     // CRM_LOG_ASSERT

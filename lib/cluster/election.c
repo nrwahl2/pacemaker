@@ -17,7 +17,6 @@
 #include <crm/common/mainloop.h>
 #include <crm/common/xml.h>
 
-#include <crm/cluster/internal.h>
 #include <crm/cluster/election_internal.h>
 #include "crmcluster_private.h"
 
