@@ -16,7 +16,6 @@
 
 #include <crm/crm.h>
 #include <crm/common/xml.h>
-#include <crm/cluster/election_internal.h>
 
 #include <pacemaker-controld.h>
 
