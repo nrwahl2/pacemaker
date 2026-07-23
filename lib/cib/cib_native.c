@@ -288,7 +288,7 @@ cib_native_signon(cib_t *cib, const char *name, enum cib_conn_type type)
 
     struct ipc_client_callbacks cib_callbacks = {
         .dispatch = cib_native_dispatch_internal,
-        .destroy = cib_native_destroy
+        .destroy = cib_native_destroy,
     };
 
     if (name == NULL) {
@@ -318,7 +318,7 @@ cib_native_signon(cib_t *cib, const char *name, enum cib_conn_type type)
                                              &cib_callbacks);
     native->ipc = mainloop_get_ipc_client(native->source);
 
-    if (rc != pcmk_ok || native->ipc == NULL || !crm_ipc_connected(native->ipc)) {
+    if ((native->ipc == NULL) || !crm_ipc_connected(native->ipc)) {
         pcmk__info("Could not connect to CIB manager for %s", name);
         rc = -ENOTCONN;
     }
