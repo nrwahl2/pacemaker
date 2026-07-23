@@ -47,17 +47,19 @@ enum cib_state {
     cib_disconnected
 };
 
+/*!
+ * \deprecated Do not use
+ *
+ * \note Pass \c cib_command to <tt>cib_api_operations_t:signon</tt> as long as
+ *       that function and argument exist.
+ */
 enum cib_conn_type {
     cib_command,
 
     // NOTE: sbd (as of at least 1.5.2) uses this value
-    //! \deprecated Use \c cib_command instead
     cib_query,
 
-    //! \deprecated Do not use
     cib_no_connection,
-
-    //! \deprecated Use \c cib_command instead
     cib_command_nonblocking,
 };
 
