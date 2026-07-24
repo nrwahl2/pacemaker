@@ -157,12 +157,6 @@ based_ipc_dispatch(qb_ipcs_connection_t *c, void *data, size_t size)
         client->request_id = id;
     }
 
-    pcmk__xe_set(msg, PCMK__XA_CIB_CLIENTID, client->id);
-    pcmk__xe_set(msg, PCMK__XA_CIB_CLIENTNAME, client->name);
-
-    CRM_LOG_ASSERT(client->user != NULL);
-    pcmk__update_acl_user(msg, PCMK__XA_CIB_USER, client->user);
-
     pcmk__log_xml_trace(msg, "ipc-request");
 
     op = pcmk__xe_get(msg, PCMK__XA_CIB_OP);
@@ -195,6 +189,12 @@ based_ipc_dispatch(qb_ipcs_connection_t *c, void *data, size_t size)
         pcmk__ipc_send_ack(client, id, flags, NULL, status);
         goto cleanup;
     }
+
+    pcmk__xe_set(msg, PCMK__XA_CIB_CLIENTID, client->id);
+    pcmk__xe_set(msg, PCMK__XA_CIB_CLIENTNAME, client->name);
+
+    CRM_LOG_ASSERT(client->user != NULL);
+    pcmk__update_acl_user(msg, PCMK__XA_CIB_USER, client->user);
 
     based_process_request(msg, client);
 
