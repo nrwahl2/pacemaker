@@ -119,16 +119,6 @@ based_ipc_dispatch(qb_ipcs_connection_t *c, void *data, size_t size)
         goto cleanup;
     }
 
-    if (client->name == NULL) {
-        const char *value = pcmk__xe_get(msg, PCMK__XA_CIB_CLIENTNAME);
-
-        if (value == NULL) {
-            client->name = pcmk__itoa(client->pid);
-        } else {
-            client->name = pcmk__str_copy(value);
-        }
-    }
-
     rc = pcmk__xe_get_flags(msg, PCMK__XA_CIB_CALLOPT, &call_options, cib_none);
     if (rc != pcmk_rc_ok) {
         pcmk__warn("Couldn't parse options from request from IPC client %s: %s",
@@ -172,9 +162,31 @@ based_ipc_dispatch(qb_ipcs_connection_t *c, void *data, size_t size)
         pcmk__xe_set(reply, PCMK__XA_CIB_OP, CRM_OP_REGISTER);
         pcmk__xe_set(reply, PCMK__XA_CIB_CLIENTID, client->id);
         pcmk__ipc_send_xml(client, id, reply, flags);
+        pcmk__xml_free(reply);
+
+        if (client->name != NULL) {
+            /* client->name is set if and only if we've processed a register
+             * request from the client
+             */
+            pcmk__warn("Received register request from IPC client %s that is "
+                       "already registered", pcmk__client_name(client));
+            goto cleanup;
+        }
 
         client->request_id = 0;
-        pcmk__xml_free(reply);
+
+        client->name = pcmk__xe_get_copy(msg, PCMK__XA_CIB_CLIENTNAME);
+        if (client->name == NULL) {
+            // Fall back to PID for logging purposes
+            client->name = pcmk__itoa(client->pid);
+        }
+
+        goto cleanup;
+    }
+
+    if (client->name == NULL) {
+        pcmk__warn("Ignoring CIB request from unregistered client %s",
+                   pcmk__client_name(client));
         goto cleanup;
     }
 
