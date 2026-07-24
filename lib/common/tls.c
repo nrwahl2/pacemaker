@@ -642,7 +642,7 @@ pcmk__cred_file_useable(const char *location, bool *file_exists)
         return false;
     }
 
-    if ((sb.st_mode & (S_IRWXG | S_IRWXO)) != 0) {
+    if (pcmk__any_flags_set(sb.st_mode, S_IRWXG|S_IRWXO)) {
         pcmk__err("Refusing to use PSK credentials file %s because it has "
                   "group and/or other permissions set", location);
         return false;

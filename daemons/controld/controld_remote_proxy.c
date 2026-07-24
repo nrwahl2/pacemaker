@@ -128,7 +128,7 @@ remote_proxy_dispatch(const char *buffer, ssize_t length, void *userdata)
     }
 
     flags = crm_ipc_buffer_flags(proxy->ipc);
-    if (flags & crm_ipc_proxied_relay_response) {
+    if (pcmk__is_set(flags, crm_ipc_proxied_relay_response)) {
         pcmk__trace("Passing response back to %.8s on %s: %.200s - request id: "
                     "%d", proxy->session_id, proxy->node_name, buffer,
                     proxy->last_request_id);

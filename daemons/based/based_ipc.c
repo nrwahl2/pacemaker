@@ -148,7 +148,7 @@ based_ipc_dispatch(qb_ipcs_connection_t *c, void *data, size_t size)
     }
 
     if (pcmk__is_set(call_options, cib_sync_call)) {
-        CRM_LOG_ASSERT(flags & crm_ipc_client_response);
+        CRM_LOG_ASSERT(pcmk__is_set(flags, crm_ipc_client_response));
 
         // If false, the client has two synchronous events in flight
         CRM_LOG_ASSERT(client->request_id == 0);

@@ -76,7 +76,7 @@ cib_native_perform_op_delegate(cib_t *cib, const char *op, const char *host,
         return -EINVAL;
     }
 
-    if (call_options & cib_sync_call) {
+    if (pcmk__is_set(call_options, cib_sync_call)) {
         pcmk__set_ipc_flags(ipc_flags, "client", crm_ipc_client_response);
     }
 
@@ -115,7 +115,7 @@ cib_native_perform_op_delegate(cib_t *cib, const char *op, const char *host,
 
     pcmk__log_xml_trace(op_reply, "Reply");
 
-    if (!(call_options & cib_sync_call)) {
+    if (!pcmk__is_set(call_options, cib_sync_call)) {
         pcmk__trace("Async call, returning %d", cib->call_id);
         CRM_CHECK(cib->call_id != 0,
                   rc = -ENOMSG; goto done);
@@ -133,8 +133,11 @@ cib_native_perform_op_delegate(cib_t *cib, const char *op, const char *host,
             rc = -EPROTO;
         }
 
-        if (output_data == NULL || (call_options & cib_discard_reply)) {
+        if ((output_data == NULL)
+            || pcmk__is_set(call_options, cib_discard_reply)) {
+
             pcmk__trace("Discarding reply");
+
         } else {
             *output_data = pcmk__xml_copy(NULL, tmp);
         }

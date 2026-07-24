@@ -105,18 +105,19 @@ cib_remote_perform_op(cib_t *cib, const char *op, const char *host,
     }
 
     pcmk__trace("Sending %s message to the CIB manager", op);
-    if (!(call_options & cib_sync_call)) {
+    if (!pcmk__is_set(call_options, cib_sync_call)) {
         pcmk__remote_send_xml(&private->callback, op_msg);
     } else {
         pcmk__remote_send_xml(&private->command, op_msg);
     }
     pcmk__xml_free(op_msg);
 
-    if ((call_options & cib_discard_reply)) {
+    if (pcmk__is_set(call_options, cib_discard_reply)) {
         pcmk__trace("Discarding reply");
         return pcmk_ok;
+    }
 
-    } else if (!(call_options & cib_sync_call)) {
+    if (!pcmk__is_set(call_options, cib_sync_call)) {
         return cib->call_id;
     }
 
@@ -199,7 +200,7 @@ cib_remote_perform_op(cib_t *cib, const char *op, const char *host,
     if (output_data == NULL) {
         /* do nothing more */
 
-    } else if (!(call_options & cib_discard_reply)) {
+    } else if (!pcmk__is_set(call_options, cib_discard_reply)) {
         xmlNode *tmp = cib__get_calldata(op_reply);
 
         if (tmp == NULL) {
