@@ -1152,6 +1152,8 @@ void
 pcmk__serve_execd_ipc(qb_ipcs_service_t **ipcs,
                       struct qb_ipcs_service_handlers *cb)
 {
+    pcmk__assert((ipcs != NULL) && (*ipcs == NULL) && (cb != NULL));
+
     *ipcs = mainloop_add_ipc_server(pcmk__server_ipc_name(pcmk_ipc_execd),
                                     QB_IPC_SHM, cb);
 
