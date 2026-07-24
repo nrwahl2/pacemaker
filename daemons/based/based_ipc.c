@@ -78,17 +78,18 @@ based_ipc_dispatch(qb_ipcs_connection_t *c, void *data, size_t size)
     const char *op = NULL;
 
     // Sanity-check, and parse XML from IPC data
-    CRM_CHECK(client != NULL, return 0);
+    CRM_CHECK(client != NULL, goto cleanup);
+
     if (data == NULL) {
         pcmk__debug("No IPC data from PID %d", pcmk__client_pid(c));
-        return 0;
+        goto cleanup;
     }
 
     rc = pcmk__ipc_msg_append(&client->buffer, data);
 
     if (rc == pcmk_rc_ipc_more) {
         /* We haven't read the complete message yet, so just return. */
-        return 0;
+        goto cleanup;
 
     } else if (rc == pcmk_rc_ok) {
         /* We've read the complete message and there's already a header on
@@ -109,13 +110,13 @@ based_ipc_dispatch(qb_ipcs_connection_t *c, void *data, size_t size)
             client->buffer = NULL;
         }
 
-        return 0;
+        goto cleanup;
     }
 
     if (msg == NULL) {
         pcmk__debug("Unrecognizable IPC data from PID %d", pcmk__client_pid(c));
         pcmk__ipc_send_ack(client, id, flags, NULL, CRM_EX_PROTOCOL);
-        return 0;
+        goto cleanup;
     }
 
     if (client->name == NULL) {
