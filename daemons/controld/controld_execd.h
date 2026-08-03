@@ -101,6 +101,10 @@ typedef struct {
     GHashTable *rsc_info_cache;
     GHashTable *metadata_cache; // key = class[:provider]:agent, value = ra_metadata_s
 
+    /*!
+     * Number of failed connection attempts since last success (set only for
+     * local executor state)
+     */
     int num_lrm_register_fails;
 } lrm_state_t;
 

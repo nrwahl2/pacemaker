@@ -724,20 +724,7 @@ controld_execd_state_connect_remote(lrm_state_t *lrm_state, const char *server,
 
     rc = lrm_state->conn->cmds->connect_async(lrm_state->conn,
                                               lrm_state->node_name, timeout_ms);
-    rc = pcmk_legacy2rc(rc);
-
-    if (rc == pcmk_rc_ok) {
-        lrm_state->num_lrm_register_fails = 0;
-
-    } else {
-        /* Ignored for remote connections.
-         *
-         * @TODO Do we even need to set this in this function?
-         */
-        lrm_state->num_lrm_register_fails++;
-    }
-
-    return rc;
+    return pcmk_legacy2rc(rc);
 }
 
 /*!
