@@ -39,19 +39,47 @@ make_stop_id(const char *rsc, int call_id)
     return pcmk__assert_asprintf("%s:%d", rsc, call_id);
 }
 
+/*!
+ * \internal
+ * \brief Copy a non-meta entry to a hash table with string keys and values
+ *
+ * If \p key does not begin with <tt>CRM_META "_"</tt>, create a new entry in
+ * \p user_data whose key is a copy of \p key and whose value is a copy of
+ * \p value.
+ *
+ * \param[in]     key        Key (<tt>const char *</tt>)
+ * \param[in]     value      Value (<tt>const char *</tt>)
+ * \param[in,out] user_data  Target hash table (<tt>GHashTable *</tt>)
+ *
+ * \note This is a \c GHFunc.
+ */
 static void
-copy_instance_keys(void *key, void *value, void *user_data)
+insert_dup_non_meta_param(void *key, void *value, void *user_data)
 {
     if (!g_str_has_prefix(key, CRM_META "_")) {
-        pcmk__insert_dup(user_data, (const char *) key, (const char *) value);
+        pcmk__insert_dup(user_data, key, value);
     }
 }
 
+/*!
+ * \internal
+ * \brief Copy a meta entry to a hash table with string keys and values
+ *
+ * If \p key begins with <tt>CRM_META "_"</tt>, create a new entry in
+ * \p user_data whose key is a copy of \p key and whose value is a copy of
+ * \p value.
+ *
+ * \param[in]     key        Key (<tt>const char *</tt>)
+ * \param[in]     value      Value (<tt>const char *</tt>)
+ * \param[in,out] user_data  Target hash table (<tt>GHashTable *</tt>)
+ *
+ * \note This is a \c GHFunc.
+ */
 static void
-copy_meta_keys(void *key, void *value, void *user_data)
+insert_dup_meta_param(void *key, void *value, void *user_data)
 {
     if (g_str_has_prefix(key, CRM_META "_")) {
-        pcmk__insert_dup(user_data, (const char *) key, (const char *) value);
+        pcmk__insert_dup(user_data, key, value);
     }
 }
 
@@ -204,7 +232,7 @@ update_history_cache(lrm_state_t *lrm_state, lrmd_rsc_info_t *rsc,
             g_clear_pointer(&entry->stop_params, g_hash_table_destroy);
             entry->stop_params = pcmk__strkey_table(free, free);
 
-            g_hash_table_foreach(event->params, copy_instance_keys,
+            g_hash_table_foreach(event->params, insert_dup_non_meta_param,
                                  entry->stop_params);
         }
     }
@@ -313,8 +341,8 @@ create_event(const lrm_state_t *lrm_state, const xmlNode *rsc_op,
              * the old attributes, not the new ones */
             event->params = pcmk__strkey_table(free, free);
 
-            g_hash_table_foreach(params, copy_meta_keys, event->params);
-            g_hash_table_foreach(entry->stop_params, copy_instance_keys,
+            g_hash_table_foreach(params, insert_dup_meta_param, event->params);
+            g_hash_table_foreach(entry->stop_params, insert_dup_non_meta_param,
                                  event->params);
             g_clear_pointer(&params, g_hash_table_destroy);
         }
