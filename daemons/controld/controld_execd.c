@@ -85,33 +85,67 @@ insert_dup_meta_param(void *key, void *value, void *user_data)
 
 /*!
  * \internal
+ * \brief Compare two \c lrmd_event_data_t objects for equality
+ *
+ * Two events are considered equal if their respective \c interval_ms,
+ * \c rsc_id, and \c op_type fields match.
+ *
+ * \param[in] a  First event to compare
+ * \param[in] b  Second event to compare
+ *
+ * \retval 0  if \p a and \p b are equal
+ * \retval 1  otherwise
+ *
+ * \note This is a \c GCompareFunc.
+ * \note This is valid only for testing equality, not for sorting.
+ */
+static int
+compare_events(const void *a, const void *b)
+{
+    const lrmd_event_data_t *event1 = a;
+    const lrmd_event_data_t *event2 = b;
+
+    pcmk__assert((event1 != NULL) && (event2 != NULL));
+
+    if (event1->interval_ms != event2->interval_ms) {
+        return 1;
+    }
+
+    if (!pcmk__str_eq(event1->rsc_id, event2->rsc_id, pcmk__str_none)) {
+        return 1;
+    }
+
+    if (!pcmk__str_eq(event1->op_type, event2->op_type, pcmk__str_casei)) {
+        return 1;
+    }
+
+    return 0;
+}
+
+/*!
+ * \internal
  * \brief Remove a recurring operation event from a resource's history
  *
- * \param[in,out] history  Resource history to modify
- * \param[in]     event    Event to remove
+ * Find and delete the first item in \p history->recurring_op_list that matches
+ * \p event. See \c compare_events() for match criteria.
+ *
+ * \param[in,out] history  Resource history
+ * \param[in]     event    Event to match
  */
 static void
 history_remove_recurring_op(rsc_history_t *history,
                             const lrmd_event_data_t *event)
 {
-    for (GList *iter = history->recurring_op_list; iter != NULL;
-         iter = iter->next) {
+    GList *link = g_list_find_custom(history->recurring_op_list, event,
+                                     compare_events);
 
-        lrmd_event_data_t *existing = iter->data;
-
-        if ((event->interval_ms != existing->interval_ms)
-            || !pcmk__str_eq(event->rsc_id, existing->rsc_id, pcmk__str_none)
-            || !pcmk__str_eq(event->op_type, existing->op_type,
-                             pcmk__str_casei)) {
-
-            continue;
-        }
-
-        history->recurring_op_list =
-            g_list_delete_link(history->recurring_op_list, iter);
-        lrmd_free_event(existing);
+    if (link == NULL) {
         return;
     }
+
+    lrmd_free_event(link->data);
+    history->recurring_op_list = g_list_delete_link(history->recurring_op_list,
+                                                    link);
 }
 
 /*!
