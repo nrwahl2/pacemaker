@@ -78,27 +78,27 @@ copy_meta_keys(void *key, void *value, void *user_data)
  *
  * \param[in,out] history  Resource history to modify
  * \param[in]     op       Operation to remove
- *
- * \return TRUE if the operation was found and removed, FALSE otherwise
  */
-static gboolean
+static void
 history_remove_recurring_op(rsc_history_t *history, const lrmd_event_data_t *op)
 {
-    GList *iter;
+    for (GList *iter = history->recurring_op_list; iter != NULL;
+         iter = iter->next) {
 
-    for (iter = history->recurring_op_list; iter != NULL; iter = iter->next) {
         lrmd_event_data_t *existing = iter->data;
 
-        if ((op->interval_ms == existing->interval_ms)
-            && pcmk__str_eq(op->rsc_id, existing->rsc_id, pcmk__str_none)
-            && pcmk__str_eq(op->op_type, existing->op_type, pcmk__str_casei)) {
+        if ((op->interval_ms != existing->interval_ms)
+            || !pcmk__str_eq(op->rsc_id, existing->rsc_id, pcmk__str_none)
+            || !pcmk__str_eq(op->op_type, existing->op_type, pcmk__str_casei)) {
 
-            history->recurring_op_list = g_list_delete_link(history->recurring_op_list, iter);
-            lrmd_free_event(existing);
-            return TRUE;
+            continue;
         }
+
+        history->recurring_op_list =
+            g_list_delete_link(history->recurring_op_list, iter);
+        lrmd_free_event(existing);
+        return;
     }
-    return FALSE;
 }
 
 /*!
