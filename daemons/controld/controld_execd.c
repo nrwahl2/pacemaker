@@ -601,20 +601,6 @@ delete_rsc_entry(lrm_state_t *lrm_state, ha_msg_input_t *input,
     g_hash_table_foreach_remove(lrm_state->deletion_ops, lrm_remove_deleted_rsc, &event);
 }
 
-static inline gboolean
-last_failed_matches_op(rsc_history_t *entry, const char *op,
-                       unsigned int interval_ms)
-{
-    if (entry == NULL) {
-        return FALSE;
-    }
-    if (op == NULL) {
-        return TRUE;
-    }
-    return (pcmk__str_eq(op, entry->failed->op_type, pcmk__str_casei)
-            && (interval_ms == entry->failed->interval_ms));
-}
-
 /*!
  * \internal
  * \brief Clear a resource's last failure
@@ -640,8 +626,14 @@ lrm_clear_last_failure(const char *rsc_id, const char *node_name,
     }
 
     entry = g_hash_table_lookup(lrm_state->resource_history, rsc_id);
+    if (entry == NULL) {
+        return;
+    }
 
-    if (last_failed_matches_op(entry, operation, interval_ms)) {
+    if ((operation == NULL)
+        || (pcmk__str_eq(operation, entry->failed->op_type, pcmk__str_casei)
+            && (interval_ms == entry->failed->interval_ms))) {
+
         g_clear_pointer(&entry->failed, lrmd_free_event);
     }
 }
