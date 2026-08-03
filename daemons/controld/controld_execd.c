@@ -231,53 +231,40 @@ construct_op(const lrm_state_t *lrm_state, const xmlNode *rsc_op,
              const char *rsc_id, const char *operation)
 {
     lrmd_event_data_t *op = NULL;
-    const char *op_delay = NULL;
-    const char *op_timeout = NULL;
     GHashTable *params = NULL;
 
     xmlNode *primitive = NULL;
     const char *class = NULL;
 
-    const char *transition = NULL;
-
     pcmk__assert((rsc_id != NULL) && (operation != NULL));
 
     op = lrmd_new_event(rsc_id, operation, 0);
     op->type = lrmd_event_exec_complete;
-    op->timeout = 0;
-    op->start_delay = 0;
     lrmd__set_result(op, PCMK_OCF_UNKNOWN, PCMK_EXEC_PENDING, NULL);
 
     if (rsc_op == NULL) {
         CRM_LOG_ASSERT(pcmk__str_eq(operation, PCMK_ACTION_STOP,
                                     pcmk__str_casei));
-        op->user_data = NULL;
+
         /* the stop_all_resources() case
          * by definition there is no DC (or they'd be shutting
          *   us down).
          * So we should put our version here.
          */
         op->params = pcmk__strkey_table(free, free);
-
         pcmk__insert_dup(op->params, PCMK_XA_CRM_FEATURE_SET, CRM_FEATURE_SET);
-
-        pcmk__trace("Constructed %s op for %s", operation, rsc_id);
         return op;
     }
 
     params = xml2list(rsc_op);
     g_hash_table_remove(params, CRM_META "_" PCMK__META_OP_TARGET_RC);
 
-    op_delay = crm_meta_value(params, PCMK_META_START_DELAY);
-    pcmk__scan_min_int(op_delay, &op->start_delay, 0);
-
-    op_timeout = crm_meta_value(params, PCMK_META_TIMEOUT);
-    pcmk__scan_min_int(op_timeout, &op->timeout, 0);
-
-    if (pcmk__uint_from_hash(params, CRM_META "_" PCMK_META_INTERVAL, 0,
-                             &op->interval_ms) != pcmk_rc_ok) {
-        op->interval_ms = 0;
-    }
+    pcmk__scan_min_int(crm_meta_value(params, PCMK_META_START_DELAY),
+                       &op->start_delay, 0);
+    pcmk__scan_min_int(crm_meta_value(params, PCMK_META_TIMEOUT), &op->timeout,
+                       0);
+    pcmk__uint_from_hash(params, CRM_META "_" PCMK_META_INTERVAL, 0,
+                         &op->interval_ms);
 
     /* Use pcmk_monitor_timeout instead of meta timeout for stonith recurring
      * monitor, if set
@@ -289,7 +276,9 @@ construct_op(const lrm_state_t *lrm_state, const xmlNode *rsc_op,
         && pcmk__str_eq(operation, PCMK_ACTION_MONITOR, pcmk__str_casei)
         && (op->interval_ms > 0)) {
 
-        op_timeout = g_hash_table_lookup(params, "pcmk_monitor_timeout");
+        const char *op_timeout = g_hash_table_lookup(params,
+                                                     "pcmk_monitor_timeout");
+
         if (op_timeout != NULL) {
             long long timeout_ms = 0;
 
@@ -336,22 +325,17 @@ construct_op(const lrm_state_t *lrm_state, const xmlNode *rsc_op,
         op->start_delay = 0;
     }
 
-    transition = pcmk__xe_get(rsc_op, PCMK__XA_TRANSITION_KEY);
-    CRM_CHECK(transition != NULL, return op);
+    op->user_data = pcmk__xe_get_copy(rsc_op, PCMK__XA_TRANSITION_KEY);
+    CRM_CHECK(op->user_data != NULL, return op);
 
-    op->user_data = pcmk__str_copy(transition);
+    if ((op->interval_ms != 0)
+        && pcmk__strcase_any_of(operation, PCMK_ACTION_START, PCMK_ACTION_STOP,
+                                NULL)) {
 
-    if (op->interval_ms != 0) {
-        if (pcmk__strcase_any_of(operation, PCMK_ACTION_START, PCMK_ACTION_STOP,
-                                 NULL)) {
-            pcmk__err("Start and stop actions cannot have an interval: %u",
-                      op->interval_ms);
-            op->interval_ms = 0;
-        }
+        pcmk__err("Start and stop actions cannot have an interval: %u",
+                  op->interval_ms);
+        op->interval_ms = 0;
     }
-
-    pcmk__trace("Constructed %s op for %s: interval=%u", operation, rsc_id,
-                op->interval_ms);
 
     return op;
 }
