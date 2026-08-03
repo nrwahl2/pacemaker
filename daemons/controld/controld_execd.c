@@ -215,7 +215,13 @@ update_history_cache(lrm_state_t *lrm_state, lrmd_rsc_info_t *rsc,
 
     entry = g_hash_table_lookup(lrm_state->resource_history, event->rsc_id);
 
-    if ((entry == NULL) && (rsc != NULL)) {
+    if (entry == NULL) {
+        if (rsc == NULL) {
+            pcmk__info("Resource %s no longer exists, not updating cache",
+                       event->rsc_id);
+            return;
+        }
+
         entry = pcmk__assert_alloc(1, sizeof(rsc_history_t));
         entry->id = pcmk__str_copy(event->rsc_id);
         g_hash_table_insert(lrm_state->resource_history, entry->id, entry);
@@ -224,11 +230,6 @@ update_history_cache(lrm_state_t *lrm_state, lrmd_rsc_info_t *rsc,
         entry->rsc.type = pcmk__str_copy(rsc->type);
         entry->rsc.standard = pcmk__str_copy(rsc->standard);
         entry->rsc.provider = pcmk__str_copy(rsc->provider);
-
-    } else if (entry == NULL) {
-        pcmk__info("Resource %s no longer exists, not updating cache",
-                   event->rsc_id);
-        return;
     }
 
     entry->last_callid = event->call_id;
