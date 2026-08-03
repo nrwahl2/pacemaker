@@ -33,8 +33,6 @@ struct delete_event_s {
     lrm_state_t *lrm_state;
 };
 
-static gboolean build_active_RAs(lrm_state_t * lrm_state, xmlNode * rsc_list);
-
 static lrmd_event_data_t *construct_op(const lrm_state_t *lrm_state,
                                        const xmlNode *rsc_op,
                                        const char *rsc_id,
@@ -390,7 +388,7 @@ do_lrm_control(long long action, enum crmd_fsa_cause cause,
     }
 }
 
-static gboolean
+static void
 build_active_RAs(lrm_state_t * lrm_state, xmlNode * rsc_list)
 {
     GHashTableIter iter;
@@ -427,8 +425,6 @@ build_active_RAs(lrm_state_t * lrm_state, xmlNode * rsc_list)
                                               lrm_state->node_name);
         }
     }
-
-    return FALSE;
 }
 
 xmlNode *
