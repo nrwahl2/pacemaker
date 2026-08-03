@@ -19,10 +19,10 @@
 static GList *attrd_alert_list = NULL;
 
 static void
-attrd_lrmd_callback(lrmd_event_data_t * op)
+attrd_lrmd_callback(lrmd_event_data_t *event)
 {
-    CRM_CHECK(op != NULL, return);
-    switch (op->type) {
+    CRM_CHECK(event != NULL, return);
+    switch (event->type) {
         case lrmd_event_disconnect:
             pcmk__info("Lost connection to executor");
             attrd_lrmd_disconnect();

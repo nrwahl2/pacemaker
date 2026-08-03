@@ -309,7 +309,7 @@ lrmd_send_fencing_alert(lrmd_t *lrmd, const GList *alert_list,
  * \param[in,out] lrmd        Executor connection to use
  * \param[in]     alert_list  List of alert agents to execute
  * \param[in]     node        Name of node that executed operation
- * \param[in]     op          Resource operation
+ * \param[in]     Event       Resource operation
  *
  * \retval pcmk_ok on success
  * \retval -1 if some alert agents failed
@@ -317,7 +317,7 @@ lrmd_send_fencing_alert(lrmd_t *lrmd, const GList *alert_list,
  */
 int
 lrmd_send_resource_alert(lrmd_t *lrmd, const GList *alert_list,
-                         const char *node, const lrmd_event_data_t *op)
+                         const char *node, const lrmd_event_data_t *event)
 {
     int rc = pcmk_ok;
     int target_rc = pcmk_ok;
@@ -327,9 +327,9 @@ lrmd_send_resource_alert(lrmd_t *lrmd, const GList *alert_list,
         return -2;
     }
 
-    target_rc = rsc_op_expected_rc(op);
-    if ((op->interval_ms == 0) && (target_rc == op->rc)
-        && pcmk__str_eq(op->op_type, PCMK_ACTION_MONITOR, pcmk__str_casei)) {
+    target_rc = rsc_op_expected_rc(event);
+    if ((event->interval_ms == 0) && (target_rc == event->rc)
+        && pcmk__str_eq(event->op_type, PCMK_ACTION_MONITOR, pcmk__str_casei)) {
 
         /* Don't send alerts for probes with the expected result. Leave it up to
          * the agent whether to alert for 'failed' probes. (Even if we find a
@@ -340,31 +340,32 @@ lrmd_send_resource_alert(lrmd_t *lrmd, const GList *alert_list,
     }
 
     params = alert_key2param(params, PCMK__alert_key_node, node);
-    params = alert_key2param(params, PCMK__alert_key_rsc, op->rsc_id);
-    params = alert_key2param(params, PCMK__alert_key_task, op->op_type);
+    params = alert_key2param(params, PCMK__alert_key_rsc, event->rsc_id);
+    params = alert_key2param(params, PCMK__alert_key_task, event->op_type);
     params = alert_key2param_ms(params, PCMK__alert_key_interval,
-                                op->interval_ms);
+                                event->interval_ms);
     params = alert_key2param_int(params, PCMK__alert_key_target_rc, target_rc);
-    params = alert_key2param_int(params, PCMK__alert_key_status, op->op_status);
-    params = alert_key2param_int(params, PCMK__alert_key_rc, op->rc);
+    params = alert_key2param_int(params, PCMK__alert_key_status,
+                                 event->op_status);
+    params = alert_key2param_int(params, PCMK__alert_key_rc, event->rc);
 
     /* Reoccurring operations do not set exec_time, so on timeout, set it
      * to the operation timeout since that's closer to the actual value.
      */
-    if ((op->op_status == PCMK_EXEC_TIMEOUT) && (op->exec_time == 0)) {
+    if ((event->op_status == PCMK_EXEC_TIMEOUT) && (event->exec_time == 0)) {
         params = alert_key2param_int(params, PCMK__alert_key_exec_time,
-                                     op->timeout);
+                                     event->timeout);
     } else {
         params = alert_key2param_int(params, PCMK__alert_key_exec_time,
-                                     op->exec_time);
+                                     event->exec_time);
     }
 
-    if (op->op_status == PCMK_EXEC_DONE) {
+    if (event->op_status == PCMK_EXEC_DONE) {
         params = alert_key2param(params, PCMK__alert_key_desc,
-                                 crm_exit_str((crm_exit_t) op->rc));
+                                 crm_exit_str((crm_exit_t) event->rc));
     } else {
         params = alert_key2param(params, PCMK__alert_key_desc,
-                                 pcmk_exec_status_str(op->op_status));
+                                 pcmk_exec_status_str(event->op_status));
     }
 
     rc = exec_alert_list(lrmd, alert_list, pcmk__alert_resource, NULL, params);

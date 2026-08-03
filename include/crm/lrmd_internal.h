@@ -51,7 +51,7 @@ int lrmd_send_fencing_alert(lrmd_t *lrmd, const GList *alert_list,
                             const char *target, const char *task,
                             const char *desc, int op_rc);
 int lrmd_send_resource_alert(lrmd_t *lrmd, const GList *alert_list,
-                             const char *node, const lrmd_event_data_t *op);
+                             const char *node, const lrmd_event_data_t *event);
 
 int lrmd__remote_send_xml(pcmk__remote_t *session, xmlNode *msg, uint32_t id,
                           const char *msg_type);

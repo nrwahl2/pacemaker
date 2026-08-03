@@ -420,7 +420,7 @@ controld_delete_resource_history(const char *rsc_id, const char *node,
  * \internal
  * \brief Build XML and string of parameters meeting some criteria, for digest
  *
- * \param[in]  op          Executor event with parameter table to use
+ * \param[in]  event       Executor event with parameter table to use
  * \param[in]  metadata    Parsed meta-data for executed resource agent
  * \param[in]  param_type  Flag used for selection criteria
  * \param[out] result      Will be set to newly created XML with selected
@@ -436,7 +436,7 @@ controld_delete_resource_history(const char *rsc_id, const char *node,
  *       \p g_string_free() and the XML result with \p pcmk__xml_free().
  */
 static GString *
-build_parameter_list(const lrmd_event_data_t *op,
+build_parameter_list(const lrmd_event_data_t *event,
                      const struct ra_metadata_s *metadata,
                      enum ra_param_flags_e param_type, xmlNode **result)
 {
@@ -450,7 +450,7 @@ build_parameter_list(const lrmd_event_data_t *op,
     if ((param_type == ra_param_private)
         && (pcmk__compare_versions(controld_globals.dc_version,
                                    "3.16.0") >= 0)) {
-        g_hash_table_foreach(op->params, hash2field, *result);
+        g_hash_table_foreach(event->params, hash2field, *result);
         pcmk__filter_op_for_digest(*result);
     }
 
@@ -493,7 +493,7 @@ build_parameter_list(const lrmd_event_data_t *op,
         }
 
         if (accept_for_xml) {
-            const char *v = g_hash_table_lookup(op->params, param->rap_name);
+            const char *v = g_hash_table_lookup(event->params, param->rap_name);
 
             if (v != NULL) {
                 pcmk__trace("Adding attr %s=%s to the xml result",
@@ -516,16 +516,17 @@ build_parameter_list(const lrmd_event_data_t *op,
 }
 
 static void
-append_restart_list(const lrmd_event_data_t *op, struct ra_metadata_s *metadata,
-                    xmlNode *update, const char *version)
+append_restart_list(const lrmd_event_data_t *event,
+                    struct ra_metadata_s *metadata, xmlNode *update,
+                    const char *version)
 {
     GString *list = NULL;
     char *digest = NULL;
     xmlNode *restart = NULL;
 
-    CRM_LOG_ASSERT(op->params != NULL);
+    CRM_LOG_ASSERT(event->params != NULL);
 
-    if (op->interval_ms > 0) {
+    if (event->interval_ms > 0) {
         /* monitors are not reloadable */
         return;
     }
@@ -534,7 +535,7 @@ append_restart_list(const lrmd_event_data_t *op, struct ra_metadata_s *metadata,
         /* Add parameters not marked reloadable to the PCMK__XA_OP_FORCE_RESTART
          * list
          */
-        list = build_parameter_list(op, metadata, ra_param_reloadable,
+        list = build_parameter_list(event, metadata, ra_param_reloadable,
                                     &restart);
 
     } else if (pcmk__is_set(metadata->ra_flags, ra_supports_legacy_reload)) {
@@ -544,7 +545,7 @@ append_restart_list(const lrmd_event_data_t *op, struct ra_metadata_s *metadata,
          * reloadability. Add any parameters with unique="1" to the
          * PCMK__XA_OP_FORCE_RESTART list.
          */
-        list = build_parameter_list(op, metadata, ra_param_unique, &restart);
+        list = build_parameter_list(event, metadata, ra_param_unique, &restart);
 
     } else {
         // Resource does not support agent reloads
@@ -561,9 +562,9 @@ append_restart_list(const lrmd_event_data_t *op, struct ra_metadata_s *metadata,
     pcmk__xe_set(update, PCMK__XA_OP_RESTART_DIGEST, digest);
 
     if ((list != NULL) && (list->len > 0)) {
-        pcmk__trace("%s: %s, %s", op->rsc_id, digest, list->str);
+        pcmk__trace("%s: %s, %s", event->rsc_id, digest, list->str);
     } else {
-        pcmk__trace("%s: %s", op->rsc_id, digest);
+        pcmk__trace("%s: %s", event->rsc_id, digest);
     }
 
     if (list != NULL) {
@@ -574,29 +575,30 @@ append_restart_list(const lrmd_event_data_t *op, struct ra_metadata_s *metadata,
 }
 
 static void
-append_secure_list(const lrmd_event_data_t *op, struct ra_metadata_s *metadata,
-                   xmlNode *update, const char *version)
+append_secure_list(const lrmd_event_data_t *event,
+                   struct ra_metadata_s *metadata, xmlNode *update,
+                   const char *version)
 {
     GString *list = NULL;
     char *digest = NULL;
     xmlNode *secure = NULL;
 
-    CRM_LOG_ASSERT(op->params != NULL);
+    CRM_LOG_ASSERT(event->params != NULL);
 
     /* To keep PCMK__XA_OP_SECURE_PARAMS short, we want it to contain the secure
      * parameters but PCMK__XA_OP_SECURE_DIGEST to be based on the insecure ones
      */
-    list = build_parameter_list(op, metadata, ra_param_private, &secure);
+    list = build_parameter_list(event, metadata, ra_param_private, &secure);
 
     if (list != NULL) {
         digest = pcmk__digest_op_params(secure);
         pcmk__xe_set(update, PCMK__XA_OP_SECURE_PARAMS, list->str);
         pcmk__xe_set(update, PCMK__XA_OP_SECURE_DIGEST, digest);
 
-        pcmk__trace("%s: %s, %s", op->rsc_id, digest, list->str);
+        pcmk__trace("%s: %s, %s", event->rsc_id, digest, list->str);
         g_string_free(list, TRUE);
     } else {
-        pcmk__trace("%s: no secure parameters", op->rsc_id);
+        pcmk__trace("%s: no secure parameters", event->rsc_id);
     }
 
     pcmk__xml_free(secure);
@@ -610,13 +612,13 @@ append_secure_list(const lrmd_event_data_t *op, struct ra_metadata_s *metadata,
  * \param[in]     func       Function name of caller
  * \param[in,out] parent     XML to add entry to
  * \param[in]     rsc        Affected resource
- * \param[in,out] op         Action to add an entry for (or NULL to do nothing)
+ * \param[in,out] event      Action to add an entry for (\c NULL to do nothing)
  * \param[in]     node_name  Node where action occurred
  */
 void
 controld_add_resource_history_xml_as(const char *func, xmlNode *parent,
                                      const lrmd_rsc_info_t *rsc,
-                                     lrmd_event_data_t *op,
+                                     lrmd_event_data_t *event,
                                      const char *node_name)
 {
     int target_rc = 0;
@@ -625,27 +627,28 @@ controld_add_resource_history_xml_as(const char *func, xmlNode *parent,
     const char *caller_version = NULL;
     lrm_state_t *lrm_state = NULL;
 
-    if (op == NULL) {
+    if (event == NULL) {
         return;
     }
 
-    target_rc = rsc_op_expected_rc(op);
+    target_rc = rsc_op_expected_rc(event);
 
-    caller_version = g_hash_table_lookup(op->params, PCMK_XA_CRM_FEATURE_SET);
+    caller_version = g_hash_table_lookup(event->params,
+                                         PCMK_XA_CRM_FEATURE_SET);
     CRM_CHECK(caller_version != NULL, caller_version = CRM_FEATURE_SET);
 
-    xml_op = pcmk__create_history_xml(parent, op, caller_version, target_rc,
+    xml_op = pcmk__create_history_xml(parent, event, caller_version, target_rc,
                                       controld_globals.cluster->priv->node_name,
                                       func);
     if (xml_op == NULL) {
         return;
     }
 
-    if ((rsc == NULL) || (op->params == NULL)
-        || !crm_op_needs_metadata(rsc->standard, op->op_type)) {
+    if ((rsc == NULL) || (event->params == NULL)
+        || !crm_op_needs_metadata(rsc->standard, event->op_type)) {
 
         pcmk__trace("No digests needed for %s action on %s (params=%p rsc=%p)",
-                    op->op_type, op->rsc_id, op->params, rsc);
+                    event->op_type, event->rsc_id, event->params, rsc);
         return;
     }
 
@@ -653,7 +656,8 @@ controld_add_resource_history_xml_as(const char *func, xmlNode *parent,
     if (lrm_state == NULL) {
         pcmk__warn("Cannot calculate digests for operation " PCMK__OP_FMT
                    " because we have no connection to executor for %s",
-                   op->rsc_id, op->op_type, op->interval_ms, node_name);
+                   event->rsc_id, event->op_type, event->interval_ms,
+                   node_name);
         return;
     }
 
@@ -671,8 +675,8 @@ controld_add_resource_history_xml_as(const char *func, xmlNode *parent,
 
     pcmk__trace("Including additional digests for %s:%s:%s", rsc->standard,
                 rsc->provider, rsc->type);
-    append_restart_list(op, metadata, xml_op, caller_version);
-    append_secure_list(op, metadata, xml_op, caller_version);
+    append_restart_list(event, metadata, xml_op, caller_version);
+    append_secure_list(event, metadata, xml_op, caller_version);
 }
 
 /*!
@@ -681,46 +685,47 @@ controld_add_resource_history_xml_as(const char *func, xmlNode *parent,
  *
  * \param[in]     node_name  Node where the action is pending
  * \param[in]     rsc        Resource that action is for
- * \param[in,out] op         Pending action
+ * \param[in,out] event      Pending action
  *
  * \return true if action was recorded in CIB, otherwise false
  */
 bool
 controld_record_pending_op(const char *node_name, const lrmd_rsc_info_t *rsc,
-                           lrmd_event_data_t *op)
+                           lrmd_event_data_t *event)
 {
     const char *record_pending = NULL;
 
-    CRM_CHECK((node_name != NULL) && (rsc != NULL) && (op != NULL),
+    CRM_CHECK((node_name != NULL) && (rsc != NULL) && (event != NULL),
               return false);
 
     // Never record certain operation types as pending
-    if ((op->op_type == NULL) || (op->params == NULL)
-        || !controld_action_is_recordable(op->op_type)) {
+    if ((event->op_type == NULL) || (event->params == NULL)
+        || !controld_action_is_recordable(event->op_type)) {
+
         return false;
     }
 
     // Check action's PCMK_META_RECORD_PENDING meta-attribute (defaults to true)
-    record_pending = crm_meta_value(op->params, PCMK_META_RECORD_PENDING);
+    record_pending = crm_meta_value(event->params, PCMK_META_RECORD_PENDING);
     if ((record_pending != NULL) && !pcmk__is_true(record_pending)) {
         pcmk__warn_once(pcmk__wo_record_pending,
                         "The " PCMK_META_RECORD_PENDING " option (for example, "
                         "for the %s resource's %s operation) is deprecated and "
                         "will be removed in a future release",
-                        rsc->id, op->op_type);
+                        rsc->id, event->op_type);
         return false;
     }
 
-    op->call_id = -1;
-    op->t_run = time(NULL);
-    op->t_rcchange = op->t_run;
+    event->call_id = -1;
+    event->t_run = time(NULL);
+    event->t_rcchange = event->t_run;
 
-    lrmd__set_result(op, PCMK_OCF_UNKNOWN, PCMK_EXEC_PENDING, NULL);
+    lrmd__set_result(event, PCMK_OCF_UNKNOWN, PCMK_EXEC_PENDING, NULL);
 
     pcmk__debug("Recording pending %s-interval %s for %s on %s in the CIB",
-                pcmk__readable_interval(op->interval_ms), op->op_type,
-                op->rsc_id, node_name);
-    controld_update_resource_history(node_name, rsc, op, 0);
+                pcmk__readable_interval(event->interval_ms), event->op_type,
+                event->rsc_id, node_name);
+    controld_update_resource_history(node_name, rsc, event, 0);
     return true;
 }
 
@@ -751,16 +756,17 @@ cib_rsc_callback(xmlNode * msg, int call_id, int rc, xmlNode * output, void *use
  * until it is active there again after the node comes back up.
  */
 static bool
-should_preserve_lock(const lrmd_event_data_t *op)
+should_preserve_lock(const lrmd_event_data_t *event)
 {
     if (!pcmk__is_set(controld_globals.flags, controld_shutdown_lock_enabled)) {
         return false;
     }
-    if (!strcmp(op->op_type, PCMK_ACTION_STOP) && (op->rc == PCMK_OCF_OK)) {
+    if (!strcmp(event->op_type, PCMK_ACTION_STOP)
+        && (event->rc == PCMK_OCF_OK)) {
         return true;
     }
-    if (!strcmp(op->op_type, PCMK_ACTION_MONITOR)
-        && (op->rc == PCMK_OCF_NOT_RUNNING)) {
+    if (!strcmp(event->op_type, PCMK_ACTION_MONITOR)
+        && (event->rc == PCMK_OCF_NOT_RUNNING)) {
         return true;
     }
     return false;
@@ -823,7 +829,7 @@ controld_update_cib(const char *section, xmlNode *data, int options,
  *
  * \param[in]     node_name  Node where action occurred
  * \param[in]     rsc        Resource that action is for
- * \param[in,out] op         Action to record
+ * \param[in,out] event         Action to record
  * \param[in]     lock_time  If nonzero, when resource was locked to node
  *
  * \note On success, the CIB update's call ID will be stored in
@@ -832,7 +838,7 @@ controld_update_cib(const char *section, xmlNode *data, int options,
 void
 controld_update_resource_history(const char *node_name,
                                  const lrmd_rsc_info_t *rsc,
-                                 lrmd_event_data_t *op, time_t lock_time)
+                                 lrmd_event_data_t *event, time_t lock_time)
 {
     xmlNode *update = NULL;
     xmlNode *xml = NULL;
@@ -840,11 +846,12 @@ controld_update_resource_history(const char *node_name,
     const char *node_id = NULL;
     const char *container = NULL;
 
-    CRM_CHECK((node_name != NULL) && (op != NULL), return);
+    CRM_CHECK((node_name != NULL) && (event != NULL), return);
 
     if (rsc == NULL) {
-        pcmk__warn("Resource %s no longer exists in the executor", op->rsc_id);
-        controld_ack_event_directly(NULL, NULL, rsc, op, op->rsc_id);
+        pcmk__warn("Resource %s no longer exists in the executor",
+                   event->rsc_id);
+        controld_ack_event_directly(NULL, NULL, rsc, event, event->rsc_id);
         return;
     }
 
@@ -872,7 +879,7 @@ controld_update_resource_history(const char *node_name,
 
     //         <lrm_resource ...>
     xml = pcmk__xe_create(xml, PCMK__XE_LRM_RESOURCE);
-    pcmk__xe_set(xml, PCMK_XA_ID, op->rsc_id);
+    pcmk__xe_set(xml, PCMK_XA_ID, event->rsc_id);
     pcmk__xe_set(xml, PCMK_XA_CLASS, rsc->standard);
     pcmk__xe_set(xml, PCMK_XA_PROVIDER, rsc->provider);
     pcmk__xe_set(xml, PCMK_XA_TYPE, rsc->type);
@@ -880,23 +887,23 @@ controld_update_resource_history(const char *node_name,
         /* Actions on a locked resource should either preserve the lock by
          * recording it with the action result, or clear it.
          */
-        if (!should_preserve_lock(op)) {
+        if (!should_preserve_lock(event)) {
             lock_time = 0;
         }
         pcmk__xe_set_time(xml, PCMK_OPT_SHUTDOWN_LOCK, lock_time);
     }
-    if (op->params != NULL) {
-        container = g_hash_table_lookup(op->params,
+    if (event->params != NULL) {
+        container = g_hash_table_lookup(event->params,
                                         CRM_META "_" PCMK__META_CONTAINER);
         if (container != NULL) {
             pcmk__trace("Resource %s is a part of container resource %s",
-                        op->rsc_id, container);
+                        event->rsc_id, container);
             pcmk__xe_set(xml, PCMK__META_CONTAINER, container);
         }
     }
 
     //           <lrm_resource_op ...> (possibly more than one)
-    controld_add_resource_history_xml(xml, rsc, op, node_name);
+    controld_add_resource_history_xml(xml, rsc, event, node_name);
 
     /* Update CIB asynchronously. Even if it fails, the resource state should be
      * discovered during the next election. Worst case, the node is wrongly
@@ -911,21 +918,22 @@ controld_update_resource_history(const char *node_name,
  * \internal
  * \brief Erase an LRM history entry from the CIB, given the operation data
  *
- * \param[in] op         Operation whose history should be deleted
+ * \param[in] event  Event for operation whose history should be deleted
  */
 void
-controld_delete_action_history(const lrmd_event_data_t *op)
+controld_delete_action_history(const lrmd_event_data_t *event)
 {
     xmlNode *xml_top = NULL;
 
-    CRM_CHECK(op != NULL, return);
+    CRM_CHECK(event != NULL, return);
 
     xml_top = pcmk__xe_create(NULL, PCMK__XE_LRM_RSC_OP);
-    pcmk__xe_set_int(xml_top, PCMK__XA_CALL_ID, op->call_id);
-    pcmk__xe_set(xml_top, PCMK__XA_TRANSITION_KEY, op->user_data);
+    pcmk__xe_set_int(xml_top, PCMK__XA_CALL_ID, event->call_id);
+    pcmk__xe_set(xml_top, PCMK__XA_TRANSITION_KEY, event->user_data);
 
-    if (op->interval_ms > 0) {
-        char *op_id = pcmk__op_key(op->rsc_id, op->op_type, op->interval_ms);
+    if (event->interval_ms > 0) {
+        char *op_id = pcmk__op_key(event->rsc_id, event->op_type,
+                                   event->interval_ms);
 
         /* Avoid deleting last_failure too (if it was a result of this recurring op failing) */
         pcmk__xe_set(xml_top, PCMK_XA_ID, op_id);
@@ -933,8 +941,8 @@ controld_delete_action_history(const lrmd_event_data_t *op)
     }
 
     pcmk__debug("Erasing resource operation history for " PCMK__OP_FMT
-                " (call=%d)",
-                op->rsc_id, op->op_type, op->interval_ms, op->call_id);
+                " (call=%d)", event->rsc_id, event->op_type, event->interval_ms,
+                event->call_id);
 
     controld_globals.cib_conn->cmds->remove(controld_globals.cib_conn,
                                             PCMK_XE_STATUS, xml_top, cib_none);

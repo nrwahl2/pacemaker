@@ -195,30 +195,30 @@ static lrmd_event_data_t *
 create_op(const xmlNode *cib_resource, const char *task,
           unsigned int interval_ms, int outcome)
 {
-    lrmd_event_data_t *op = NULL;
+    lrmd_event_data_t *event = NULL;
     xmlNode *xop = NULL;
 
-    op = lrmd_new_event(pcmk__xe_id(cib_resource), task, interval_ms);
-    lrmd__set_result(op, outcome, PCMK_EXEC_DONE, "Simulated action result");
-    op->params = NULL; // Not needed for simulation purposes
-    op->t_run = time(NULL);
-    op->t_rcchange = op->t_run;
+    event = lrmd_new_event(pcmk__xe_id(cib_resource), task, interval_ms);
+    lrmd__set_result(event, outcome, PCMK_EXEC_DONE, "Simulated action result");
+    event->params = NULL; // Not needed for simulation purposes
+    event->t_run = time(NULL);
+    event->t_rcchange = event->t_run;
 
     // Use a call ID higher than any existing history entries
-    op->call_id = 0;
+    event->call_id = 0;
     for (xop = pcmk__xe_first_child(cib_resource, NULL, NULL, NULL);
          xop != NULL; xop = pcmk__xe_next(xop, NULL)) {
 
         int tmp = 0;
 
         pcmk__xe_get_int(xop, PCMK__XA_CALL_ID, &tmp);
-        if (tmp > op->call_id) {
-            op->call_id = tmp;
+        if (tmp > event->call_id) {
+            event->call_id = tmp;
         }
     }
-    op->call_id++;
+    event->call_id++;
 
-    return op;
+    return event;
 }
 
 /*!
@@ -226,17 +226,17 @@ create_op(const xmlNode *cib_resource, const char *task,
  * \brief Inject a fictitious resource history entry into a scheduler input
  *
  * \param[in,out] cib_resource  Resource history XML to inject entry into
- * \param[in,out] op            Action result to inject
+ * \param[in,out] event         Action result to inject
  * \param[in]     node          Name of node where the action occurred
  * \param[in]     target_rc     Expected result for action to inject
  *
  * \return XML of injected resource history entry
  */
 xmlNode *
-pcmk__inject_action_result(xmlNode *cib_resource, lrmd_event_data_t *op,
+pcmk__inject_action_result(xmlNode *cib_resource, lrmd_event_data_t *event,
                            const char *node, int target_rc)
 {
-    return pcmk__create_history_xml(cib_resource, op, CRM_FEATURE_SET,
+    return pcmk__create_history_xml(cib_resource, event, CRM_FEATURE_SET,
                                     target_rc, node, crm_system_name);
 }
 
@@ -583,7 +583,7 @@ inject_action(pcmk__output_t *out, const char *spec, cib_t *cib,
     xmlNode *cib_node = NULL;
     xmlNode *cib_resource = NULL;
     const pcmk_resource_t *rsc = NULL;
-    lrmd_event_data_t *op = NULL;
+    lrmd_event_data_t *event = NULL;
     bool infinity = false;
 
     out->message(out, "inject-spec", spec);
@@ -629,12 +629,12 @@ inject_action(pcmk__output_t *out, const char *spec, cib_t *cib,
                                                  rclass, rtype, rprovider);
     pcmk__assert(cib_resource != NULL);
 
-    op = create_op(cib_resource, task, interval_ms, outcome);
-    pcmk__assert(op != NULL);
+    event = create_op(cib_resource, task, interval_ms, outcome);
+    pcmk__assert(event != NULL);
 
-    cib_op = pcmk__inject_action_result(cib_resource, op, node, 0);
+    cib_op = pcmk__inject_action_result(cib_resource, event, node, 0);
     pcmk__assert(cib_op != NULL);
-    lrmd_free_event(op);
+    lrmd_free_event(event);
 
     rc = cib->cmds->modify(cib, PCMK_XE_STATUS, cib_node, cib_sync_call);
     pcmk__assert(rc == pcmk_ok);

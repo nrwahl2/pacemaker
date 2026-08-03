@@ -517,12 +517,12 @@ decode_transition_key(const char *key, char **uuid, int *transition_id, int *act
 }
 
 int
-rsc_op_expected_rc(const lrmd_event_data_t *op)
+rsc_op_expected_rc(const lrmd_event_data_t *event)
 {
     int rc = 0;
 
-    if (op && op->user_data) {
-        decode_transition_key(op->user_data, NULL, NULL, NULL, &rc);
+    if ((event != NULL) && (event->user_data != NULL)) {
+        decode_transition_key(event->user_data, NULL, NULL, NULL, &rc);
     }
     return rc;
 }

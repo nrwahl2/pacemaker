@@ -220,7 +220,7 @@ execute_cluster_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
 static lrmd_event_data_t *
 synthesize_timeout_event(const pcmk__graph_action_t *action, int target_rc)
 {
-    lrmd_event_data_t *op = NULL;
+    lrmd_event_data_t *event = NULL;
     const char *target = pcmk__xe_get(action->xml, PCMK__META_ON_NODE);
     const char *reason = NULL;
     char *dynamic_reason = NULL;
@@ -241,19 +241,20 @@ synthesize_timeout_event(const pcmk__graph_action_t *action, int target_rc)
         reason = dynamic_reason;
     }
 
-    op = pcmk__event_from_graph_action(NULL, action, PCMK_EXEC_TIMEOUT,
-                                       PCMK_OCF_UNKNOWN_ERROR, reason);
-    op->call_id = -1;
-    op->user_data = pcmk__transition_key(controld_globals.transition_graph->id,
-                                         action->id, target_rc,
-                                         controld_globals.te_uuid);
+    event = pcmk__event_from_graph_action(NULL, action, PCMK_EXEC_TIMEOUT,
+                                          PCMK_OCF_UNKNOWN_ERROR, reason);
+    event->call_id = -1;
+    event->user_data =
+        pcmk__transition_key(controld_globals.transition_graph->id,
+                             action->id, target_rc, controld_globals.te_uuid);
+
     free(dynamic_reason);
-    return op;
+    return event;
 }
 
 static void
 controld_record_action_event(pcmk__graph_action_t *action,
-                             lrmd_event_data_t *op)
+                             lrmd_event_data_t *event)
 {
     cib_t *cib_conn = controld_globals.cib_conn;
 
@@ -307,7 +308,7 @@ controld_record_action_event(pcmk__graph_action_t *action,
     pcmk__xe_set(rsc, PCMK_XA_PROVIDER,
                  pcmk__xe_get(action_rsc, PCMK_XA_PROVIDER));
 
-    pcmk__create_history_xml(rsc, op, CRM_FEATURE_SET, target_rc, target,
+    pcmk__create_history_xml(rsc, event, CRM_FEATURE_SET, target_rc, target,
                              __func__);
 
     rc = cib_conn->cmds->modify(cib_conn, PCMK_XE_STATUS, state, cib_none);
@@ -323,7 +324,7 @@ controld_record_action_event(pcmk__graph_action_t *action,
 void
 controld_record_action_timeout(pcmk__graph_action_t *action)
 {
-    lrmd_event_data_t *op = NULL;
+    lrmd_event_data_t *event = NULL;
 
     const char *target = pcmk__xe_get(action->xml, PCMK__META_ON_NODE);
     const char *task_uuid = pcmk__xe_get(action->xml, PCMK__XA_OPERATION_KEY);
@@ -333,9 +334,9 @@ controld_record_action_timeout(pcmk__graph_action_t *action)
     pcmk__warn("%s %d: %s on %s timed out", action->xml->name, action->id,
                task_uuid, target);
 
-    op = synthesize_timeout_event(action, target_rc);
-    controld_record_action_event(action, op);
-    lrmd_free_event(op);
+    event = synthesize_timeout_event(action, target_rc);
+    controld_record_action_event(action, event);
+    lrmd_free_event(event);
 }
 
 /*!

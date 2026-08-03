@@ -24,7 +24,7 @@ void lrm_clear_last_failure(const char *rsc_id, const char *node_name,
                             const char *operation, unsigned int interval_ms);
 void controld_invoke_execd(fsa_data_t *msg_data);
 
-void lrm_op_callback(lrmd_event_data_t * op);
+void lrm_op_callback(lrmd_event_data_t *event);
 lrmd_t *crmd_local_lrmd_conn(void);
 
 typedef struct {
@@ -155,7 +155,7 @@ int controld_execd_state_unregister_rsc(lrm_state_t *lrm_state,
                                         const char *rsc_id);
 
 // Functions used to manage remote executor connection resources
-void remote_lrm_op_callback(lrmd_event_data_t * op);
+void remote_lrm_op_callback(lrmd_event_data_t *event);
 bool is_remote_lrmd_ra(const char *id);
 lrmd_rsc_info_t *remote_ra_get_rsc_info(const char *rsc_id);
 int remote_ra_cancel(const char *rsc_id, const char *action,
@@ -173,11 +173,11 @@ bool controld_remote_ra_in_maintenance(const lrm_state_t *lrm_state);
 void remote_ra_process_maintenance_nodes(xmlNode *xml);
 bool controld_remote_ra_controlling_guest(const lrm_state_t *lrm_state);
 
-void process_lrm_event(lrm_state_t *lrm_state, lrmd_event_data_t *op,
+void process_lrm_event(lrm_state_t *lrm_state, lrmd_event_data_t *event,
                        active_op_t *pending, const xmlNode *action_xml);
 void controld_ack_event_directly(const char *to_host, const char *to_sys,
                                  const lrmd_rsc_info_t *rsc,
-                                 lrmd_event_data_t *op, const char *rsc_id);
+                                 lrmd_event_data_t *event, const char *rsc_id);
 void controld_rc2event(lrmd_event_data_t *event, int rc);
 void controld_trigger_delete_refresh(const char *from_sys, const char *rsc_id);
 

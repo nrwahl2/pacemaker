@@ -1097,20 +1097,20 @@ pcmk__new_shutdown_action(pcmk_node_t *node)
  * restart is needed due to the resource's parameters being changed, and add it
  * to given XML.
  *
- * \param[in]     op      Operation result from executor
+ * \param[in]     event   Operation result from executor
  * \param[in,out] update  XML to add digest to
  */
 static void
-add_op_digest_to_xml(const lrmd_event_data_t *op, xmlNode *update)
+add_op_digest_to_xml(const lrmd_event_data_t *event, xmlNode *update)
 {
     char *digest = NULL;
     xmlNode *args_xml = NULL;
 
-    if (op->params == NULL) {
+    if (event->params == NULL) {
         return;
     }
     args_xml = pcmk__xe_create(NULL, PCMK_XE_PARAMETERS);
-    g_hash_table_foreach(op->params, hash2field, args_xml);
+    g_hash_table_foreach(event->params, hash2field, args_xml);
     pcmk__filter_op_for_digest(args_xml);
     digest = pcmk__digest_op_params(args_xml);
     pcmk__xe_set(update, PCMK__XA_OP_DIGEST, digest);
@@ -1125,7 +1125,7 @@ add_op_digest_to_xml(const lrmd_event_data_t *op, xmlNode *update)
  * \brief Create XML for resource operation history update
  *
  * \param[in,out] parent          Parent XML node to add to
- * \param[in,out] op              Operation event data
+ * \param[in,out] event           Operation event data
  * \param[in]     caller_version  DC feature set
  * \param[in]     target_rc       Expected result of operation
  * \param[in]     node            Name of node on which operation was performed
@@ -1134,7 +1134,7 @@ add_op_digest_to_xml(const lrmd_event_data_t *op, xmlNode *update)
  * \return Newly created XML node for history update
  */
 xmlNode *
-pcmk__create_history_xml(xmlNode *parent, lrmd_event_data_t *op,
+pcmk__create_history_xml(xmlNode *parent, lrmd_event_data_t *event,
                          const char *caller_version, int target_rc,
                          const char *node, const char *origin)
 {
@@ -1148,13 +1148,13 @@ pcmk__create_history_xml(xmlNode *parent, lrmd_event_data_t *op,
     xmlNode *xml_op = NULL;
     const char *task = NULL;
 
-    CRM_CHECK(op != NULL, return NULL);
+    CRM_CHECK(event != NULL, return NULL);
     pcmk__trace("Creating history XML for %s-interval %s action for %s on %s "
                 "(DC version: %s, origin: %s)",
-                pcmk__readable_interval(op->interval_ms), op->op_type,
-                op->rsc_id, pcmk__s(node, "no node"), caller_version, origin);
+                pcmk__readable_interval(event->interval_ms), event->op_type,
+                event->rsc_id, pcmk__s(node, "no node"), caller_version, origin);
 
-    task = op->op_type;
+    task = event->op_type;
 
     /* Record a successful agent reload as a start, and a failed one as a
      * monitor, to make life easier for the scheduler when determining the
@@ -1172,53 +1172,53 @@ pcmk__create_history_xml(xmlNode *parent, lrmd_event_data_t *op,
      */
     if (pcmk__str_any_of(task, PCMK_ACTION_RELOAD, PCMK_ACTION_RELOAD_AGENT,
                          NULL)) {
-        if (op->op_status == PCMK_EXEC_DONE) {
+        if (event->op_status == PCMK_EXEC_DONE) {
             task = PCMK_ACTION_START;
         } else {
             task = PCMK_ACTION_MONITOR;
         }
     }
 
-    key = pcmk__op_key(op->rsc_id, task, op->interval_ms);
+    key = pcmk__op_key(event->rsc_id, task, event->interval_ms);
     if (pcmk__str_eq(task, PCMK_ACTION_NOTIFY, pcmk__str_none)) {
-        const char *n_type = crm_meta_value(op->params, "notify_type");
-        const char *n_task = crm_meta_value(op->params, "notify_operation");
+        const char *n_type = crm_meta_value(event->params, "notify_type");
+        const char *n_task = crm_meta_value(event->params, "notify_operation");
 
         CRM_LOG_ASSERT(n_type != NULL);
         CRM_LOG_ASSERT(n_task != NULL);
-        op_id = pcmk__notify_key(op->rsc_id, n_type, n_task);
+        op_id = pcmk__notify_key(event->rsc_id, n_type, n_task);
 
-        if (op->op_status != PCMK_EXEC_PENDING) {
+        if (event->op_status != PCMK_EXEC_PENDING) {
             /* Ignore notify errors.
              *
              * @TODO It might be better to keep the correct result here, and
              * ignore it in process_graph_event().
              */
-            lrmd__set_result(op, PCMK_OCF_OK, PCMK_EXEC_DONE, NULL);
+            lrmd__set_result(event, PCMK_OCF_OK, PCMK_EXEC_DONE, NULL);
         }
 
     /* Migration history is preserved separately, which usually matters for
      * multiple nodes and is important for future cluster transitions.
      */
-    } else if (pcmk__str_any_of(op->op_type, PCMK_ACTION_MIGRATE_TO,
+    } else if (pcmk__str_any_of(event->op_type, PCMK_ACTION_MIGRATE_TO,
                                 PCMK_ACTION_MIGRATE_FROM, NULL)) {
         op_id = strdup(key);
 
-    } else if (did_rsc_op_fail(op, target_rc)) {
-        op_id = pcmk__op_key(op->rsc_id, "last_failure", 0);
-        if (op->interval_ms == 0) {
+    } else if (did_rsc_op_fail(event, target_rc)) {
+        op_id = pcmk__op_key(event->rsc_id, "last_failure", 0);
+        if (event->interval_ms == 0) {
             /* Ensure 'last' gets updated, in case PCMK_META_RECORD_PENDING is
              * true
              */
-            op_id_additional = pcmk__op_key(op->rsc_id, "last", 0);
+            op_id_additional = pcmk__op_key(event->rsc_id, "last", 0);
         }
-        exit_reason = op->exit_reason;
+        exit_reason = event->exit_reason;
 
-    } else if (op->interval_ms > 0) {
+    } else if (event->interval_ms > 0) {
         op_id = strdup(key);
 
     } else {
-        op_id = pcmk__op_key(op->rsc_id, "last", 0);
+        op_id = pcmk__op_key(event->rsc_id, "last", 0);
     }
 
   again:
@@ -1228,19 +1228,18 @@ pcmk__create_history_xml(xmlNode *parent, lrmd_event_data_t *op,
         xml_op = pcmk__xe_create(parent, PCMK__XE_LRM_RSC_OP);
     }
 
-    if (op->user_data == NULL) {
+    if (event->user_data == NULL) {
         pcmk__debug("Generating fake transition key for: " PCMK__OP_FMT
-                    " %d from %s",
-                    op->rsc_id, op->op_type, op->interval_ms, op->call_id,
-                    origin);
-        local_user_data = pcmk__transition_key(-1, op->call_id, target_rc,
+                    " %d from %s", event->rsc_id, event->op_type,
+                    event->interval_ms, event->call_id, origin);
+        local_user_data = pcmk__transition_key(-1, event->call_id, target_rc,
                                                FAKE_TE_ID);
-        op->user_data = local_user_data;
+        event->user_data = local_user_data;
     }
 
     if (magic == NULL) {
-        magic = pcmk__assert_asprintf("%d:%d;%s", op->op_status, op->rc,
-                                      (const char *) op->user_data);
+        magic = pcmk__assert_asprintf("%d:%d;%s", event->op_status, event->rc,
+                                      (const char *) event->user_data);
     }
 
     pcmk__xe_set(xml_op, PCMK_XA_ID, op_id);
@@ -1248,50 +1247,51 @@ pcmk__create_history_xml(xmlNode *parent, lrmd_event_data_t *op,
     pcmk__xe_set(xml_op, PCMK_XA_OPERATION, task);
     pcmk__xe_set(xml_op, PCMK_XA_CRM_DEBUG_ORIGIN, origin);
     pcmk__xe_set(xml_op, PCMK_XA_CRM_FEATURE_SET, caller_version);
-    pcmk__xe_set(xml_op, PCMK__XA_TRANSITION_KEY, op->user_data);
+    pcmk__xe_set(xml_op, PCMK__XA_TRANSITION_KEY, event->user_data);
     pcmk__xe_set(xml_op, PCMK__XA_TRANSITION_MAGIC, magic);
     pcmk__xe_set(xml_op, PCMK_XA_EXIT_REASON, pcmk__s(exit_reason, ""));
     pcmk__xe_set(xml_op, PCMK__META_ON_NODE, node); // For context during triage
 
-    pcmk__xe_set_int(xml_op, PCMK__XA_CALL_ID, op->call_id);
-    pcmk__xe_set_int(xml_op, PCMK__XA_RC_CODE, op->rc);
-    pcmk__xe_set_int(xml_op, PCMK__XA_OP_STATUS, op->op_status);
-    pcmk__xe_set_uint(xml_op, PCMK_META_INTERVAL, op->interval_ms);
+    pcmk__xe_set_int(xml_op, PCMK__XA_CALL_ID, event->call_id);
+    pcmk__xe_set_int(xml_op, PCMK__XA_RC_CODE, event->rc);
+    pcmk__xe_set_int(xml_op, PCMK__XA_OP_STATUS, event->op_status);
+    pcmk__xe_set_uint(xml_op, PCMK_META_INTERVAL, event->interval_ms);
 
-    if ((op->t_run > 0) || (op->t_rcchange > 0) || (op->exec_time > 0)
-        || (op->queue_time > 0)) {
+    if ((event->t_run > 0) || (event->t_rcchange > 0) || (event->exec_time > 0)
+        || (event->queue_time > 0)) {
 
         pcmk__trace("Timing data (" PCMK__OP_FMT "): "
                     "last=%lld change=%lld exec=%u queue=%u",
-                    op->rsc_id, op->op_type, op->interval_ms,
-                    (long long) op->t_run, (long long) op->t_rcchange,
-                    op->exec_time, op->queue_time);
+                    event->rsc_id, event->op_type, event->interval_ms,
+                    (long long) event->t_run, (long long) event->t_rcchange,
+                    event->exec_time, event->queue_time);
 
-        if ((op->interval_ms > 0) && (op->t_rcchange > 0)) {
+        if ((event->interval_ms > 0) && (event->t_rcchange > 0)) {
             // Recurring ops may have changed rc after initial run
-            pcmk__xe_set_time(xml_op, PCMK_XA_LAST_RC_CHANGE, op->t_rcchange);
+            pcmk__xe_set_time(xml_op, PCMK_XA_LAST_RC_CHANGE,
+                              event->t_rcchange);
         } else {
-            pcmk__xe_set_time(xml_op, PCMK_XA_LAST_RC_CHANGE, op->t_run);
+            pcmk__xe_set_time(xml_op, PCMK_XA_LAST_RC_CHANGE, event->t_run);
         }
 
-        pcmk__xe_set_int(xml_op, PCMK_XA_EXEC_TIME, op->exec_time);
-        pcmk__xe_set_int(xml_op, PCMK_XA_QUEUE_TIME, op->queue_time);
+        pcmk__xe_set_int(xml_op, PCMK_XA_EXEC_TIME, event->exec_time);
+        pcmk__xe_set_int(xml_op, PCMK_XA_QUEUE_TIME, event->queue_time);
     }
 
-    if (pcmk__str_any_of(op->op_type, PCMK_ACTION_MIGRATE_TO,
+    if (pcmk__str_any_of(event->op_type, PCMK_ACTION_MIGRATE_TO,
                          PCMK_ACTION_MIGRATE_FROM, NULL)) {
         /* Record PCMK__META_MIGRATE_SOURCE and PCMK__META_MIGRATE_TARGET always
          * for migrate ops.
          */
         const char *name = PCMK__META_MIGRATE_SOURCE;
 
-        pcmk__xe_set(xml_op, name, crm_meta_value(op->params, name));
+        pcmk__xe_set(xml_op, name, crm_meta_value(event->params, name));
 
         name = PCMK__META_MIGRATE_TARGET;
-        pcmk__xe_set(xml_op, name, crm_meta_value(op->params, name));
+        pcmk__xe_set(xml_op, name, crm_meta_value(event->params, name));
     }
 
-    add_op_digest_to_xml(op, xml_op);
+    add_op_digest_to_xml(event, xml_op);
 
     if (op_id_additional) {
         free(op_id);
@@ -1302,7 +1302,7 @@ pcmk__create_history_xml(xmlNode *parent, lrmd_event_data_t *op,
 
     if (local_user_data) {
         free(local_user_data);
-        op->user_data = NULL;
+        event->user_data = NULL;
     }
     free(magic);
     free(op_id);

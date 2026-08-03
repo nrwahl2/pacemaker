@@ -574,30 +574,30 @@ synthesize_lrmd_success(lrm_state_t *lrm_state, const char *rsc_id, const char *
 }
 
 void
-remote_lrm_op_callback(lrmd_event_data_t * op)
+remote_lrm_op_callback(lrmd_event_data_t *event)
 {
     gboolean cmd_handled = FALSE;
     lrm_state_t *lrm_state = NULL;
     remote_ra_data_t *ra_data = NULL;
     remote_ra_cmd_t *cmd = NULL;
 
-    CRM_CHECK((op != NULL) && (op->remote_nodename != NULL), return);
+    CRM_CHECK((event != NULL) && (event->remote_nodename != NULL), return);
 
     pcmk__debug("Processing '%s%s%s' event on remote connection to %s: %s "
-                "(%d) status=%s (%d)",
-                pcmk__s(op->op_type, ""), ((op->op_type != NULL)? " " : ""),
-                lrmd_event_type2str(op->type), op->remote_nodename,
-                crm_exit_str((crm_exit_t) op->rc), op->rc,
-                pcmk_exec_status_str(op->op_status), op->op_status);
+                "(%d) status=%s (%d)", pcmk__s(event->op_type, ""),
+                ((event->op_type != NULL)? " " : ""),
+                lrmd_event_type2str(event->type), event->remote_nodename,
+                crm_exit_str((crm_exit_t) event->rc), event->rc,
+                pcmk_exec_status_str(event->op_status), event->op_status);
 
-    lrm_state = controld_execd_state_get(op->remote_nodename, false);
+    lrm_state = controld_execd_state_get(event->remote_nodename, false);
     if (!lrm_state || !lrm_state->remote_ra_data) {
         pcmk__debug("No state information found for remote connection event");
         return;
     }
     ra_data = lrm_state->remote_ra_data;
 
-    if (op->type == lrmd_event_new_client) {
+    if (event->type == lrmd_event_new_client) {
         // Another client has connected to the remote daemon
 
         if (pcmk__is_set(ra_data->status, expect_takeover)) {
@@ -607,8 +607,7 @@ remote_lrm_op_callback(lrmd_event_data_t * op)
 
         } else {
             pcmk__err("Disconnecting from Pacemaker Remote node %s due to "
-                      "unexpected client takeover",
-                      op->remote_nodename);
+                      "unexpected client takeover", event->remote_nodename);
             /* In this case, lrmd_tls_connection_destroy() will be called under the control of mainloop. */
             /* Do not free lrm_state->conn yet. */
             /* It'll be freed in the following stop action. */
@@ -618,18 +617,17 @@ remote_lrm_op_callback(lrmd_event_data_t * op)
     }
 
     /* filter all EXEC events up */
-    if (op->type == lrmd_event_exec_complete) {
+    if (event->type == lrmd_event_exec_complete) {
         if (pcmk__is_set(ra_data->status, takeover_complete)) {
             pcmk__debug("Ignoring event, this connection is taken over by "
                         "another node");
         } else {
-            lrm_op_callback(op);
+            lrm_op_callback(event);
         }
         return;
     }
 
-    if ((op->type == lrmd_event_disconnect) && (ra_data->cur_cmd == NULL)) {
-
+    if ((event->type == lrmd_event_disconnect) && (ra_data->cur_cmd == NULL)) {
         if (!pcmk__is_set(ra_data->status, remote_active)) {
             pcmk__debug("Disconnection from Pacemaker Remote node %s complete",
                         lrm_state->node_name);
@@ -662,16 +660,18 @@ remote_lrm_op_callback(lrmd_event_data_t * op)
 
     /* Start actions and migrate from actions complete after connection
      * comes back to us. */
-    if ((op->type == lrmd_event_connect) && pcmk__is_up_action(cmd->action)) {
-        if (op->connection_rc < 0) {
+    if ((event->type == lrmd_event_connect)
+        && pcmk__is_up_action(cmd->action)) {
+
+        if (event->connection_rc < 0) {
             int remaining = remaining_timeout_sec(cmd);
 
-            if ((op->connection_rc == -ENOKEY)
-                || (op->connection_rc == -EKEYREJECTED)) {
+            if ((event->connection_rc == -ENOKEY)
+                || (event->connection_rc == -EKEYREJECTED)) {
                 // Hard error, don't retry
                 pcmk__set_result(&cmd->result, PCMK_OCF_INVALID_PARAM,
                                  PCMK_EXEC_ERROR,
-                                 pcmk_strerror(op->connection_rc));
+                                 pcmk_strerror(event->connection_rc));
 
             } else if (remaining > 3) {
                 pcmk__trace("Rescheduling start (%ds remains before timeout)",
@@ -686,7 +686,7 @@ remote_lrm_op_callback(lrmd_event_data_t * op)
                 pcmk__format_result(&cmd->result, PCMK_OCF_UNKNOWN_ERROR,
                                     PCMK_EXEC_TIMEOUT,
                                     "%s without enough time to retry",
-                                    pcmk_strerror(op->connection_rc));
+                                    pcmk_strerror(event->connection_rc));
             }
 
         } else {
@@ -701,7 +701,7 @@ remote_lrm_op_callback(lrmd_event_data_t * op)
         report_remote_ra_result(cmd);
         cmd_handled = TRUE;
 
-    } else if ((op->type == lrmd_event_poke)
+    } else if ((event->type == lrmd_event_poke)
                && pcmk__str_eq(cmd->action, PCMK_ACTION_MONITOR,
                                pcmk__str_casei)) {
 
@@ -730,7 +730,7 @@ remote_lrm_op_callback(lrmd_event_data_t * op)
         }
         cmd_handled = TRUE;
 
-    } else if ((op->type == lrmd_event_disconnect)
+    } else if ((event->type == lrmd_event_disconnect)
                && pcmk__str_eq(cmd->action, PCMK_ACTION_MONITOR,
                                pcmk__str_casei)) {
         if (pcmk__is_set(ra_data->status, remote_active)

@@ -19,6 +19,6 @@
 void crmd_unpack_alerts(xmlNode *alerts);
 void crmd_alert_node_event(pcmk__node_status_t *node);
 void crmd_alert_fencing_op(stonith_event_t *e);
-void crmd_alert_resource_op(const char *node, const lrmd_event_data_t *op);
+void crmd_alert_resource_op(const char *node, const lrmd_event_data_t *event);
 
 #endif

@@ -712,7 +712,7 @@ handle_lrm_delete(xmlNode *stored_msg)
          * op=CRM_OP_LRM_DELETE.
          */
         if (from_sys) {
-            lrmd_event_data_t *op = NULL;
+            lrmd_event_data_t *event = NULL;
             const char *from_host = pcmk__xe_get(stored_msg, PCMK__XA_SRC);
             const char *transition;
 
@@ -725,15 +725,16 @@ handle_lrm_delete(xmlNode *stored_msg)
             pcmk__info("Notifying %s on %s that %s was%s deleted", from_sys,
                        pcmk__s(from_host, "local node"), rsc_id,
                        ((rc == pcmk_rc_ok)? "" : " not"));
-            op = lrmd_new_event(rsc_id, PCMK_ACTION_DELETE, 0);
-            op->type = lrmd_event_exec_complete;
-            op->user_data = pcmk__str_copy(pcmk__s(transition, FAKE_TE_ID));
-            op->params = pcmk__strkey_table(free, free);
-            pcmk__insert_dup(op->params, PCMK_XA_CRM_FEATURE_SET,
+            event = lrmd_new_event(rsc_id, PCMK_ACTION_DELETE, 0);
+            event->type = lrmd_event_exec_complete;
+            event->user_data = pcmk__str_copy(pcmk__s(transition, FAKE_TE_ID));
+            event->params = pcmk__strkey_table(free, free);
+            pcmk__insert_dup(event->params, PCMK_XA_CRM_FEATURE_SET,
                              CRM_FEATURE_SET);
-            controld_rc2event(op, rc);
-            controld_ack_event_directly(from_host, from_sys, NULL, op, rsc_id);
-            lrmd_free_event(op);
+            controld_rc2event(event, rc);
+            controld_ack_event_directly(from_host, from_sys, NULL, event,
+                                        rsc_id);
+            lrmd_free_event(event);
             controld_trigger_delete_refresh(from_sys, rsc_id);
         }
         return I_NULL;

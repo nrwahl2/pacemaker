@@ -71,7 +71,7 @@ crmd_alert_fencing_op(stonith_event_t * e)
 }
 
 void
-crmd_alert_resource_op(const char *node, const lrmd_event_data_t *op)
+crmd_alert_resource_op(const char *node, const lrmd_event_data_t *event)
 {
     lrm_state_t *lrm_state;
 
@@ -84,5 +84,5 @@ crmd_alert_resource_op(const char *node, const lrmd_event_data_t *op)
         return;
     }
 
-    lrmd_send_resource_alert(lrm_state->conn, crmd_alert_list, node, op);
+    lrmd_send_resource_alert(lrm_state->conn, crmd_alert_list, node, event);
 }

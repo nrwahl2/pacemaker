@@ -827,7 +827,7 @@ pcmk__event_from_graph_action(const xmlNode *resource,
                               const pcmk__graph_action_t *action,
                               int status, int rc, const char *exit_reason)
 {
-    lrmd_event_data_t *op = NULL;
+    lrmd_event_data_t *event = NULL;
     GHashTableIter iter;
     const char *name = NULL;
     const char *value = NULL;
@@ -841,17 +841,17 @@ pcmk__event_from_graph_action(const xmlNode *resource,
     CRM_CHECK(action_resource != NULL,
               pcmk__log_xml_warn(action->xml, "invalid"); return NULL);
 
-    op = lrmd_new_event(pcmk__xe_id(action_resource),
-                        pcmk__xe_get(action->xml, PCMK_XA_OPERATION),
-                        action->interval_ms);
-    lrmd__set_result(op, rc, status, exit_reason);
-    op->t_run = time(NULL);
-    op->t_rcchange = op->t_run;
-    op->params = pcmk__strkey_table(free, free);
+    event = lrmd_new_event(pcmk__xe_id(action_resource),
+                           pcmk__xe_get(action->xml, PCMK_XA_OPERATION),
+                           action->interval_ms);
+    lrmd__set_result(event, rc, status, exit_reason);
+    event->t_run = time(NULL);
+    event->t_rcchange = event->t_run;
+    event->params = pcmk__strkey_table(free, free);
 
     g_hash_table_iter_init(&iter, action->params);
     while (g_hash_table_iter_next(&iter, (void **)&name, (void **)&value)) {
-        pcmk__insert_dup(op->params, name, value);
+        pcmk__insert_dup(event->params, name, value);
     }
 
     for (xmlNode *xop = pcmk__xe_first_child(resource, NULL, NULL, NULL);
@@ -861,11 +861,11 @@ pcmk__event_from_graph_action(const xmlNode *resource,
 
         pcmk__xe_get_int(xop, PCMK__XA_CALL_ID, &tmp);
         pcmk__debug("Got call_id=%d for %s", tmp, pcmk__xe_id(resource));
-        if (tmp > op->call_id) {
-            op->call_id = tmp;
+        if (tmp > event->call_id) {
+            event->call_id = tmp;
         }
     }
 
-    op->call_id++;
-    return op;
+    event->call_id++;
+    return event;
 }

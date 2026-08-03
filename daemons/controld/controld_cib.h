@@ -68,22 +68,23 @@ int controld_delete_resource_history(const char *rsc_id, const char *node,
 
 void controld_add_resource_history_xml_as(const char *func, xmlNode *parent,
                                           const lrmd_rsc_info_t *rsc,
-                                          lrmd_event_data_t *op,
+                                          lrmd_event_data_t *event,
                                           const char *node_name);
 
-#define controld_add_resource_history_xml(parent, rsc, op, node_name)   \
-    controld_add_resource_history_xml_as(__func__, (parent), (rsc),     \
-                                         (op), (node_name))
+#define controld_add_resource_history_xml(parent, rsc, event, node_name)    \
+    controld_add_resource_history_xml_as(__func__, (parent), (rsc),         \
+                                         (event), (node_name))
 
 bool controld_record_pending_op(const char *node_name,
                                 const lrmd_rsc_info_t *rsc,
-                                lrmd_event_data_t *op);
+                                lrmd_event_data_t *event);
 
 void controld_update_resource_history(const char *node_name,
                                       const lrmd_rsc_info_t *rsc,
-                                      lrmd_event_data_t *op, time_t lock_time);
+                                      lrmd_event_data_t *event,
+                                      time_t lock_time);
 
-void controld_delete_action_history(const lrmd_event_data_t *op);
+void controld_delete_action_history(const lrmd_event_data_t *event);
 
 void controld_cib_delete_last_failure(const char *rsc_id, const char *node,
                                       const char *action,

@@ -563,7 +563,7 @@ static int
 simulate_resource_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
 {
     int rc;
-    lrmd_event_data_t *op = NULL;
+    lrmd_event_data_t *event = NULL;
     int target_outcome = PCMK_OCF_OK;
 
     const char *rtype = NULL;
@@ -653,10 +653,11 @@ simulate_resource_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
     }
 
     // Simulate and display an executor event for the action result
-    op = pcmk__event_from_graph_action(cib_resource, action, PCMK_EXEC_DONE,
-                                       target_outcome, "User-injected result");
-    out->message(out, "inject-rsc-action", resource, op->op_type, node,
-                 op->interval_ms);
+    event = pcmk__event_from_graph_action(cib_resource, action, PCMK_EXEC_DONE,
+                                          target_outcome,
+                                          "User-injected result");
+    out->message(out, "inject-rsc-action", resource, event->op_type, node,
+                 event->interval_ms);
 
     // Check whether action is in a list of desired simulated failures
     for (const GList *iter = fake_op_fail_list;
@@ -667,8 +668,8 @@ simulate_resource_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
         const char *offset = NULL;
 
         // Allow user to specify anonymous clone with or without instance number
-        key = pcmk__assert_asprintf(PCMK__OP_FMT "@%s=", resource, op->op_type,
-                                    op->interval_ms, node);
+        key = pcmk__assert_asprintf(PCMK__OP_FMT "@%s=", resource,
+                                    event->op_type, event->interval_ms, node);
         if (strncasecmp(key, spec, strlen(key)) == 0) {
             match_name = resource;
         }
@@ -679,8 +680,8 @@ simulate_resource_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
             && (strcmp(resource, resource_config_name) != 0)) {
 
             key = pcmk__assert_asprintf(PCMK__OP_FMT "@%s=",
-                                        resource_config_name, op->op_type,
-                                        op->interval_ms, node);
+                                        resource_config_name, event->op_type,
+                                        event->interval_ms, node);
             if (strncasecmp(key, spec, strlen(key)) == 0) {
                 match_name = resource_config_name;
             }
@@ -692,7 +693,7 @@ simulate_resource_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
         }
 
         // ${match_name}_${task}_${interval_in_ms}@${node}=${rc}
-        rc = sscanf(spec, "%*[^=]=%d", (int *) &op->rc);
+        rc = sscanf(spec, "%*[^=]=%d", (int *) &event->rc);
         if (rc != 1) {
             out->err(out, "Invalid failed operation '%s' "
                           "(result code must be integer)", spec);
@@ -700,26 +701,26 @@ simulate_resource_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
         }
 
         out->info(out, "Pretending action %d failed with rc=%d",
-                  action->id, op->rc);
+                  action->id, event->rc);
         pcmk__set_graph_action_flags(action, pcmk__graph_action_failed);
         graph->abort_priority = PCMK_SCORE_INFINITY;
 
-        if (pcmk__str_eq(op->op_type, PCMK_ACTION_START, pcmk__str_none)) {
+        if (pcmk__str_eq(event->op_type, PCMK_ACTION_START, pcmk__str_none)) {
             offset = pcmk__s(graph->failed_start_offset, PCMK_VALUE_INFINITY);
 
-        } else if (pcmk__str_eq(op->op_type, PCMK_ACTION_STOP,
+        } else if (pcmk__str_eq(event->op_type, PCMK_ACTION_STOP,
                                 pcmk__str_none)) {
             offset = pcmk__s(graph->failed_stop_offset, PCMK_VALUE_INFINITY);
         }
 
-        pcmk__inject_failcount(out, fake_cib, cib_node, match_name, op->op_type,
-                               op->interval_ms, op->rc,
+        pcmk__inject_failcount(out, fake_cib, cib_node, match_name,
+                               event->op_type, event->interval_ms, event->rc,
                                pcmk_str_is_infinity(offset));
         break;
     }
 
-    pcmk__inject_action_result(cib_resource, op, node, target_outcome);
-    lrmd_free_event(op);
+    pcmk__inject_action_result(cib_resource, event, node, target_outcome);
+    lrmd_free_event(event);
     rc = fake_cib->cmds->modify(fake_cib, PCMK_XE_STATUS, cib_node,
                                 cib_sync_call);
     pcmk__assert(rc == pcmk_ok);
