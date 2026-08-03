@@ -227,7 +227,7 @@ update_history_cache(lrm_state_t *lrm_state, lrmd_rsc_info_t *rsc,
 }
 
 static lrmd_event_data_t *
-construct_op(const lrm_state_t *lrm_state, const xmlNode *rsc_op,
+create_event(const lrm_state_t *lrm_state, const xmlNode *rsc_op,
              const char *rsc_id, const char *operation)
 {
     lrmd_event_data_t *op = NULL;
@@ -357,7 +357,7 @@ send_task_ok_ack(const lrm_state_t *lrm_state, const ha_msg_input_t *input,
                  const char *rsc_id, const lrmd_rsc_info_t *rsc,
                  const char *task, const char *ack_host, const char *ack_sys)
 {
-    lrmd_event_data_t *op = construct_op(lrm_state, input->xml, rsc_id, task);
+    lrmd_event_data_t *op = create_event(lrm_state, input->xml, rsc_id, task);
 
     lrmd__set_result(op, PCMK_OCF_OK, PCMK_EXEC_DONE, NULL);
     controld_ack_event_directly(ack_host, ack_sys, rsc, op, rsc_id);
@@ -633,7 +633,7 @@ notify_deleted(lrm_state_t *lrm_state, ha_msg_input_t *input,
     pcmk__info("Notifying %s on %s that %s was%s deleted", from_sys,
                pcmk__s(from_host, "localhost"), rsc_id,
                ((rc == pcmk_rc_ok)? "" : " not"));
-    op = construct_op(lrm_state, input->xml, rsc_id, PCMK_ACTION_DELETE);
+    op = create_event(lrm_state, input->xml, rsc_id, PCMK_ACTION_DELETE);
     controld_rc2event(op, rc);
     controld_ack_event_directly(from_host, from_sys, NULL, op, rsc_id);
     lrmd_free_event(op);
@@ -1092,7 +1092,7 @@ synthesize_lrmd_failure(lrm_state_t *lrm_state, const xmlNode *action,
         return;
     }
 
-    op = construct_op(lrm_state, action, pcmk__xe_id(xml_rsc), operation);
+    op = create_event(lrm_state, action, pcmk__xe_id(xml_rsc), operation);
 
     if (pcmk__str_eq(operation, PCMK_ACTION_NOTIFY, pcmk__str_casei)) {
         // Notifications can't fail
@@ -1153,7 +1153,7 @@ fail_lrm_resource(xmlNode *xml, lrm_state_t *lrm_state, const char *user_name,
      * and pass that event to the executor client callback so it will be
      * processed as if it came from the executor.
      */
-    op = construct_op(lrm_state, xml, pcmk__xe_id(xml_rsc), "asyncmon");
+    op = create_event(lrm_state, xml, pcmk__xe_id(xml_rsc), "asyncmon");
 
     g_clear_pointer(&op->user_data, free);
     op->interval_ms = 0;
@@ -1298,7 +1298,7 @@ do_lrm_delete(ha_msg_input_t *input, lrm_state_t *lrm_state,
     if (cib_rc != pcmk_rc_ok) {
         lrmd_event_data_t *op = NULL;
 
-        op = construct_op(lrm_state, input->xml, rsc->id, PCMK_ACTION_DELETE);
+        op = create_event(lrm_state, input->xml, rsc->id, PCMK_ACTION_DELETE);
 
         /* These are resource clean-ups, not actions, so no exit reason is
          * needed.
@@ -1457,7 +1457,7 @@ do_lrm_rsc_op(lrm_state_t *lrm_state, lrmd_rsc_info_t *rsc, xmlNode *msg,
         }
     }
 
-    op = construct_op(lrm_state, msg, rsc->id, operation);
+    op = create_event(lrm_state, msg, rsc->id, operation);
     CRM_CHECK(op != NULL, return);
 
     if (should_cancel_recurring(rsc->id, operation, op->interval_ms)) {
