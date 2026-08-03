@@ -40,16 +40,6 @@ static lrmd_event_data_t *construct_op(const lrm_state_t *lrm_state,
 static void do_lrm_rsc_op(lrm_state_t *lrm_state, lrmd_rsc_info_t *rsc,
                           xmlNode *msg, struct ra_metadata_s *md);
 
-static void
-lrm_connection_destroy(void)
-{
-    if (pcmk__is_set(controld_globals.fsa_input_register, R_LRM_CONNECTED)) {
-        pcmk__crit("Lost connection to local executor");
-        controld_fsa_append(C_FSA_INTERNAL, I_ERROR, NULL);
-        controld_clear_fsa_input_flags(R_LRM_CONNECTED);
-    }
-}
-
 static char *
 make_stop_id(const char *rsc, int call_id)
 {
@@ -281,13 +271,17 @@ lrm_op_callback(lrmd_event_data_t *op)
 
     switch (op->type) {
         case lrmd_event_disconnect:
-            if (op->remote_nodename == NULL) {
-                /* If this is the local executor IPC connection, set the right
-                 * bits in the controller when the connection goes down.
-                 */
-                lrm_connection_destroy();
+            if ((op->remote_nodename != NULL)
+                || !pcmk__is_set(controld_globals.fsa_input_register,
+                                 R_LRM_CONNECTED)) {
+
+                return;
             }
-            break;
+
+            pcmk__crit("Lost connection to local executor");
+            controld_fsa_append(C_FSA_INTERNAL, I_ERROR, NULL);
+            controld_clear_fsa_input_flags(R_LRM_CONNECTED);
+            return;
 
         case lrmd_event_exec_complete:
             {
@@ -297,10 +291,11 @@ lrm_op_callback(lrmd_event_data_t *op)
                 pcmk__assert(lrm_state != NULL);
                 process_lrm_event(lrm_state, op, NULL, NULL);
             }
-            break;
+
+            return;
 
         default:
-            break;
+            return;
     }
 }
 
