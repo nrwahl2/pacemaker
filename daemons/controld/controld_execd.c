@@ -1255,6 +1255,7 @@ handle_non_reprobe_op(lrm_state_t *lrm_state, const char *operation,
                                             NULL);
     const bool create_rsc = !pcmk__str_eq(operation, PCMK_ACTION_DELETE,
                                           pcmk__str_none);
+    struct ra_metadata_s *md = NULL;
     int rc = pcmk_rc_ok;
 
     // We can't return anything meaningful without a resource ID
@@ -1265,7 +1266,7 @@ handle_non_reprobe_op(lrm_state_t *lrm_state, const char *operation,
         synthesize_lrmd_failure(lrm_state, input->xml, PCMK_EXEC_NOT_CONNECTED,
                                 PCMK_OCF_UNKNOWN_ERROR,
                                 "Not connected to remote executor");
-        return;
+        goto done;
     }
 
     if ((rc != pcmk_rc_ok) && !create_rsc) {
@@ -1278,7 +1279,7 @@ handle_non_reprobe_op(lrm_state_t *lrm_state, const char *operation,
                     pcmk__xe_id(input->xml));
         delete_rsc_entry(lrm_state, input, pcmk__xe_id(xml_rsc), NULL,
                          pcmk_rc_ok, user_name, true);
-        return;
+        goto done;
     }
 
     if (rc == EINVAL) {
@@ -1290,7 +1291,7 @@ handle_non_reprobe_op(lrm_state_t *lrm_state, const char *operation,
         synthesize_lrmd_failure(lrm_state, input->xml, PCMK_EXEC_ERROR,
                                 PCMK_OCF_NOT_CONFIGURED,
                                 "Invalid resource definition");
-        return;
+        goto done;
     }
 
     if (rc != pcmk_rc_ok) {
@@ -1303,7 +1304,7 @@ handle_non_reprobe_op(lrm_state_t *lrm_state, const char *operation,
         synthesize_lrmd_failure(lrm_state, input->xml, PCMK_EXEC_ERROR,
                                 PCMK_OCF_INVALID_PARAM,
                                 "Could not register resource with executor");
-        return;
+        goto done;
     }
 
     if (pcmk__str_eq(operation, PCMK_ACTION_CANCEL, pcmk__str_none)) {
@@ -1311,52 +1312,52 @@ handle_non_reprobe_op(lrm_state_t *lrm_state, const char *operation,
             pcmk__log_xml_warn(input->xml, "Bad command");
         }
 
-    } else if (pcmk__str_eq(operation, PCMK_ACTION_DELETE, pcmk__str_none)) {
-        do_lrm_delete(input, lrm_state, rsc, from_sys, from_host,
-                      crm_rsc_delete, user_name);
-
-    } else {
-        struct ra_metadata_s *md = NULL;
-
-        /* Getting metadata from cache is OK except for start actions -- always
-         * refresh from the agent for those, in case the resource agent was
-         * updated.
-         *
-         * @TODO Only refresh metadata for starts if the agent actually changed
-         * (using something like inotify, or a hash or modification time of the
-         * agent executable).
-         */
-        if (strcmp(operation, PCMK_ACTION_START) != 0) {
-            md = controld_get_rsc_metadata(lrm_state, rsc,
-                                           controld_metadata_from_cache);
-        }
-
-        if ((md == NULL)
-            && crm_op_needs_metadata(rsc->standard, operation)) {
-            /* Most likely, we'll need the agent metadata to record the pending
-             * operation and the operation result. Get it now rather than wait
-             * until then, so the metadata action doesn't eat into the real
-             * action's timeout.
-             *
-             * @TODO Metadata is retrieved via direct execution of the agent,
-             * which has a couple of related issues: the executor should execute
-             * agents, not the controller; and metadata for Pacemaker Remote
-             * nodes should be collected on those nodes, not locally.
-             */
-            struct metadata_cb_data *data = NULL;
-
-            data = new_metadata_cb_data(rsc, input->xml);
-            pcmk__info("Retrieving metadata for %s (%s%s%s:%s) asynchronously",
-                       rsc->id, rsc->standard,
-                       ((rsc->provider != NULL)? ":" : ""),
-                       pcmk__s(rsc->provider, ""), rsc->type);
-            lrmd__metadata_async(rsc, metadata_complete, data);
-
-        } else {
-            do_lrm_rsc_op(lrm_state, rsc, input->xml, md);
-        }
+        goto done;
     }
 
+    if (pcmk__str_eq(operation, PCMK_ACTION_DELETE, pcmk__str_none)) {
+        do_lrm_delete(input, lrm_state, rsc, from_sys, from_host,
+                      crm_rsc_delete, user_name);
+        goto done;
+    }
+
+    /* Getting metadata from cache is OK except for start actions -- always
+     * refresh from the agent for those, in case the resource agent was updated.
+     *
+     * @TODO Only refresh metadata for starts if the agent actually changed
+     * (using something like inotify, or a hash or modification time of the
+     * agent executable).
+     */
+    if (strcmp(operation, PCMK_ACTION_START) != 0) {
+        md = controld_get_rsc_metadata(lrm_state, rsc,
+                                       controld_metadata_from_cache);
+    }
+
+    if ((md == NULL) && crm_op_needs_metadata(rsc->standard, operation)) {
+        /* Most likely, we'll need the agent metadata to record the pending
+         * operation and the operation result. Get it now rather than wait until
+         * then, so the metadata action doesn't eat into the real action's
+         * timeout.
+         *
+         * @TODO Metadata is retrieved via direct execution of the agent, which
+         * has a couple of related issues: the executor should execute agents,
+         * not the controller; and metadata for Pacemaker Remote nodes should be
+         * collected on those nodes, not locally.
+         */
+        struct metadata_cb_data *data = NULL;
+
+        data = new_metadata_cb_data(rsc, input->xml);
+        pcmk__info("Retrieving metadata for %s (%s%s%s:%s) asynchronously",
+                   rsc->id, rsc->standard,
+                   ((rsc->provider != NULL)? ":" : ""),
+                   pcmk__s(rsc->provider, ""), rsc->type);
+        lrmd__metadata_async(rsc, metadata_complete, data);
+
+    } else {
+        do_lrm_rsc_op(lrm_state, rsc, input->xml, md);
+    }
+
+done:
     lrmd_free_rsc_info(rsc);
 }
 
