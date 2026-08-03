@@ -33,9 +33,6 @@ struct delete_event_s {
     lrm_state_t *lrm_state;
 };
 
-static void do_lrm_rsc_op(lrm_state_t *lrm_state, lrmd_rsc_info_t *rsc,
-                          xmlNode *msg, struct ra_metadata_s *md);
-
 static char *
 make_stop_id(const char *rsc, int call_id)
 {
@@ -1336,6 +1333,259 @@ do_lrm_delete(ha_msg_input_t *input, lrm_state_t *lrm_state,
                     unregister, true);
 }
 
+/*!
+ * \internal
+ * \brief Check whether recurring actions should be cancelled before an action
+ *
+ * \param[in] rsc_id       Resource that action is for
+ * \param[in] action       Action being performed
+ * \param[in] interval_ms  Operation interval of \p action (in milliseconds)
+ *
+ * \return true if recurring actions should be cancelled, otherwise false
+ */
+static bool
+should_cancel_recurring(const char *rsc_id, const char *action,
+                        unsigned int interval_ms)
+{
+    if (is_remote_lrmd_ra(rsc_id) && (interval_ms == 0)
+        && (strcmp(action, PCMK_ACTION_MIGRATE_TO) == 0)) {
+        /* Don't stop monitoring a migrating Pacemaker Remote connection
+         * resource until the entire migration has completed. We must detect if
+         * the connection is unexpectedly severed, even during a migration.
+         */
+        return false;
+    }
+
+    // Cancel recurring actions before changing resource state
+    return (interval_ms == 0)
+            && !pcmk__str_any_of(action, PCMK_ACTION_MONITOR,
+                                 PCMK_ACTION_NOTIFY, NULL);
+}
+
+struct stop_recurring_action_s {
+    lrmd_rsc_info_t *rsc;
+    lrm_state_t *lrm_state;
+};
+
+static gboolean
+stop_recurring_action_by_rsc(void *key, void *value, void *user_data)
+{
+    bool remove = false;
+    struct stop_recurring_action_s *event = user_data;
+    active_op_t *op = value;
+
+    if ((op->interval_ms != 0)
+        && pcmk__str_eq(op->rsc_id, event->rsc->id, pcmk__str_none)) {
+
+        pcmk__debug("Cancelling op %d for %s (%s)", op->call_id, op->rsc_id,
+                    (const char *) key);
+        remove = !controld_execd_cancel_op(event->lrm_state, event->rsc->id,
+                                           key, op->call_id, false);
+    }
+
+    return remove;
+}
+
+/*!
+ * \internal
+ * \brief Check whether an action should not be performed at this time
+ *
+ * \param[in] operation  Action to be performed
+ *
+ * \return Readable description of why action should not be performed,
+ *         or NULL if it should be performed
+ */
+static const char *
+should_nack_action(const char *action)
+{
+    if (pcmk__is_set(controld_globals.fsa_input_register, R_SHUTDOWN)
+        && pcmk__str_eq(action, PCMK_ACTION_START, pcmk__str_none)) {
+
+        controld_fsa_append(C_SHUTDOWN, I_SHUTDOWN, NULL);
+        return "Not attempting start due to shutdown in progress";
+    }
+
+    switch (controld_globals.fsa_state) {
+        case S_NOT_DC:
+        case S_POLICY_ENGINE:   // Recalculating
+        case S_TRANSITION_ENGINE:
+            break;
+
+        default:
+            if (!pcmk__str_eq(action, PCMK_ACTION_STOP, pcmk__str_none)) {
+                return "Controller cannot attempt actions at this time";
+            }
+
+            break;
+    }
+
+    return NULL;
+}
+
+static void
+do_lrm_rsc_op(lrm_state_t *lrm_state, lrmd_rsc_info_t *rsc, xmlNode *msg,
+              struct ra_metadata_s *md)
+{
+    int rc;
+    int call_id = 0;
+    char *op_id = NULL;
+    lrmd_event_data_t *op = NULL;
+    const char *transition = NULL;
+    const char *operation = NULL;
+    const char *nack_reason = NULL;
+
+    CRM_CHECK((rsc != NULL) && (msg != NULL), return);
+
+    operation = pcmk__xe_get(msg, PCMK_XA_OPERATION);
+    CRM_CHECK(!pcmk__str_empty(operation), return);
+
+    transition = pcmk__xe_get(msg, PCMK__XA_TRANSITION_KEY);
+    if (pcmk__str_empty(transition)) {
+        pcmk__log_xml_err(msg, "Missing transition number");
+    }
+
+    if (lrm_state == NULL) {
+        // This shouldn't be possible, but provide a failsafe just in case
+        pcmk__err("Cannot execute %s of %s: No executor connection "
+                  QB_XS " transition_key=%s", operation, rsc->id,
+                  pcmk__s(transition, ""));
+
+        synthesize_lrmd_failure(NULL, msg, PCMK_EXEC_INVALID,
+                                PCMK_OCF_UNKNOWN_ERROR,
+                                "No executor connection");
+        return;
+    }
+
+    if (pcmk__str_any_of(operation, PCMK_ACTION_RELOAD,
+                         PCMK_ACTION_RELOAD_AGENT, NULL)) {
+        /* Pre-2.1.0 DCs will schedule reload actions only, and 2.1.0+ DCs will
+         * schedule reload-agent actions only. In either case, we need to map
+         * that to whatever the resource agent actually supports. Default to the
+         * OCF 1.1 name.
+         */
+        if ((md != NULL)
+            && pcmk__is_set(md->ra_flags, ra_supports_legacy_reload)) {
+
+            operation = PCMK_ACTION_RELOAD;
+
+        } else {
+            operation = PCMK_ACTION_RELOAD_AGENT;
+        }
+    }
+
+    op = construct_op(lrm_state, msg, rsc->id, operation);
+    CRM_CHECK(op != NULL, return);
+
+    if (should_cancel_recurring(rsc->id, operation, op->interval_ms)) {
+        unsigned int removed = 0;
+        struct stop_recurring_action_s data = {
+            .rsc = rsc,
+            .lrm_state = lrm_state,
+        };
+
+        removed = g_hash_table_foreach_remove(lrm_state->active_ops,
+                                              stop_recurring_action_by_rsc,
+                                              &data);
+
+        if (removed > 0) {
+            pcmk__debug("Stopped %u recurring operation%s in preparation for "
+                        PCMK__OP_FMT, removed, pcmk__plural_s(removed), rsc->id,
+                        operation, op->interval_ms);
+        }
+    }
+
+    nack_reason = should_nack_action(operation);
+    if (nack_reason != NULL) {
+        pcmk__notice("Not requesting local execution of %s operation for %s on "
+                     "%s in state %s: %s",
+                     pcmk__readable_action(op->op_type, op->interval_ms),
+                     rsc->id, lrm_state->node_name,
+                     fsa_state2string(controld_globals.fsa_state), nack_reason);
+
+        lrmd__set_result(op, PCMK_OCF_UNKNOWN_ERROR, PCMK_EXEC_INVALID,
+                         nack_reason);
+        controld_ack_event_directly(NULL, NULL, rsc, op, rsc->id);
+        lrmd_free_event(op);
+        free(op_id);
+        return;
+    }
+
+    pcmk__notice("Requesting local execution of %s operation for %s on %s "
+                 QB_XS " transition %s",
+                 pcmk__readable_action(op->op_type, op->interval_ms), rsc->id,
+                 lrm_state->node_name, pcmk__s(transition, ""));
+
+    controld_record_pending_op(lrm_state->node_name, rsc, op);
+
+    op_id = pcmk__op_key(rsc->id, op->op_type, op->interval_ms);
+
+    if (op->interval_ms > 0) {
+        /* cancel it so we can then restart it without conflict */
+        cancel_op_key(lrm_state, rsc, op_id, false);
+    }
+
+    rc = controld_execd_state_exec(lrm_state, rsc->id, op->op_type,
+                                   op->user_data, op->interval_ms, op->timeout,
+                                   op->start_delay, op->params, &call_id);
+    if (rc == pcmk_rc_ok) {
+        /* Record all operations so we can wait for them to complete during
+         * shutdown
+         */
+        char *call_id_s = make_stop_id(rsc->id, call_id);
+        active_op_t *pending = NULL;
+
+        pending = pcmk__assert_alloc(1, sizeof(active_op_t));
+        pcmk__trace("Recording pending op: %d - %s %s", call_id, op_id,
+                    call_id_s);
+
+        pending->call_id = call_id;
+        pending->interval_ms = op->interval_ms;
+        pending->op_type = pcmk__str_copy(operation);
+        pending->op_key = pcmk__str_copy(op_id);
+        pending->rsc_id = pcmk__str_copy(rsc->id);
+        pending->start_time = time(NULL);
+        pending->transition_key = pcmk__str_copy(op->user_data);
+        pcmk__xe_get_time(msg, PCMK_OPT_SHUTDOWN_LOCK, &pending->lock_time);
+        g_hash_table_replace(lrm_state->active_ops, call_id_s, pending);
+
+        if ((op->interval_ms > 0)
+            && (op->start_delay > START_DELAY_THRESHOLD)) {
+
+            int target_rc = PCMK_OCF_OK;
+
+            pcmk__info("Faking confirmation of %s: execution postponed for "
+                       "over 5 minutes", op_id);
+            decode_transition_key(op->user_data, NULL, NULL, NULL, &target_rc);
+            lrmd__set_result(op, target_rc, PCMK_EXEC_DONE, NULL);
+            controld_ack_event_directly(NULL, NULL, rsc, op, rsc->id);
+        }
+
+        pending->params = op->params;
+        op->params = NULL;
+
+    } else if (controld_is_local_node(lrm_state->node_name)) {
+        pcmk__err("Could not initiate %s action for resource %s locally: %s "
+                  QB_XS " rc=%d", operation, rsc->id, pcmk_rc_str(rc), rc);
+
+        fake_op_status(lrm_state, op, PCMK_EXEC_NOT_CONNECTED,
+                       PCMK_OCF_UNKNOWN_ERROR, pcmk_rc_str(rc));
+        process_lrm_event(lrm_state, op, NULL, NULL);
+        register_fsa_error(I_FAIL, NULL);
+
+    } else {
+        pcmk__err("Could not initiate %s action for resource %s remotely on "
+                  "%s: %s " QB_XS " rc=%d", operation, rsc->id,
+                  lrm_state->node_name, pcmk_rc_str(rc), rc);
+
+        fake_op_status(lrm_state, op, PCMK_EXEC_NOT_CONNECTED,
+                       PCMK_OCF_UNKNOWN_ERROR, pcmk_rc_str(rc));
+        process_lrm_event(lrm_state, op, NULL, NULL);
+    }
+
+    free(op_id);
+    lrmd_free_event(op);
+}
+
 // User data for asynchronous metadata execution
 struct metadata_cb_data {
     lrmd_rsc_info_t *rsc;   // Copy of resource information
@@ -1685,259 +1935,6 @@ verify_stopped(enum crmd_fsa_state cur_state, int log_level)
 
     controld_set_fsa_input_flags(R_SENT_RSC_STOP);
     g_list_free(lrm_state_list);
-}
-
-struct stop_recurring_action_s {
-    lrmd_rsc_info_t *rsc;
-    lrm_state_t *lrm_state;
-};
-
-static gboolean
-stop_recurring_action_by_rsc(void *key, void *value, void *user_data)
-{
-    bool remove = false;
-    struct stop_recurring_action_s *event = user_data;
-    active_op_t *op = value;
-
-    if ((op->interval_ms != 0)
-        && pcmk__str_eq(op->rsc_id, event->rsc->id, pcmk__str_none)) {
-
-        pcmk__debug("Cancelling op %d for %s (%s)", op->call_id, op->rsc_id,
-                    (const char *) key);
-        remove = !controld_execd_cancel_op(event->lrm_state, event->rsc->id,
-                                           key, op->call_id, false);
-    }
-
-    return remove;
-}
-
-/*!
- * \internal
- * \brief Check whether recurring actions should be cancelled before an action
- *
- * \param[in] rsc_id       Resource that action is for
- * \param[in] action       Action being performed
- * \param[in] interval_ms  Operation interval of \p action (in milliseconds)
- *
- * \return true if recurring actions should be cancelled, otherwise false
- */
-static bool
-should_cancel_recurring(const char *rsc_id, const char *action,
-                        unsigned int interval_ms)
-{
-    if (is_remote_lrmd_ra(rsc_id) && (interval_ms == 0)
-        && (strcmp(action, PCMK_ACTION_MIGRATE_TO) == 0)) {
-        /* Don't stop monitoring a migrating Pacemaker Remote connection
-         * resource until the entire migration has completed. We must detect if
-         * the connection is unexpectedly severed, even during a migration.
-         */
-        return false;
-    }
-
-    // Cancel recurring actions before changing resource state
-    return (interval_ms == 0)
-            && !pcmk__str_any_of(action, PCMK_ACTION_MONITOR,
-                                 PCMK_ACTION_NOTIFY, NULL);
-}
-
-/*!
- * \internal
- * \brief Check whether an action should not be performed at this time
- *
- * \param[in] operation  Action to be performed
- *
- * \return Readable description of why action should not be performed,
- *         or NULL if it should be performed
- */
-static const char *
-should_nack_action(const char *action)
-{
-    if (pcmk__is_set(controld_globals.fsa_input_register, R_SHUTDOWN)
-        && pcmk__str_eq(action, PCMK_ACTION_START, pcmk__str_none)) {
-
-        controld_fsa_append(C_SHUTDOWN, I_SHUTDOWN, NULL);
-        return "Not attempting start due to shutdown in progress";
-    }
-
-    switch (controld_globals.fsa_state) {
-        case S_NOT_DC:
-        case S_POLICY_ENGINE:   // Recalculating
-        case S_TRANSITION_ENGINE:
-            break;
-
-        default:
-            if (!pcmk__str_eq(action, PCMK_ACTION_STOP, pcmk__str_none)) {
-                return "Controller cannot attempt actions at this time";
-            }
-
-            break;
-    }
-
-    return NULL;
-}
-
-static void
-do_lrm_rsc_op(lrm_state_t *lrm_state, lrmd_rsc_info_t *rsc, xmlNode *msg,
-              struct ra_metadata_s *md)
-{
-    int rc;
-    int call_id = 0;
-    char *op_id = NULL;
-    lrmd_event_data_t *op = NULL;
-    const char *transition = NULL;
-    const char *operation = NULL;
-    const char *nack_reason = NULL;
-
-    CRM_CHECK((rsc != NULL) && (msg != NULL), return);
-
-    operation = pcmk__xe_get(msg, PCMK_XA_OPERATION);
-    CRM_CHECK(!pcmk__str_empty(operation), return);
-
-    transition = pcmk__xe_get(msg, PCMK__XA_TRANSITION_KEY);
-    if (pcmk__str_empty(transition)) {
-        pcmk__log_xml_err(msg, "Missing transition number");
-    }
-
-    if (lrm_state == NULL) {
-        // This shouldn't be possible, but provide a failsafe just in case
-        pcmk__err("Cannot execute %s of %s: No executor connection "
-                  QB_XS " transition_key=%s", operation, rsc->id,
-                  pcmk__s(transition, ""));
-
-        synthesize_lrmd_failure(NULL, msg, PCMK_EXEC_INVALID,
-                                PCMK_OCF_UNKNOWN_ERROR,
-                                "No executor connection");
-        return;
-    }
-
-    if (pcmk__str_any_of(operation, PCMK_ACTION_RELOAD,
-                         PCMK_ACTION_RELOAD_AGENT, NULL)) {
-        /* Pre-2.1.0 DCs will schedule reload actions only, and 2.1.0+ DCs will
-         * schedule reload-agent actions only. In either case, we need to map
-         * that to whatever the resource agent actually supports. Default to the
-         * OCF 1.1 name.
-         */
-        if ((md != NULL)
-            && pcmk__is_set(md->ra_flags, ra_supports_legacy_reload)) {
-
-            operation = PCMK_ACTION_RELOAD;
-
-        } else {
-            operation = PCMK_ACTION_RELOAD_AGENT;
-        }
-    }
-
-    op = construct_op(lrm_state, msg, rsc->id, operation);
-    CRM_CHECK(op != NULL, return);
-
-    if (should_cancel_recurring(rsc->id, operation, op->interval_ms)) {
-        unsigned int removed = 0;
-        struct stop_recurring_action_s data = {
-            .rsc = rsc,
-            .lrm_state = lrm_state,
-        };
-
-        removed = g_hash_table_foreach_remove(lrm_state->active_ops,
-                                              stop_recurring_action_by_rsc,
-                                              &data);
-
-        if (removed > 0) {
-            pcmk__debug("Stopped %u recurring operation%s in preparation for "
-                        PCMK__OP_FMT, removed, pcmk__plural_s(removed), rsc->id,
-                        operation, op->interval_ms);
-        }
-    }
-
-    nack_reason = should_nack_action(operation);
-    if (nack_reason != NULL) {
-        pcmk__notice("Not requesting local execution of %s operation for %s on "
-                     "%s in state %s: %s",
-                     pcmk__readable_action(op->op_type, op->interval_ms),
-                     rsc->id, lrm_state->node_name,
-                     fsa_state2string(controld_globals.fsa_state), nack_reason);
-
-        lrmd__set_result(op, PCMK_OCF_UNKNOWN_ERROR, PCMK_EXEC_INVALID,
-                         nack_reason);
-        controld_ack_event_directly(NULL, NULL, rsc, op, rsc->id);
-        lrmd_free_event(op);
-        free(op_id);
-        return;
-    }
-
-    pcmk__notice("Requesting local execution of %s operation for %s on %s "
-                 QB_XS " transition %s",
-                 pcmk__readable_action(op->op_type, op->interval_ms), rsc->id,
-                 lrm_state->node_name, pcmk__s(transition, ""));
-
-    controld_record_pending_op(lrm_state->node_name, rsc, op);
-
-    op_id = pcmk__op_key(rsc->id, op->op_type, op->interval_ms);
-
-    if (op->interval_ms > 0) {
-        /* cancel it so we can then restart it without conflict */
-        cancel_op_key(lrm_state, rsc, op_id, false);
-    }
-
-    rc = controld_execd_state_exec(lrm_state, rsc->id, op->op_type,
-                                   op->user_data, op->interval_ms, op->timeout,
-                                   op->start_delay, op->params, &call_id);
-    if (rc == pcmk_rc_ok) {
-        /* Record all operations so we can wait for them to complete during
-         * shutdown
-         */
-        char *call_id_s = make_stop_id(rsc->id, call_id);
-        active_op_t *pending = NULL;
-
-        pending = pcmk__assert_alloc(1, sizeof(active_op_t));
-        pcmk__trace("Recording pending op: %d - %s %s", call_id, op_id,
-                    call_id_s);
-
-        pending->call_id = call_id;
-        pending->interval_ms = op->interval_ms;
-        pending->op_type = pcmk__str_copy(operation);
-        pending->op_key = pcmk__str_copy(op_id);
-        pending->rsc_id = pcmk__str_copy(rsc->id);
-        pending->start_time = time(NULL);
-        pending->transition_key = pcmk__str_copy(op->user_data);
-        pcmk__xe_get_time(msg, PCMK_OPT_SHUTDOWN_LOCK, &pending->lock_time);
-        g_hash_table_replace(lrm_state->active_ops, call_id_s, pending);
-
-        if ((op->interval_ms > 0)
-            && (op->start_delay > START_DELAY_THRESHOLD)) {
-
-            int target_rc = PCMK_OCF_OK;
-
-            pcmk__info("Faking confirmation of %s: execution postponed for "
-                       "over 5 minutes", op_id);
-            decode_transition_key(op->user_data, NULL, NULL, NULL, &target_rc);
-            lrmd__set_result(op, target_rc, PCMK_EXEC_DONE, NULL);
-            controld_ack_event_directly(NULL, NULL, rsc, op, rsc->id);
-        }
-
-        pending->params = op->params;
-        op->params = NULL;
-
-    } else if (controld_is_local_node(lrm_state->node_name)) {
-        pcmk__err("Could not initiate %s action for resource %s locally: %s "
-                  QB_XS " rc=%d", operation, rsc->id, pcmk_rc_str(rc), rc);
-
-        fake_op_status(lrm_state, op, PCMK_EXEC_NOT_CONNECTED,
-                       PCMK_OCF_UNKNOWN_ERROR, pcmk_rc_str(rc));
-        process_lrm_event(lrm_state, op, NULL, NULL);
-        register_fsa_error(I_FAIL, NULL);
-
-    } else {
-        pcmk__err("Could not initiate %s action for resource %s remotely on "
-                  "%s: %s " QB_XS " rc=%d", operation, rsc->id,
-                  lrm_state->node_name, pcmk_rc_str(rc), rc);
-
-        fake_op_status(lrm_state, op, PCMK_EXEC_NOT_CONNECTED,
-                       PCMK_OCF_UNKNOWN_ERROR, pcmk_rc_str(rc));
-        process_lrm_event(lrm_state, op, NULL, NULL);
-    }
-
-    free(op_id);
-    lrmd_free_event(op);
 }
 
 static bool
