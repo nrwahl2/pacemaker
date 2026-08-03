@@ -257,16 +257,11 @@ send_task_ok_ack(const lrm_state_t *lrm_state, const ha_msg_input_t *input,
     lrmd_free_event(op);
 }
 
-static inline const char *
-op_node_name(const lrmd_event_data_t *op)
-{
-    return pcmk__s(op->remote_nodename,
-                   controld_globals.cluster->priv->node_name);
-}
-
 void
 lrm_op_callback(lrmd_event_data_t *op)
 {
+    lrm_state_t *lrm_state = NULL;
+
     CRM_CHECK(op != NULL, return);
 
     switch (op->type) {
@@ -284,14 +279,9 @@ lrm_op_callback(lrmd_event_data_t *op)
             return;
 
         case lrmd_event_exec_complete:
-            {
-                lrm_state_t *lrm_state =
-                    controld_execd_state_get(op_node_name(op), false);
-
-                pcmk__assert(lrm_state != NULL);
-                process_lrm_event(lrm_state, op, NULL, NULL);
-            }
-
+            lrm_state = controld_execd_state_get(op->remote_nodename, false);
+            pcmk__assert(lrm_state != NULL);
+            process_lrm_event(lrm_state, op, NULL, NULL);
             return;
 
         default:
