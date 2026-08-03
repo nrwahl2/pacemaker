@@ -1244,6 +1244,123 @@ metadata_complete(int pid, const pcmk__action_result_t *result, void *user_data)
     free_metadata_cb_data(data);
 }
 
+static void
+handle_non_reprobe_op(lrm_state_t *lrm_state, const char *operation,
+                      ha_msg_input_t *input, const char *from_sys,
+                      const char *from_host, const char *user_name,
+                      bool crm_rsc_delete)
+{
+    lrmd_rsc_info_t *rsc = NULL;
+    xmlNode *xml_rsc = pcmk__xe_first_child(input->xml, PCMK_XE_PRIMITIVE,
+                                            NULL, NULL);
+    const bool create_rsc = !pcmk__str_eq(operation, PCMK_ACTION_DELETE,
+                                          pcmk__str_none);
+    int rc;
+
+    // We can't return anything meaningful without a resource ID
+    CRM_CHECK((xml_rsc != NULL) && (pcmk__xe_id(xml_rsc) != NULL), return);
+
+    rc = get_lrm_resource(lrm_state, xml_rsc, create_rsc, &rsc);
+    if (rc == ENOTCONN) {
+        synthesize_lrmd_failure(lrm_state, input->xml,
+                                PCMK_EXEC_NOT_CONNECTED,
+                                PCMK_OCF_UNKNOWN_ERROR,
+                                "Not connected to remote executor");
+        return;
+    }
+
+    if ((rc != pcmk_rc_ok) && !create_rsc) {
+        /* Delete of malformed or nonexistent resource
+         * (deleting something that does not exist is a success)
+         */
+        pcmk__debug("Not registering resource '%s' for a %s event "
+                    QB_XS " get-rc=%d (%s) transition-key=%s",
+                    pcmk__xe_id(xml_rsc), operation, rc, pcmk_rc_str(rc),
+                    pcmk__xe_id(input->xml));
+        delete_rsc_entry(lrm_state, input, pcmk__xe_id(xml_rsc), NULL,
+                         pcmk_rc_ok, user_name, true);
+        return;
+    }
+
+    if (rc == EINVAL) {
+        // Resource operation on malformed resource
+        pcmk__err("Invalid resource definition for %s",
+                  pcmk__xe_id(xml_rsc));
+        pcmk__log_xml_warn(input->msg, "invalid resource");
+        synthesize_lrmd_failure(lrm_state, input->xml, PCMK_EXEC_ERROR,
+                                PCMK_OCF_NOT_CONFIGURED, // fatal error
+                                "Invalid resource definition");
+        return;
+    }
+
+    if (rc != pcmk_rc_ok) {
+        // Error communicating with the executor
+        pcmk__err("Could not register resource '%s' with executor: %s "
+                  QB_XS " rc=%d",
+                  pcmk__xe_id(xml_rsc), pcmk_rc_str(rc), rc);
+        pcmk__log_xml_warn(input->msg, "failed registration");
+        synthesize_lrmd_failure(lrm_state, input->xml, PCMK_EXEC_ERROR,
+                                PCMK_OCF_INVALID_PARAM, // hard error
+                                "Could not register resource with executor");
+        return;
+    }
+
+    if (pcmk__str_eq(operation, PCMK_ACTION_CANCEL, pcmk__str_none)) {
+        if (!do_lrm_cancel(input, lrm_state, rsc, from_host, from_sys)) {
+            pcmk__log_xml_warn(input->xml, "Bad command");
+        }
+
+    } else if (pcmk__str_eq(operation, PCMK_ACTION_DELETE,
+                            pcmk__str_none)) {
+        do_lrm_delete(input, lrm_state, rsc, from_sys, from_host,
+                      crm_rsc_delete, user_name);
+
+    } else {
+        struct ra_metadata_s *md = NULL;
+
+        /* Getting metadata from cache is OK except for start actions --
+         * always refresh from the agent for those, in case the resource
+         * agent was updated.
+         *
+         * @TODO Only refresh metadata for starts if the agent actually
+         * changed (using something like inotify, or a hash or modification
+         * time of the agent executable).
+         */
+        if (strcmp(operation, PCMK_ACTION_START) != 0) {
+            md = controld_get_rsc_metadata(lrm_state, rsc,
+                                           controld_metadata_from_cache);
+        }
+
+        if ((md == NULL) && crm_op_needs_metadata(rsc->standard,
+                                                  operation)) {
+            /* Most likely, we'll need the agent metadata to record the
+             * pending operation and the operation result. Get it now rather
+             * than wait until then, so the metadata action doesn't eat into
+             * the real action's timeout.
+             *
+             * @TODO Metadata is retrieved via direct execution of the
+             * agent, which has a couple of related issues: the executor
+             * should execute agents, not the controller; and metadata for
+             * Pacemaker Remote nodes should be collected on those nodes,
+             * not locally.
+             */
+            struct metadata_cb_data *data = NULL;
+
+            data = new_metadata_cb_data(rsc, input->xml);
+            pcmk__info("Retrieving metadata for %s (%s%s%s:%s) "
+                       "asynchronously",
+                       rsc->id, rsc->standard,
+                       ((rsc->provider != NULL)? ":" : ""),
+                       pcmk__s(rsc->provider, ""), rsc->type);
+            lrmd__metadata_async(rsc, metadata_complete, data);
+        } else {
+            do_lrm_rsc_op(lrm_state, rsc, input->xml, md);
+        }
+    }
+
+    lrmd_free_rsc_info(rsc);
+}
+
 void
 controld_invoke_execd(fsa_data_t *msg_data)
 {
@@ -1305,134 +1422,33 @@ controld_invoke_execd(fsa_data_t *msg_data)
     if (pcmk__str_eq(crm_op, CRM_OP_LRM_FAIL, pcmk__str_none)) {
         fail_lrm_resource(input->xml, lrm_state, user_name, from_host,
                           from_sys);
+        return;
+    }
 
-    } else if (pcmk__str_eq(crm_op, CRM_OP_REPROBE, pcmk__str_none)
-               || pcmk__str_eq(operation, CRM_OP_REPROBE, pcmk__str_none)) {
+    if (pcmk__str_eq(crm_op, CRM_OP_REPROBE, pcmk__str_none)
+        || pcmk__str_eq(operation, CRM_OP_REPROBE, pcmk__str_none)) {
+
         const char *raw_target = NULL;
 
         if (input->xml != NULL) {
             // For CRM_OP_REPROBE, a NULL target means we're targeting all nodes
             raw_target = pcmk__xe_get(input->xml, PCMK__META_ON_NODE);
         }
+
         handle_reprobe_op(lrm_state, input->msg, from_sys, from_host, user_name,
                           is_remote_node, (raw_target == NULL));
+        return;
+    }
 
-    } else if (operation != NULL) {
-        lrmd_rsc_info_t *rsc = NULL;
-        xmlNode *xml_rsc = pcmk__xe_first_child(input->xml, PCMK_XE_PRIMITIVE,
-                                                NULL, NULL);
-        const bool create_rsc = !pcmk__str_eq(operation, PCMK_ACTION_DELETE,
-                                              pcmk__str_none);
-        int rc;
-
-        // We can't return anything meaningful without a resource ID
-        CRM_CHECK((xml_rsc != NULL) && (pcmk__xe_id(xml_rsc) != NULL), return);
-
-        rc = get_lrm_resource(lrm_state, xml_rsc, create_rsc, &rsc);
-        if (rc == ENOTCONN) {
-            synthesize_lrmd_failure(lrm_state, input->xml,
-                                    PCMK_EXEC_NOT_CONNECTED,
-                                    PCMK_OCF_UNKNOWN_ERROR,
-                                    "Not connected to remote executor");
-            return;
-        }
-
-        if ((rc != pcmk_rc_ok) && !create_rsc) {
-            /* Delete of malformed or nonexistent resource
-             * (deleting something that does not exist is a success)
-             */
-            pcmk__debug("Not registering resource '%s' for a %s event "
-                        QB_XS " get-rc=%d (%s) transition-key=%s",
-                        pcmk__xe_id(xml_rsc), operation, rc, pcmk_rc_str(rc),
-                        pcmk__xe_id(input->xml));
-            delete_rsc_entry(lrm_state, input, pcmk__xe_id(xml_rsc), NULL,
-                             pcmk_rc_ok, user_name, true);
-            return;
-        }
-
-        if (rc == EINVAL) {
-            // Resource operation on malformed resource
-            pcmk__err("Invalid resource definition for %s",
-                      pcmk__xe_id(xml_rsc));
-            pcmk__log_xml_warn(input->msg, "invalid resource");
-            synthesize_lrmd_failure(lrm_state, input->xml, PCMK_EXEC_ERROR,
-                                    PCMK_OCF_NOT_CONFIGURED, // fatal error
-                                    "Invalid resource definition");
-            return;
-        }
-
-        if (rc != pcmk_rc_ok) {
-            // Error communicating with the executor
-            pcmk__err("Could not register resource '%s' with executor: %s "
-                      QB_XS " rc=%d",
-                      pcmk__xe_id(xml_rsc), pcmk_rc_str(rc), rc);
-            pcmk__log_xml_warn(input->msg, "failed registration");
-            synthesize_lrmd_failure(lrm_state, input->xml, PCMK_EXEC_ERROR,
-                                    PCMK_OCF_INVALID_PARAM, // hard error
-                                    "Could not register resource with executor");
-            return;
-        }
-
-        if (pcmk__str_eq(operation, PCMK_ACTION_CANCEL, pcmk__str_none)) {
-            if (!do_lrm_cancel(input, lrm_state, rsc, from_host, from_sys)) {
-                pcmk__log_xml_warn(input->xml, "Bad command");
-            }
-
-        } else if (pcmk__str_eq(operation, PCMK_ACTION_DELETE,
-                                pcmk__str_none)) {
-            do_lrm_delete(input, lrm_state, rsc, from_sys, from_host,
-                          crm_rsc_delete, user_name);
-
-        } else {
-            struct ra_metadata_s *md = NULL;
-
-            /* Getting metadata from cache is OK except for start actions --
-             * always refresh from the agent for those, in case the resource
-             * agent was updated.
-             *
-             * @TODO Only refresh metadata for starts if the agent actually
-             * changed (using something like inotify, or a hash or modification
-             * time of the agent executable).
-             */
-            if (strcmp(operation, PCMK_ACTION_START) != 0) {
-                md = controld_get_rsc_metadata(lrm_state, rsc,
-                                               controld_metadata_from_cache);
-            }
-
-            if ((md == NULL) && crm_op_needs_metadata(rsc->standard,
-                                                      operation)) {
-                /* Most likely, we'll need the agent metadata to record the
-                 * pending operation and the operation result. Get it now rather
-                 * than wait until then, so the metadata action doesn't eat into
-                 * the real action's timeout.
-                 *
-                 * @TODO Metadata is retrieved via direct execution of the
-                 * agent, which has a couple of related issues: the executor
-                 * should execute agents, not the controller; and metadata for
-                 * Pacemaker Remote nodes should be collected on those nodes,
-                 * not locally.
-                 */
-                struct metadata_cb_data *data = NULL;
-
-                data = new_metadata_cb_data(rsc, input->xml);
-                pcmk__info("Retrieving metadata for %s (%s%s%s:%s) "
-                           "asynchronously",
-                           rsc->id, rsc->standard,
-                           ((rsc->provider != NULL)? ":" : ""),
-                           pcmk__s(rsc->provider, ""), rsc->type);
-                lrmd__metadata_async(rsc, metadata_complete, data);
-            } else {
-                do_lrm_rsc_op(lrm_state, rsc, input->xml, md);
-            }
-        }
-
-        lrmd_free_rsc_info(rsc);
-
-    } else {
+    if (operation == NULL) {
         pcmk__err("Invalid execution request: unknown command '%s' (bug?)",
                   crm_op);
         register_fsa_error(I_ERROR, msg_data);
+        return;
     }
+
+    handle_non_reprobe_op(lrm_state, operation, input, from_sys, from_host,
+                          user_name, crm_rsc_delete);
 }
 
 static lrmd_event_data_t *
