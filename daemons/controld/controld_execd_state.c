@@ -671,7 +671,8 @@ controld_execd_state_connect_local(lrm_state_t *lrm_state)
 
     if (lrm_state->conn == NULL) {
         lrm_state->conn = lrmd_api_new();
-        lrm_state->conn->cmds->set_callback(lrm_state->conn, lrm_op_callback);
+        lrm_state->conn->cmds->set_callback(lrm_state->conn,
+                                            controld_execd_event_callback);
     }
 
     rc = lrm_state->conn->cmds->connect(lrm_state->conn, CRM_SYSTEM_CRMD, NULL);

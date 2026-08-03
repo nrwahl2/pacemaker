@@ -369,8 +369,25 @@ send_task_ok_ack(const lrm_state_t *lrm_state, const ha_msg_input_t *input,
     lrmd_free_event(event);
 }
 
+/*!
+ * \internal
+ * \brief Handle an event received from the executor
+ *
+ * On \c lrmd_event_disconnect, log a message, register an error input, and
+ * clear the \c R_LRM_CONNECTED flag.
+ *
+ * On \c lrmd_event_exec_complete, call \c process_lrm_event() for \p event,
+ * using the executor state object for node \p event->remote_nodename (or the
+ * local node if \c NULL).
+ *
+ * On other events, do nothing.
+ *
+ * \param[in,out] event  Executor event
+ *
+ * \note This is a \c lrmd_event_callback.
+ */
 void
-lrm_op_callback(lrmd_event_data_t *event)
+controld_execd_event_callback(lrmd_event_data_t *event)
 {
     lrm_state_t *lrm_state = NULL;
 

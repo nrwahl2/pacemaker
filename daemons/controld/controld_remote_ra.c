@@ -440,7 +440,7 @@ report_remote_ra_result(remote_ra_cmd_t * cmd)
     event->call_id = cmd->call_id;
     event->remote_nodename = pcmk__str_copy(cmd->owner);
 
-    lrm_op_callback(event);
+    controld_execd_event_callback(event);
     lrmd_free_event(event);
 }
 
@@ -622,7 +622,7 @@ remote_lrm_op_callback(lrmd_event_data_t *event)
             pcmk__debug("Ignoring event, this connection is taken over by "
                         "another node");
         } else {
-            lrm_op_callback(event);
+            controld_execd_event_callback(event);
         }
         return;
     }

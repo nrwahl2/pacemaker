@@ -24,7 +24,7 @@ void lrm_clear_last_failure(const char *rsc_id, const char *node_name,
                             const char *operation, unsigned int interval_ms);
 void controld_invoke_execd(fsa_data_t *msg_data);
 
-void lrm_op_callback(lrmd_event_data_t *event);
+void controld_execd_event_callback(lrmd_event_data_t *event);
 lrmd_t *crmd_local_lrmd_conn(void);
 
 typedef struct {
