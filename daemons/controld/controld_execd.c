@@ -1255,7 +1255,10 @@ handle_non_reprobe_op(lrm_state_t *lrm_state, const char *operation,
                                             NULL);
     const bool create_rsc = !pcmk__str_eq(operation, PCMK_ACTION_DELETE,
                                           pcmk__str_none);
+
     struct ra_metadata_s *md = NULL;
+    struct metadata_cb_data *data = NULL;
+
     int rc = pcmk_rc_ok;
 
     // We can't return anything meaningful without a resource ID
@@ -1328,34 +1331,30 @@ handle_non_reprobe_op(lrm_state_t *lrm_state, const char *operation,
      * (using something like inotify, or a hash or modification time of the
      * agent executable).
      */
-    if (strcmp(operation, PCMK_ACTION_START) != 0) {
+    if (!pcmk__str_eq(operation, PCMK_ACTION_START, pcmk__str_none)) {
         md = controld_get_rsc_metadata(lrm_state, rsc,
                                        controld_metadata_from_cache);
     }
 
-    if ((md == NULL) && crm_op_needs_metadata(rsc->standard, operation)) {
-        /* Most likely, we'll need the agent metadata to record the pending
-         * operation and the operation result. Get it now rather than wait until
-         * then, so the metadata action doesn't eat into the real action's
-         * timeout.
-         *
-         * @TODO Metadata is retrieved via direct execution of the agent, which
-         * has a couple of related issues: the executor should execute agents,
-         * not the controller; and metadata for Pacemaker Remote nodes should be
-         * collected on those nodes, not locally.
-         */
-        struct metadata_cb_data *data = NULL;
-
-        data = new_metadata_cb_data(rsc, input->xml);
-        pcmk__info("Retrieving metadata for %s (%s%s%s:%s) asynchronously",
-                   rsc->id, rsc->standard,
-                   ((rsc->provider != NULL)? ":" : ""),
-                   pcmk__s(rsc->provider, ""), rsc->type);
-        lrmd__metadata_async(rsc, metadata_complete, data);
-
-    } else {
+    if ((md != NULL) || !crm_op_needs_metadata(rsc->standard, operation)) {
         do_lrm_rsc_op(lrm_state, rsc, input->xml, md);
+        goto done;
     }
+
+    /* Most likely, we'll need the agent metadata to record the pending
+     * operation and the operation result. Get it now rather than wait until
+     * then, so the metadata action doesn't eat into the real action's timeout.
+     *
+     * @TODO Metadata is retrieved via direct execution of the agent, which has
+     * a couple of related issues: the executor should execute agents, not the
+     * controller; and metadata for Pacemaker Remote nodes should be collected
+     * on those nodes, not locally.
+     */
+    data = new_metadata_cb_data(rsc, input->xml);
+    pcmk__info("Retrieving metadata for %s (%s%s%s:%s) asynchronously", rsc->id,
+               rsc->standard, ((rsc->provider != NULL)? ":" : ""),
+               pcmk__s(rsc->provider, ""), rsc->type);
+    lrmd__metadata_async(rsc, metadata_complete, data);
 
 done:
     lrmd_free_rsc_info(rsc);
