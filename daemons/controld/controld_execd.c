@@ -191,6 +191,31 @@ history_free(void *data)
     free(history);
 }
 
+/*!
+ * \internal
+ * \brief Create a new history object for a resource
+ *
+ * \param[in] rsc_info  Resource info
+ *
+ * \return Newly allocated \c rsc_history_t (guaranteed not to be \c NULL)
+ *
+ * \note The caller is responsible for freeing the return value using
+ *       \c history_free().
+ */
+static rsc_history_t *
+new_rsc_history(const lrmd_rsc_info_t *rsc_info)
+{
+    rsc_history_t *history = pcmk__assert_alloc(1, sizeof(rsc_history_t));
+
+    history->id = pcmk__str_copy(rsc_info->id);
+    history->rsc.id = history->id;
+    history->rsc.type = pcmk__str_copy(rsc_info->type);
+    history->rsc.standard = pcmk__str_copy(rsc_info->standard);
+    history->rsc.provider = pcmk__str_copy(rsc_info->provider);
+
+    return history;
+}
+
 static void
 update_history_cache(lrm_state_t *lrm_state, lrmd_rsc_info_t *rsc,
                      const lrmd_event_data_t *event)
@@ -222,14 +247,8 @@ update_history_cache(lrm_state_t *lrm_state, lrmd_rsc_info_t *rsc,
             return;
         }
 
-        entry = pcmk__assert_alloc(1, sizeof(rsc_history_t));
-        entry->id = pcmk__str_copy(rsc->id);
+        entry = new_rsc_history(rsc);
         g_hash_table_insert(lrm_state->resource_history, entry->id, entry);
-
-        entry->rsc.id = entry->id;
-        entry->rsc.type = pcmk__str_copy(rsc->type);
-        entry->rsc.standard = pcmk__str_copy(rsc->standard);
-        entry->rsc.provider = pcmk__str_copy(rsc->provider);
     }
 
     entry->last_callid = event->call_id;
