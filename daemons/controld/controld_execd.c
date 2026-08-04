@@ -179,14 +179,9 @@ history_free(void *data)
 
     g_clear_pointer(&history->stop_params, g_hash_table_destroy);
 
-    /* Don't need to free history->rsc.id because it's set to history->id */
-    free(history->rsc.type);
-    free(history->rsc.standard);
-    free(history->rsc.provider);
-
+    lrmd_free_rsc_info(history->rsc);
     lrmd_free_event(history->failed);
     lrmd_free_event(history->last);
-    free(history->id);
     history_free_recurring_ops(history);
     free(history);
 }
@@ -207,11 +202,8 @@ new_rsc_history(const lrmd_rsc_info_t *rsc_info)
 {
     rsc_history_t *history = pcmk__assert_alloc(1, sizeof(rsc_history_t));
 
-    history->id = pcmk__str_copy(rsc_info->id);
-    history->rsc.id = history->id;
-    history->rsc.type = pcmk__str_copy(rsc_info->type);
-    history->rsc.standard = pcmk__str_copy(rsc_info->standard);
-    history->rsc.provider = pcmk__str_copy(rsc_info->provider);
+    history->rsc = lrmd_copy_rsc_info(rsc_info);
+    history->id = history->rsc->id;
 
     return history;
 }
@@ -248,7 +240,7 @@ update_history_cache(lrm_state_t *lrm_state, lrmd_rsc_info_t *rsc,
         }
 
         entry = new_rsc_history(rsc);
-        g_hash_table_insert(lrm_state->resource_history, entry->id, entry);
+        g_hash_table_insert(lrm_state->resource_history, (void *) entry->id, entry);
     }
 
     entry->last_callid = event->call_id;
@@ -601,9 +593,9 @@ build_active_RAs(lrm_state_t * lrm_state, xmlNode * rsc_list)
         xmlNode *xml_rsc = pcmk__xe_create(rsc_list, PCMK__XE_LRM_RESOURCE);
 
         pcmk__xe_set(xml_rsc, PCMK_XA_ID, entry->id);
-        pcmk__xe_set(xml_rsc, PCMK_XA_TYPE, entry->rsc.type);
-        pcmk__xe_set(xml_rsc, PCMK_XA_CLASS, entry->rsc.standard);
-        pcmk__xe_set(xml_rsc, PCMK_XA_PROVIDER, entry->rsc.provider);
+        pcmk__xe_set(xml_rsc, PCMK_XA_TYPE, entry->rsc->type);
+        pcmk__xe_set(xml_rsc, PCMK_XA_CLASS, entry->rsc->standard);
+        pcmk__xe_set(xml_rsc, PCMK_XA_PROVIDER, entry->rsc->provider);
 
         if ((entry->last != NULL) && (entry->last->params != NULL)) {
             static const char *name = CRM_META "_" PCMK__META_CONTAINER;
@@ -617,15 +609,15 @@ build_active_RAs(lrm_state_t * lrm_state, xmlNode * rsc_list)
             }
         }
 
-        controld_add_resource_history_xml(xml_rsc, &entry->rsc, entry->failed,
+        controld_add_resource_history_xml(xml_rsc, entry->rsc, entry->failed,
                                           lrm_state->node_name);
-        controld_add_resource_history_xml(xml_rsc, &entry->rsc, entry->last,
+        controld_add_resource_history_xml(xml_rsc, entry->rsc, entry->last,
                                           lrm_state->node_name);
 
         for (gIter = entry->recurring_op_list; gIter != NULL;
              gIter = gIter->next) {
 
-            controld_add_resource_history_xml(xml_rsc, &entry->rsc, gIter->data,
+            controld_add_resource_history_xml(xml_rsc, entry->rsc, gIter->data,
                                               lrm_state->node_name);
         }
     }
@@ -1147,7 +1139,7 @@ force_reprobe(lrm_state_t *lrm_state, const char *from_sys,
         /* Don't delete from the CIB, since we'll delete the whole node's LRM
          * state from the CIB soon
          */
-        delete_resource(lrm_state, entry->id, &entry->rsc, &gIter, from_sys,
+        delete_resource(lrm_state, entry->id, entry->rsc, &gIter, from_sys,
                         user_name, NULL, unregister, false);
     }
 
