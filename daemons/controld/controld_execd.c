@@ -2135,13 +2135,23 @@ process_lrm_event(lrm_state_t *lrm_state, lrmd_event_data_t *event,
     char *op_id = NULL;
     char *op_key = NULL;
 
-    bool remove = false;
+    const bool remove = (pending == NULL);
     bool removed = false;
     bool need_direct_ack = false;
     lrmd_rsc_info_t *rsc = NULL;
     const char *node_name = NULL;
 
     CRM_CHECK((event != NULL) && (event->rsc_id != NULL), return);
+
+    /* If lrm_state is NULL, pending is NULL.
+     *
+     * synthesize_lrmd_failure() is the only caller that can pass NULL for
+     * lrm_state. It always passes NULL for pending.
+     *
+     * fail_pending_op() is the only caller that passes non-NULL for pending. It
+     * passes non-NULL for lrm_state.
+     */
+    pcmk__assert((lrm_state != NULL) || (pending == NULL));
 
     // Remap new status codes for older DCs
     if (pcmk__compare_versions(controld_globals.dc_version, "3.2.0") < 0) {
@@ -2198,12 +2208,8 @@ process_lrm_event(lrm_state_t *lrm_state, lrmd_event_data_t *event,
         node_name = pcmk__xe_get(action_xml, PCMK__META_ON_NODE);
     }
 
-    if (pending == NULL) {
-        remove = true;
-
-        if (lrm_state != NULL) {
-            pending = g_hash_table_lookup(lrm_state->active_ops, op_id);
-        }
+    if ((pending == NULL) && (lrm_state != NULL)) {
+        pending = g_hash_table_lookup(lrm_state->active_ops, op_id);
     }
 
     if (event->op_status == PCMK_EXEC_ERROR) {
@@ -2286,9 +2292,7 @@ process_lrm_event(lrm_state_t *lrm_state, lrmd_event_data_t *event,
         /* This recurring operation was cancelled (by us) and pending, and we
          * have been waiting for it to finish.
          */
-        if (lrm_state != NULL) {
-            controld_delete_action_history(event);
-        }
+        controld_delete_action_history(event);
 
         /* Directly acknowledge failed recurring actions here. The above call to
          * controld_delete_action_history() will not erase any corresponding
@@ -2326,9 +2330,8 @@ process_lrm_event(lrm_state_t *lrm_state, lrmd_event_data_t *event,
         // The caller will do this afterwards, but keep the logging consistent
         removed = true;
 
-    } else if ((lrm_state != NULL)
-               && ((event->interval_ms == 0)
-                   || (event->op_status == PCMK_EXEC_CANCELLED))) {
+    } else if (((event->interval_ms == 0)
+               || (event->op_status == PCMK_EXEC_CANCELLED))) {
 
         const bool found = g_hash_table_remove(lrm_state->active_ops, op_id);
 
