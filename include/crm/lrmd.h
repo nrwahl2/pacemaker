@@ -174,7 +174,7 @@ typedef struct lrmd_op_info_s {
 
 lrmd_rsc_info_t *lrmd_new_rsc_info(const char *rsc_id, const char *standard,
                                    const char *provider, const char *type);
-lrmd_rsc_info_t *lrmd_copy_rsc_info(lrmd_rsc_info_t * rsc_info);
+lrmd_rsc_info_t *lrmd_copy_rsc_info(const lrmd_rsc_info_t *rsc_info);
 void lrmd_free_rsc_info(lrmd_rsc_info_t * rsc_info);
 void lrmd_free_op_info(lrmd_op_info_t *op_info);
 

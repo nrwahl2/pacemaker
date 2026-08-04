@@ -1764,7 +1764,7 @@ lrmd_new_rsc_info(const char *rsc_id, const char *standard,
 }
 
 lrmd_rsc_info_t *
-lrmd_copy_rsc_info(lrmd_rsc_info_t * rsc_info)
+lrmd_copy_rsc_info(const lrmd_rsc_info_t *rsc_info)
 {
     return lrmd_new_rsc_info(rsc_info->id, rsc_info->standard,
                              rsc_info->provider, rsc_info->type);
