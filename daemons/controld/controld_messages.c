@@ -705,7 +705,7 @@ handle_lrm_delete(xmlNode *stored_msg)
                                               cib_dryrun|cib_sync_call);
         if (rc == pcmk_rc_ok) {
             rc = controld_delete_resource_history(rsc_id, node, user_name,
-                                                  crmd_cib_smart_opt());
+                                                  cib_none);
         }
 
         /* Notify client. Also notify tengine if mode=PCMK__VALUE_CIB and

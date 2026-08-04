@@ -224,7 +224,7 @@ update_history_cache(lrm_state_t *lrm_state, lrmd_rsc_info_t *rsc,
         pcmk__debug("Purged history for '%s' after %s", event->rsc_id,
                     event->op_type);
         controld_delete_resource_history(event->rsc_id, lrm_state->node_name,
-                                         NULL, crmd_cib_smart_opt());
+                                         NULL, cib_none);
         return;
     }
 
@@ -791,7 +791,7 @@ delete_rsc_entry(lrm_state_t *lrm_state, ha_msg_input_t *input,
 
         if (from_cib) {
             controld_delete_resource_history(rsc_id_copy, lrm_state->node_name,
-                                             user_name, crmd_cib_smart_opt());
+                                             user_name, cib_none);
         }
         g_hash_table_foreach_remove(lrm_state->active_ops,
                                     lrm_remove_deleted_op, rsc_id_copy);

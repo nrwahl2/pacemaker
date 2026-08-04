@@ -225,26 +225,6 @@ cib_op_timeout(void)
     return calculated_timeout;
 }
 
-/*!
- * \internal
- * \brief Get CIB call options to use local scope if primary is unavailable
- *
- * \return CIB call options
- */
-int
-crmd_cib_smart_opt(void)
-{
-    int call_opt = cib_none;
-
-    if ((controld_globals.fsa_state == S_ELECTION)
-        || (controld_globals.fsa_state == S_PENDING)) {
-        pcmk__info("Sending update to local CIB in state: %s",
-                   fsa_state2string(controld_globals.fsa_state));
-        cib__set_call_options(call_opt, "update", cib_none);
-    }
-    return call_opt;
-}
-
 static void
 cib_delete_callback(xmlNode *msg, int call_id, int rc, xmlNode *output,
                     void *user_data)
@@ -842,7 +822,6 @@ controld_update_resource_history(const char *node_name,
 {
     xmlNode *update = NULL;
     xmlNode *xml = NULL;
-    int call_opt = crmd_cib_smart_opt();
     const char *node_id = NULL;
     const char *container = NULL;
 
@@ -910,7 +889,7 @@ controld_update_resource_history(const char *node_name,
      * fenced for running a resource it isn't.
      */
     pcmk__log_xml_trace(update, __func__);
-    controld_update_cib(PCMK_XE_STATUS, update, call_opt, cib_rsc_callback);
+    controld_update_cib(PCMK_XE_STATUS, update, cib_none, cib_rsc_callback);
     pcmk__xml_free(update);
 }
 

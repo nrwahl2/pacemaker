@@ -95,8 +95,6 @@ void controld_delete_action_history_by_key(const char *rsc_id, const char *node,
 
 void controld_disconnect_cib_manager(void);
 
-int crmd_cib_smart_opt(void);
-
 /*!
  * \internal
  * \brief Check whether an action type should be recorded in the CIB

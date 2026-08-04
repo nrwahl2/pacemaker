@@ -222,15 +222,12 @@ purge_remote_node_attrs(int call_opt, pcmk__node_status_t *node)
 static void
 remote_node_up(const char *node_name)
 {
-    int call_opt;
     xmlNode *update, *state;
     pcmk__node_status_t *node = NULL;
     lrm_state_t *connection_rsc = NULL;
 
     CRM_CHECK(node_name != NULL, return);
     pcmk__info("Announcing Pacemaker Remote node %s", node_name);
-
-    call_opt = crmd_cib_smart_opt();
 
     /* Delete node's CRM_OP_PROBED attribute. Deleting any attribute ensures
      * that the attribute manager learns the node is remote. Deletion of this
@@ -246,7 +243,7 @@ remote_node_up(const char *node_name)
     node = pcmk__cluster_lookup_remote_node(node_name);
     CRM_CHECK((node != NULL) && (node->name != NULL), return);
 
-    purge_remote_node_attrs(call_opt, node);
+    purge_remote_node_attrs(cib_none, node);
     pcmk__update_peer_state(__func__, node, PCMK_VALUE_MEMBER, 0);
 
     /* Apply any start state that we were given from the environment on the
@@ -287,7 +284,7 @@ remote_node_up(const char *node_name)
      * actual fencing or allow recurring monitor failures to be cleared too
      * soon. Ideally, we wouldn't rely on the CIB for the fenced status.
      */
-    controld_update_cib(PCMK_XE_STATUS, update, call_opt, NULL);
+    controld_update_cib(PCMK_XE_STATUS, update, cib_none, NULL);
     pcmk__xml_free(update);
 }
 
@@ -302,7 +299,6 @@ static void
 remote_node_down(const char *node_name, bool erase_lrm)
 {
     xmlNode *update;
-    int call_opt = crmd_cib_smart_opt();
     pcmk__node_status_t *node = NULL;
 
     // Purge node's transient attributes (from attribute manager and CIB)
@@ -313,7 +309,7 @@ remote_node_down(const char *node_name, bool erase_lrm)
      * think resources are still running on the node.
      */
     if (erase_lrm) {
-        controld_delete_node_history(node_name, false, call_opt);
+        controld_delete_node_history(node_name, false, cib_none);
     }
 
     /* Ensure node is in the remote peer cache with lost state */
@@ -328,7 +324,7 @@ remote_node_down(const char *node_name, bool erase_lrm)
     update = pcmk__xe_create(NULL, PCMK_XE_STATUS);
     create_node_state_update(node, controld_node_update_cluster, update,
                              __func__);
-    controld_update_cib(PCMK_XE_STATUS, update, call_opt, NULL);
+    controld_update_cib(PCMK_XE_STATUS, update, cib_none, NULL);
     pcmk__xml_free(update);
 }
 
@@ -1330,17 +1326,15 @@ static void
 remote_ra_maintenance(lrm_state_t * lrm_state, gboolean maintenance)
 {
     xmlNode *update, *state;
-    int call_opt;
     pcmk__node_status_t *node = NULL;
 
-    call_opt = crmd_cib_smart_opt();
     node = pcmk__cluster_lookup_remote_node(lrm_state->node_name);
     CRM_CHECK(node != NULL, return);
     update = pcmk__xe_create(NULL, PCMK_XE_STATUS);
     state = create_node_state_update(node, controld_node_update_none, update,
                                      __func__);
     pcmk__xe_set(state, PCMK__XA_NODE_IN_MAINTENANCE, (maintenance? "1" : "0"));
-    if (controld_update_cib(PCMK_XE_STATUS, update, call_opt,
+    if (controld_update_cib(PCMK_XE_STATUS, update, cib_none,
                             NULL) == pcmk_rc_ok) {
         /* TODO: still not 100% sure that async update will succeed ... */
         if (maintenance) {
