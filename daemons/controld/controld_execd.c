@@ -1122,22 +1122,19 @@ force_reprobe(lrm_state_t *lrm_state, const char *from_sys,
          * connection resource. Otherwise unregistering the connection will
          * terminate remote node membership.
          */
-        bool unregister = true;
+        const bool is_remote_rsc = is_remote_lrmd_ra(entry->rsc->id);
+        const bool unregister = !is_remote_rsc;
 
-        if (is_remote_lrmd_ra(entry->rsc->id)) {
-            unregister = false;
+        if (is_remote_rsc && reprobe_all_nodes) {
+            lrm_state_t *remote_lrm_state =
+                controld_execd_state_get(entry->rsc->id, false);
 
-            if (reprobe_all_nodes) {
-                lrm_state_t *remote_lrm_state =
-                    controld_execd_state_get(entry->rsc->id, false);
-
-                if (remote_lrm_state != NULL) {
-                    /* If reprobing all nodes, be sure to reprobe the remote
-                     * node before clearing its connection resource
-                     */
-                    force_reprobe(remote_lrm_state, from_sys, from_host,
-                                  user_name, true, reprobe_all_nodes);
-                }
+            if (remote_lrm_state != NULL) {
+                /* If reprobing all nodes, be sure to reprobe the remote node
+                 * before clearing its connection resource
+                 */
+                force_reprobe(remote_lrm_state, from_sys, from_host,
+                              user_name, true, true);
             }
         }
 
