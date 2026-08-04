@@ -200,7 +200,7 @@ should_purge_attributes(pcmk__node_status_t *node)
 }
 
 static void
-purge_remote_node_attrs(int call_opt, pcmk__node_status_t *node)
+purge_remote_node_attrs(pcmk__node_status_t *node)
 {
     const bool unlocked_only = pcmk__is_set(controld_globals.flags,
                                             controld_shutdown_lock_enabled);
@@ -210,7 +210,7 @@ purge_remote_node_attrs(int call_opt, pcmk__node_status_t *node)
         controld_purge_node_attrs(node->name, true);
     }
 
-    controld_delete_node_history(node->name, unlocked_only, call_opt);
+    controld_delete_node_history(node->name, unlocked_only, cib_none);
 }
 
 /*!
@@ -243,7 +243,7 @@ remote_node_up(const char *node_name)
     node = pcmk__cluster_lookup_remote_node(node_name);
     CRM_CHECK((node != NULL) && (node->name != NULL), return);
 
-    purge_remote_node_attrs(cib_none, node);
+    purge_remote_node_attrs(node);
     pcmk__update_peer_state(__func__, node, PCMK_VALUE_MEMBER, 0);
 
     /* Apply any start state that we were given from the environment on the
