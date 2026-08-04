@@ -203,7 +203,6 @@ new_rsc_history(const lrmd_rsc_info_t *rsc_info)
     rsc_history_t *history = pcmk__assert_alloc(1, sizeof(rsc_history_t));
 
     history->rsc = lrmd_copy_rsc_info(rsc_info);
-    history->id = history->rsc->id;
 
     return history;
 }
@@ -240,7 +239,7 @@ update_history_cache(lrm_state_t *lrm_state, lrmd_rsc_info_t *rsc,
         }
 
         entry = new_rsc_history(rsc);
-        g_hash_table_insert(lrm_state->resource_history, (void *) entry->id, entry);
+        g_hash_table_insert(lrm_state->resource_history, entry->rsc->id, entry);
     }
 
     entry->last_callid = event->call_id;
@@ -592,7 +591,7 @@ build_active_RAs(lrm_state_t * lrm_state, xmlNode * rsc_list)
         GList *gIter = NULL;
         xmlNode *xml_rsc = pcmk__xe_create(rsc_list, PCMK__XE_LRM_RESOURCE);
 
-        pcmk__xe_set(xml_rsc, PCMK_XA_ID, entry->id);
+        pcmk__xe_set(xml_rsc, PCMK_XA_ID, entry->rsc->id);
         pcmk__xe_set(xml_rsc, PCMK_XA_TYPE, entry->rsc->type);
         pcmk__xe_set(xml_rsc, PCMK_XA_CLASS, entry->rsc->standard);
         pcmk__xe_set(xml_rsc, PCMK_XA_PROVIDER, entry->rsc->provider);
@@ -604,7 +603,7 @@ build_active_RAs(lrm_state_t * lrm_state, xmlNode * rsc_list)
 
             if (container != NULL) {
                 pcmk__trace("Resource %s is a part of container resource %s",
-                            entry->id, container);
+                            entry->rsc->id, container);
                 pcmk__xe_set(xml_rsc, PCMK__META_CONTAINER, container);
             }
         }
@@ -1119,12 +1118,12 @@ force_reprobe(lrm_state_t *lrm_state, const char *from_sys,
          */
         bool unregister = true;
 
-        if (is_remote_lrmd_ra(entry->id)) {
+        if (is_remote_lrmd_ra(entry->rsc->id)) {
             unregister = false;
 
             if (reprobe_all_nodes) {
                 lrm_state_t *remote_lrm_state =
-                    controld_execd_state_get(entry->id, false);
+                    controld_execd_state_get(entry->rsc->id, false);
 
                 if (remote_lrm_state != NULL) {
                     /* If reprobing all nodes, be sure to reprobe the remote
@@ -1139,7 +1138,7 @@ force_reprobe(lrm_state_t *lrm_state, const char *from_sys,
         /* Don't delete from the CIB, since we'll delete the whole node's LRM
          * state from the CIB soon
          */
-        delete_resource(lrm_state, entry->id, entry->rsc, &gIter, from_sys,
+        delete_resource(lrm_state, entry->rsc->id, entry->rsc, &gIter, from_sys,
                         user_name, NULL, unregister, false);
     }
 

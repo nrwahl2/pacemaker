@@ -28,7 +28,6 @@ void controld_execd_event_callback(lrmd_event_data_t *event);
 lrmd_t *crmd_local_lrmd_conn(void);
 
 typedef struct {
-    const char *id;
     uint32_t last_callid;
     lrmd_rsc_info_t *rsc;
     lrmd_event_data_t *last;

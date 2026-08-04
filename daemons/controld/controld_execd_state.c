@@ -466,23 +466,23 @@ count_active_resource(void *key, void *value, void *user_data)
     struct count_active_resource_data *data = user_data;
 
     const struct log_incomplete_op_data lio_data = {
-        .id = entry->id,
+        .id = entry->rsc->id,
         .when = data->when,
     };
 
     pcmk__assert((entry != NULL) && (data != NULL));
 
-    if (!is_rsc_active(data->lrm_state, entry->id)) {
+    if (!is_rsc_active(data->lrm_state, entry->rsc->id)) {
         return;
     }
 
     data->count++;
 
     if (data->log_level == LOG_ERR) {
-        pcmk__info("Found %s active at %s", entry->id, data->when);
+        pcmk__info("Found %s active at %s", entry->rsc->id, data->when);
 
     } else {
-        pcmk__trace("Found %s active at %s", entry->id, data->when);
+        pcmk__trace("Found %s active at %s", entry->rsc->id, data->when);
     }
 
     g_hash_table_foreach(data->lrm_state->active_ops, log_incomplete_op,
