@@ -1295,23 +1295,26 @@ handle_reprobe_op(lrm_state_t *lrm_state, xmlNode *msg, const char *from_sys,
                   const char *from_host, const char *user_name,
                   bool is_remote_node, bool reprobe_all_nodes)
 {
+    xmlNode *reply = NULL;
+
     pcmk__notice("Forcing the status of all resources to be redetected");
     force_reprobe(lrm_state, from_sys, from_host, user_name, is_remote_node,
                   reprobe_all_nodes);
 
-    if (!pcmk__strcase_any_of(from_sys, CRM_SYSTEM_PENGINE, CRM_SYSTEM_TENGINE,
-                              NULL)) {
-
-        xmlNode *reply = pcmk__new_reply(msg, NULL);
-
-        pcmk__debug("ACK'ing re-probe from %s (%s)", from_sys, from_host);
-
-        if (!relay_message(reply, true)) {
-            pcmk__log_xml_err(reply, "Unable to route reply");
-        }
-
-        pcmk__xml_free(reply);
+    if (pcmk__strcase_any_of(from_sys, CRM_SYSTEM_PENGINE, CRM_SYSTEM_TENGINE,
+                             NULL)) {
+        return;
     }
+
+    reply = pcmk__new_reply(msg, NULL);
+
+    pcmk__debug("ACK'ing re-probe from %s (%s)", from_sys, from_host);
+
+    if (!relay_message(reply, true)) {
+        pcmk__log_xml_err(reply, "Unable to route reply");
+    }
+
+    pcmk__xml_free(reply);
 }
 
 static bool
