@@ -209,7 +209,7 @@ do_dc_takeover(long long action, enum crmd_fsa_cause cause,
 
     cib = pcmk__xe_create(NULL, PCMK_XE_CIB);
     pcmk__xe_set(cib, PCMK_XA_CRM_FEATURE_SET, CRM_FEATURE_SET);
-    controld_update_cib(PCMK_XE_CIB, cib, cib_none, feature_update_callback);
+    controld_update_cib(PCMK_XE_CIB, cib, feature_update_callback);
 
     dc_takeover_update_attr(PCMK_OPT_DC_VERSION,
                             PACEMAKER_VERSION "-" BUILD_VERSION);

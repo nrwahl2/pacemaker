@@ -284,7 +284,7 @@ remote_node_up(const char *node_name)
      * actual fencing or allow recurring monitor failures to be cleared too
      * soon. Ideally, we wouldn't rely on the CIB for the fenced status.
      */
-    controld_update_cib(PCMK_XE_STATUS, update, cib_none, NULL);
+    controld_update_cib(PCMK_XE_STATUS, update, NULL);
     pcmk__xml_free(update);
 }
 
@@ -324,7 +324,7 @@ remote_node_down(const char *node_name, bool erase_lrm)
     update = pcmk__xe_create(NULL, PCMK_XE_STATUS);
     create_node_state_update(node, controld_node_update_cluster, update,
                              __func__);
-    controld_update_cib(PCMK_XE_STATUS, update, cib_none, NULL);
+    controld_update_cib(PCMK_XE_STATUS, update, NULL);
     pcmk__xml_free(update);
 }
 
@@ -1334,8 +1334,7 @@ remote_ra_maintenance(lrm_state_t * lrm_state, gboolean maintenance)
     state = create_node_state_update(node, controld_node_update_none, update,
                                      __func__);
     pcmk__xe_set(state, PCMK__XA_NODE_IN_MAINTENANCE, (maintenance? "1" : "0"));
-    if (controld_update_cib(PCMK_XE_STATUS, update, cib_none,
-                            NULL) == pcmk_rc_ok) {
+    if (controld_update_cib(PCMK_XE_STATUS, update, NULL) == pcmk_rc_ok) {
         /* TODO: still not 100% sure that async update will succeed ... */
         if (maintenance) {
             lrm_remote_set_flags(lrm_state, remote_in_maint);

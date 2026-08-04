@@ -42,7 +42,7 @@ fsa_cib_anon_update_discard_reply(const char *section, xmlNode *data) {
     }
 }
 
-int controld_update_cib(const char *section, xmlNode *data, int options,
+int controld_update_cib(const char *section, xmlNode *data,
                         void (*callback)(xmlNode *, int, int, xmlNode *,
                                          void *));
 unsigned int cib_op_timeout(void);

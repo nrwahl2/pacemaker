@@ -758,7 +758,6 @@ should_preserve_lock(const lrmd_event_data_t *event)
  *
  * \param[in]     section    Section of CIB to update
  * \param[in]     data       New XML of CIB section to update
- * \param[in]     options    CIB call options
  * \param[in]     callback   If not \c NULL, set this as the operation callback
  *
  * \return Standard Pacemaker return code
@@ -767,7 +766,7 @@ should_preserve_lock(const lrmd_event_data_t *event)
  *       stored in \p pending_rsc_update on success.
  */
 int
-controld_update_cib(const char *section, xmlNode *data, int options,
+controld_update_cib(const char *section, xmlNode *data,
                     void (*callback)(xmlNode *, int, int, xmlNode *, void *))
 {
     cib_t *cib = controld_globals.cib_conn;
@@ -776,7 +775,7 @@ controld_update_cib(const char *section, xmlNode *data, int options,
     pcmk__assert(data != NULL);
 
     if (cib != NULL) {
-        cib_rc = cib->cmds->modify(cib, section, data, options);
+        cib_rc = cib->cmds->modify(cib, section, data, cib_none);
         if (cib_rc >= 0) {
             pcmk__debug("Submitted CIB update %d for %s section", cib_rc,
                         section);
@@ -889,7 +888,7 @@ controld_update_resource_history(const char *node_name,
      * fenced for running a resource it isn't.
      */
     pcmk__log_xml_trace(update, __func__);
-    controld_update_cib(PCMK_XE_STATUS, update, cib_none, cib_rsc_callback);
+    controld_update_cib(PCMK_XE_STATUS, update, cib_rsc_callback);
     pcmk__xml_free(update);
 }
 

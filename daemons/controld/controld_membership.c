@@ -394,7 +394,7 @@ populate_cib_nodes(uint32_t flags, const char *source)
         populate_cib_nodes_from_cache(node_list);
     }
 
-    if (controld_update_cib(PCMK_XE_NODES, node_list, cib_none,
+    if (controld_update_cib(PCMK_XE_NODES, node_list,
                             node_list_update_callback) != pcmk_rc_ok) {
         // Callback logs an error
         goto done;
@@ -423,8 +423,7 @@ populate_cib_nodes(uint32_t flags, const char *source)
         }
     }
 
-    controld_update_cib(PCMK_XE_STATUS, node_list, cib_none,
-                        crmd_node_update_complete);
+    controld_update_cib(PCMK_XE_STATUS, node_list, crmd_node_update_complete);
 
 done:
     pcmk__xml_free(node_list);
@@ -468,8 +467,7 @@ crm_update_quorum(gboolean quorum, gboolean force_update)
         pcmk__xe_set(update, PCMK_XA_DC_UUID, controld_globals.our_uuid);
 
         pcmk__debug("Updating quorum status to %s", pcmk__btoa(quorum));
-        controld_update_cib(PCMK_XE_CIB, update, cib_none,
-                            cib_quorum_update_complete);
+        controld_update_cib(PCMK_XE_CIB, update, cib_quorum_update_complete);
         pcmk__xml_free(update);
 
         /* Quorum changes usually cause a new transition via other activity:
