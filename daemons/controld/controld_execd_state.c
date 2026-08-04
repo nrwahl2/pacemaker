@@ -87,7 +87,8 @@ new_lrm_state(const char *node_name)
     lrm_state_t *state = pcmk__assert_alloc(1, sizeof(lrm_state_t));
 
     state->node_name = pcmk__str_copy(node_name);
-    state->resource_history = pcmk__strkey_table(NULL, history_free);
+    state->resource_history =
+        pcmk__strkey_table(NULL, controld_execd_rsc_history_free);
     state->active_ops = pcmk__strkey_table(free, free_recurring_op);
     state->deletion_ops = pcmk__strkey_table(free, free_pending_deletion_op);
     state->rsc_info_cache =

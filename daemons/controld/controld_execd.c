@@ -168,14 +168,20 @@ history_free_recurring_ops(rsc_history_t *history)
 
 /*!
  * \internal
- * \brief Free resource history
+ * \brief Free a resource history object
  *
- * \param[in,out] history  Resource history to free
+ * \param[in,out] history  Resource history
+ *
+ * \note This is a \c GDestroyNotify.
  */
 void
-history_free(void *data)
+controld_execd_rsc_history_free(void *data)
 {
     rsc_history_t *history = data;
+
+    if (history == NULL) {
+        return;
+    }
 
     g_clear_pointer(&history->stop_params, g_hash_table_destroy);
 
@@ -195,7 +201,7 @@ history_free(void *data)
  * \return Newly allocated \c rsc_history_t (guaranteed not to be \c NULL)
  *
  * \note The caller is responsible for freeing the return value using
- *       \c history_free().
+ *       \c controld_execd_rsc_history_free().
  */
 static rsc_history_t *
 new_rsc_history(const lrmd_rsc_info_t *rsc_info)
