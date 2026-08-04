@@ -223,7 +223,7 @@ update_history_cache(lrm_state_t *lrm_state, lrmd_rsc_info_t *rsc,
         }
 
         entry = pcmk__assert_alloc(1, sizeof(rsc_history_t));
-        entry->id = pcmk__str_copy(event->rsc_id);
+        entry->id = pcmk__str_copy(rsc->id);
         g_hash_table_insert(lrm_state->resource_history, entry->id, entry);
 
         entry->rsc.id = entry->id;
