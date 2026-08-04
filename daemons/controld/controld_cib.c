@@ -298,10 +298,9 @@ controld_node_history_deletion_strings(const char *uname, bool unlocked_only,
  *
  * \param[in] uname          Name of node to delete resource history for
  * \param[in] unlocked_only  If true, delete history of only unlocked resources
- * \param[in] options        CIB call options to use
  */
 void
-controld_delete_node_history(const char *uname, bool unlocked_only, int options)
+controld_delete_node_history(const char *uname, bool unlocked_only)
 {
     cib_t *cib = controld_globals.cib_conn;
     char *xpath = NULL;
@@ -311,9 +310,7 @@ controld_delete_node_history(const char *uname, bool unlocked_only, int options)
     pcmk__assert((uname != NULL) && (cib != NULL));
 
     controld_node_history_deletion_strings(uname, unlocked_only, &xpath, &desc);
-    cib__set_call_options(options, "node state deletion",
-                          cib_xpath|cib_multiple);
-    cib_rc = cib->cmds->remove(cib, xpath, NULL, options);
+    cib_rc = cib->cmds->remove(cib, xpath, NULL, cib_xpath|cib_multiple);
     fsa_register_cib_callback(cib_rc, desc, cib_delete_callback);
     pcmk__info("Deleting %s (via CIB call %d) " QB_XS " xpath=%s", desc, cib_rc,
                xpath);
