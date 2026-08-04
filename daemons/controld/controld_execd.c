@@ -1025,16 +1025,16 @@ get_lrm_resource(lrm_state_t *lrm_state, const xmlNode *rsc_xml, bool do_create,
 }
 
 static void
-delete_resource(lrm_state_t *lrm_state, const char *id, lrmd_rsc_info_t *rsc,
-                GHashTableIter *iter, const char *sys, const char *user,
-                ha_msg_input_t *request, bool unregister, bool from_cib)
+delete_resource(lrm_state_t *lrm_state, const char *id, GHashTableIter *iter,
+                const char *sys, const char *user, ha_msg_input_t *request,
+                bool unregister, bool from_cib)
 {
     int rc = pcmk_rc_ok;
 
     pcmk__info("Removing resource %s from executor for %s%s%s", id, sys,
                ((user != NULL)? " as " : ""), pcmk__s(user, ""));
 
-    if ((rsc != NULL) && unregister) {
+    if (unregister) {
         rc = controld_execd_state_unregister_rsc(lrm_state, id);
     }
 
@@ -1049,7 +1049,7 @@ delete_resource(lrm_state_t *lrm_state, const char *id, lrmd_rsc_info_t *rsc,
             char *ref = pcmk__xe_get_copy(request->msg, PCMK_XA_REFERENCE);
 
             op = pcmk__assert_alloc(1, sizeof(struct pending_deletion_op_s));
-            op->rsc = pcmk__str_copy(rsc->id);
+            op->rsc = pcmk__str_copy(id);
             op->input = copy_ha_msg_input(request);
             g_hash_table_insert(lrm_state->deletion_ops, ref, op);
         }
@@ -1138,8 +1138,8 @@ force_reprobe(lrm_state_t *lrm_state, const char *from_sys,
         /* Don't delete from the CIB, since we'll delete the whole node's LRM
          * state from the CIB soon
          */
-        delete_resource(lrm_state, entry->rsc->id, entry->rsc, &gIter, from_sys,
-                        user_name, NULL, unregister, false);
+        delete_resource(lrm_state, entry->rsc->id, &gIter, from_sys, user_name,
+                        NULL, unregister, false);
     }
 
     /* Now delete the copy in the CIB */
@@ -1408,7 +1408,7 @@ do_lrm_delete(ha_msg_input_t *input, lrm_state_t *lrm_state,
         unregister = false;
     }
 
-    delete_resource(lrm_state, rsc->id, rsc, NULL, from_sys, user_name, input,
+    delete_resource(lrm_state, rsc->id, NULL, from_sys, user_name, input,
                     unregister, true);
 }
 
