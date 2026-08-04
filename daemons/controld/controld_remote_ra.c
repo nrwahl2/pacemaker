@@ -554,17 +554,14 @@ monitor_timeout_cb(void *data)
 }
 
 static void
-synthesize_lrmd_success(lrm_state_t *lrm_state, const char *rsc_id, const char *op_type)
+synthesize_execd_stop_success(const char *rsc_id)
 {
+    lrm_state_t *lrm_state = controld_execd_state_get(NULL, false);
     lrmd_event_data_t *event = NULL;
 
-    if (lrm_state == NULL) {
-        /* if lrm_state not given assume local */
-        lrm_state = controld_execd_state_get(NULL, false);
-    }
     pcmk__assert(lrm_state != NULL);
 
-    event = lrmd_new_event(rsc_id, op_type, 0);
+    event = lrmd_new_event(rsc_id, PCMK_ACTION_STOP, 0);
     event->type = lrmd_event_exec_complete;
     event->t_run = time(NULL);
     event->t_rcchange = event->t_run;
@@ -645,8 +642,7 @@ remote_lrm_op_callback(lrmd_event_data_t *event)
             handle_remote_ra_stop(lrm_state, NULL);
             remote_node_down(lrm_state->node_name, false);
             /* now fake the reply of a successful 'stop' */
-            synthesize_lrmd_success(NULL, lrm_state->node_name,
-                                    PCMK_ACTION_STOP);
+            synthesize_execd_stop_success(lrm_state->node_name);
         }
         return;
     }
