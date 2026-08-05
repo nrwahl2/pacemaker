@@ -760,19 +760,36 @@ lrm_remove_deleted_rsc(void *key, void *value, void *user_data)
     return false;
 }
 
+/*!
+ * \internal
+ * \brief Check whether an operation belongs to a given deleted resource
+ *
+ * Also log a message stating that the operation is being removed.
+ *
+ * \param[in] key        Ignored
+ * \param[in] value      Operation (<tt>const active_op_t *</tt>)
+ * \param[in] user_data  Resource ID (<tt>const char *</tt>)
+ *
+ * \return \c true if the \c rsc_id field of \p value matches \p user_data, or
+ *         \c false otherwise
+ *
+ * \note This is a \c GHRFunc.
+ */
 static gboolean
-lrm_remove_deleted_op(void *key, void *value, void *user_data)
+op_for_deleted_rsc(void *key, void *value, void *user_data)
 {
+    const active_op_t *op = value;
     const char *rsc = user_data;
-    active_op_t *pending = value;
 
-    if (pcmk__str_eq(rsc, pending->rsc_id, pcmk__str_none)) {
-        pcmk__info("Removing op %s:%d for deleted resource %s", pending->op_key,
-                   pending->call_id, rsc);
-        return true;
+    pcmk__assert(op != NULL);
+
+    if (!pcmk__str_eq(op->rsc_id, rsc, pcmk__str_none)) {
+        return false;
     }
 
-    return false;
+    pcmk__info("Removing op %s:%d due to resource deletion", op->op_key,
+               op->call_id);
+    return true;
 }
 
 static void
@@ -798,8 +815,8 @@ delete_rsc_entry(lrm_state_t *lrm_state, ha_msg_input_t *input,
             controld_delete_resource_history(rsc_id_copy, lrm_state->node_name,
                                              user_name, cib_none);
         }
-        g_hash_table_foreach_remove(lrm_state->active_ops,
-                                    lrm_remove_deleted_op, rsc_id_copy);
+        g_hash_table_foreach_remove(lrm_state->active_ops, op_for_deleted_rsc,
+                                    rsc_id_copy);
         free(rsc_id_copy);
     }
 
