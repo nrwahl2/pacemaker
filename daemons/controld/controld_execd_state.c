@@ -48,29 +48,6 @@ free_recurring_op(void *data)
 
 /*!
  * \internal
- * \brief Free a pending deletion operation
- *
- * \param[in,out] data  Operation to free
- *                      (<tt>struct pending_deletion_op_s *</tt>)
- *
- * \note This is a \c GDestroyNotify.
- */
-static void
-free_pending_deletion_op(void *data)
-{
-    struct pending_deletion_op_s *op = data;
-
-    if (op == NULL) {
-        return;
-    }
-
-    free(op->rsc);
-    delete_ha_msg_input(op->input);
-    free(op);
-}
-
-/*!
- * \internal
  * \brief Create an executor state object for a node
  *
  * \param[in] node_name  Node name
@@ -90,7 +67,8 @@ new_lrm_state(const char *node_name)
     state->resource_history =
         pcmk__strkey_table(NULL, controld_execd_rsc_history_free);
     state->active_ops = pcmk__strkey_table(free, free_recurring_op);
-    state->deletion_ops = pcmk__strkey_table(free, free_pending_deletion_op);
+    state->deletion_ops =
+        pcmk__strkey_table(free, controld_execd_free_deletion_op_info);
     state->rsc_info_cache =
         pcmk__strkey_table(NULL, (GDestroyNotify) lrmd_free_rsc_info);
     state->metadata_cache = metadata_cache_new();

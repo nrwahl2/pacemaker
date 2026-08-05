@@ -112,6 +112,8 @@ struct pending_deletion_op_s {
     ha_msg_input_t *input;
 };
 
+void controld_execd_free_deletion_op_info(void *data);
+
 void controld_execd_state_reset_tables(lrm_state_t *lrm_state);
 GList *lrm_state_get_list(void);
 

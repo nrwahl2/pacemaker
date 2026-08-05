@@ -1040,7 +1040,7 @@ get_lrm_resource(lrm_state_t *lrm_state, const xmlNode *rsc_xml, bool do_create,
  * \return Newly allocated deletion operation info
  *
  * \note The caller is responsible for freeing the return value using
- *       \c free_pending_deletion_op().
+ *       \c controld_execd_free_deletion_op_info().
  */
 static struct pending_deletion_op_s *
 new_deletion_op_info(const char *rsc_id, ha_msg_input_t *request)
@@ -1052,6 +1052,28 @@ new_deletion_op_info(const char *rsc_id, ha_msg_input_t *request)
     op->input = copy_ha_msg_input(request);
 
     return op;
+}
+
+/*!
+ * \internal
+ * \brief Free a deletion operation info object
+ *
+ * \param[in,out] data  Operation info (<tt>struct pending_deletion_op_s *</tt>)
+ *
+ * \note This is a \c GDestroyNotify.
+ */
+void
+controld_execd_free_deletion_op_info(void *data)
+{
+    struct pending_deletion_op_s *op = data;
+
+    if (op == NULL) {
+        return;
+    }
+
+    free(op->rsc);
+    delete_ha_msg_input(op->input);
+    free(op);
 }
 
 static void
