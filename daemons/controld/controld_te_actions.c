@@ -382,14 +382,14 @@ execute_rsc_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
      * Writing pending stops makes it look like the
      *   resource is running again
      */
+    int rc = pcmk_rc_ok;
     xmlNode *cmd = NULL;
     xmlNode *rsc_op = NULL;
 
-    bool rc = true;
     bool no_wait = false;
     bool is_local = false;
 
-    char *counter = NULL;
+    char *transition_key = NULL;
     const char *task = NULL;
     const char *value = NULL;
     const char *on_node = NULL;
@@ -412,10 +412,10 @@ execute_rsc_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
         router_node = on_node;
     }
 
-    counter = pcmk__transition_key(controld_globals.transition_graph->id,
-                                   action->id, get_target_rc(action),
-                                   controld_globals.te_uuid);
-    pcmk__xe_set(rsc_op, PCMK__XA_TRANSITION_KEY, counter);
+    transition_key = pcmk__transition_key(controld_globals.transition_graph->id,
+                                          action->id, get_target_rc(action),
+                                          controld_globals.te_uuid);
+    pcmk__xe_set(rsc_op, PCMK__XA_TRANSITION_KEY, transition_key);
 
     if (controld_is_local_node(router_node)) {
         is_local = true;
@@ -455,18 +455,19 @@ execute_rsc_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
         pcmk__notice("Asking %s to execute %s on %s%s "
                      QB_XS " transition %s action %d",
                      router_node, task_uuid, on_node,
-                     (no_wait? " without waiting" : ""), counter, action->id);
-        rc = pcmk__cluster_send_message(node, pcmk_ipc_execd, cmd);
-    }
+                     (no_wait? " without waiting" : ""), transition_key,
+                     action->id);
 
-    free(counter);
-    pcmk__xml_free(cmd);
+        if (!pcmk__cluster_send_message(node, pcmk_ipc_execd, cmd)) {
+            pcmk__err("Action %d failed: send", action->id);
+            rc = ECOMM;
+        }
+    }
 
     pcmk__set_graph_action_flags(action, pcmk__graph_action_executed);
 
-    if (!rc) {
-        pcmk__err("Action %d failed: send", action->id);
-        return ECOMM;
+    if (rc != pcmk_rc_ok) {
+        goto done;
     }
 
     if (no_wait) {
@@ -477,14 +478,14 @@ execute_rsc_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
         pcmk__set_graph_action_flags(action, pcmk__graph_action_confirmed);
         pcmk__update_graph(controld_globals.transition_graph, action);
         trigger_graph();
-        return pcmk_rc_ok;
+        goto done;
     }
 
     if (pcmk__is_set(action->flags, pcmk__graph_action_confirmed)) {
         pcmk__debug("Action %d: %s %s on %s (timeout %dms) was already "
-                    "confirmed",
-                    action->id, task, task_uuid, on_node, action->timeout);
-        return pcmk_rc_ok;
+                    "confirmed", action->id, task, task_uuid, on_node,
+                    action->timeout);
+        goto done;
     }
 
     if (action->timeout <= 0) {
@@ -497,7 +498,10 @@ execute_rsc_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
     te_update_job_count(action, 1);
     te_start_action_timer(graph, action);
 
-    return pcmk_rc_ok;
+done:
+    free(transition_key);
+    pcmk__xml_free(cmd);
+    return rc;
 }
 
 struct te_peer_s
