@@ -1128,21 +1128,24 @@ delete_resource(lrm_state_t *lrm_state, const char *id, GHashTableIter *iter,
         rc = controld_execd_state_unregister_rsc(lrm_state, id);
     }
 
-    if (rc == pcmk_rc_ok) {
-        pcmk__trace("Resource %s deleted from executor", id);
+    if (rc == EINPROGRESS) {
+        char *ref = NULL;
+        struct deletion_op_info *op_info = NULL;
 
-    } else if (rc == EINPROGRESS) {
         pcmk__info("Deletion of resource '%s' from executor is pending", id);
 
-        if (request != NULL) {
-            char *ref = pcmk__xe_get_copy(request->msg, PCMK_XA_REFERENCE);
-            struct deletion_op_info *op_info = new_deletion_op_info(id,
-                                                                    request);
-
-            g_hash_table_insert(lrm_state->deletion_ops, ref, op_info);
+        if (request == NULL) {
+            return;
         }
 
+        ref = pcmk__xe_get_copy(request->msg, PCMK_XA_REFERENCE);
+        op_info = new_deletion_op_info(id, request);
+        g_hash_table_insert(lrm_state->deletion_ops, ref, op_info);
         return;
+    }
+
+    if (rc == pcmk_rc_ok) {
+        pcmk__trace("Resource %s deleted from executor", id);
 
     } else {
         pcmk__warn("Could not delete '%s' from executor for %s%s%s: %s "
