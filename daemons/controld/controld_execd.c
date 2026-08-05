@@ -746,18 +746,34 @@ notify_deleted(lrm_state_t *lrm_state, ha_msg_input_t *input,
     controld_trigger_delete_refresh(from_sys, rsc_id);
 }
 
+/*!
+ * \internal
+ * \brief Notify of resource deletion if operation info matches deletion event
+ *
+ * \param[in] key        Ignored
+ * \param[in] value      Operation info
+ *                       (<tt>const struct deletion_op_info *</tt>)
+ * \param[in] user_data  Deletion event (<tt>const struct delete_event_s *</tt>)
+ *
+ * \return \c true if the \c rsc field of \p value matches \c rsc field of
+ *         \p user_data, or \c false otherwise
+ *
+ * \note This is a \c GHRFunc.
+ */
 static gboolean
-lrm_remove_deleted_rsc(void *key, void *value, void *user_data)
+notify_deleted_if_matching(void *key, void *value, void *user_data)
 {
-    struct delete_event_s *event = user_data;
-    struct deletion_op_info *op_info = value;
+    const struct deletion_op_info *op_info = value;
+    const struct delete_event_s *event = user_data;
 
-    if (pcmk__str_eq(event->rsc, op_info->rsc, pcmk__str_none)) {
-        notify_deleted(event->lrm_state, op_info->input, event->rsc, event->rc);
-        return true;
+    pcmk__assert((op_info != NULL) && (event != NULL));
+
+    if (!pcmk__str_eq(op_info->rsc, event->rsc, pcmk__str_none)) {
+        return false;
     }
 
-    return false;
+    notify_deleted(event->lrm_state, op_info->input, event->rsc, event->rc);
+    return true;
 }
 
 /*!
@@ -827,8 +843,8 @@ delete_rsc_entry(lrm_state_t *lrm_state, ha_msg_input_t *input,
     event.rc = rc;
     event.rsc = rsc_id;
     event.lrm_state = lrm_state;
-    g_hash_table_foreach_remove(lrm_state->deletion_ops, lrm_remove_deleted_rsc,
-                                &event);
+    g_hash_table_foreach_remove(lrm_state->deletion_ops,
+                                notify_deleted_if_matching, &event);
 }
 
 /*!
