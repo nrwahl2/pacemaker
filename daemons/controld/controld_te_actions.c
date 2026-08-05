@@ -116,7 +116,8 @@ get_target_rc(pcmk__graph_action_t *action)
 static int
 execute_cluster_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
 {
-    char *counter = NULL;
+    int rc = pcmk_rc_ok;
+    char *transition_key = NULL;
     xmlNode *cmd = NULL;
     bool is_local = false;
 
@@ -126,29 +127,34 @@ execute_cluster_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
     const char *on_node = NULL;
     const char *router_node = NULL;
 
-    bool rc = true;
     bool no_wait = false;
 
     const pcmk__node_status_t *node = NULL;
 
     id = pcmk__xe_id(action->xml);
-    CRM_CHECK(!pcmk__str_empty(id), return EPROTO);
+    CRM_CHECK(!pcmk__str_empty(id),
+              rc = EPROTO; goto done);
 
     task = pcmk__xe_get(action->xml, PCMK_XA_OPERATION);
-    CRM_CHECK(!pcmk__str_empty(task), return EPROTO);
+    CRM_CHECK(!pcmk__str_empty(task),
+              rc = EPROTO; goto done);
 
     on_node = pcmk__xe_get(action->xml, PCMK__META_ON_NODE);
-    CRM_CHECK(!pcmk__str_empty(on_node), return pcmk_rc_node_unknown);
+    CRM_CHECK(!pcmk__str_empty(on_node),
+              rc = pcmk_rc_node_unknown; goto done);
 
     router_node = pcmk__xe_get(action->xml, PCMK__XA_ROUTER_NODE);
-    if (router_node == NULL) {
-        router_node = on_node;
-        if (pcmk__str_eq(task, PCMK_ACTION_LRM_DELETE, pcmk__str_none)) {
-            const char *mode = pcmk__xe_get(action->xml, PCMK__XA_MODE);
 
-            if (pcmk__str_eq(mode, PCMK__VALUE_CIB, pcmk__str_none)) {
-                router_node = controld_globals.cluster->priv->node_name;
-            }
+    if (router_node == NULL) {
+        const char *mode = pcmk__xe_get(action->xml, PCMK__XA_MODE);
+
+        if (pcmk__str_eq(task, PCMK_ACTION_LRM_DELETE, pcmk__str_none)
+            && pcmk__str_eq(mode, PCMK__VALUE_CIB, pcmk__str_none)) {
+
+            router_node = controld_globals.cluster->priv->node_name;
+
+        } else {
+            router_node = on_node;
         }
     }
 
@@ -175,7 +181,7 @@ execute_cluster_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
             graph->abort_reason = "local shutdown";
             te_action_confirmed(action, graph);
 
-            return pcmk_rc_ok;
+            goto done;
         }
 
         peer = pcmk__get_node(0, router_node, NULL,
@@ -186,25 +192,23 @@ execute_cluster_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
     cmd = pcmk__new_request(pcmk_ipc_controld, CRM_SYSTEM_TENGINE, router_node,
                             CRM_SYSTEM_CRMD, task, action->xml);
 
-    counter = pcmk__transition_key(controld_globals.transition_graph->id,
-                                   action->id, get_target_rc(action),
-                                   controld_globals.te_uuid);
-    pcmk__xe_set(cmd, PCMK__XA_TRANSITION_KEY, counter);
+    transition_key = pcmk__transition_key(controld_globals.transition_graph->id,
+                                          action->id, get_target_rc(action),
+                                          controld_globals.te_uuid);
+    pcmk__xe_set(cmd, PCMK__XA_TRANSITION_KEY, transition_key);
 
     node = pcmk__get_node(0, router_node, NULL,
                           pcmk__node_search_cluster_member);
-    rc = pcmk__cluster_send_message(node, pcmk_ipc_controld, cmd);
-    free(counter);
-    pcmk__xml_free(cmd);
 
-    if (!rc) {
+    if (!pcmk__cluster_send_message(node, pcmk_ipc_controld, cmd)) {
         pcmk__err("Action %d failed: send", action->id);
-        return ECOMM;
+        rc = ECOMM;
+        goto done;
     }
 
     if (no_wait) {
         te_action_confirmed(action, graph);
-        return pcmk_rc_ok;
+        goto done;
     }
 
     if (action->timeout <= 0) {
@@ -216,7 +220,10 @@ execute_cluster_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
 
     te_start_action_timer(graph, action);
 
-    return pcmk_rc_ok;
+done:
+    free(transition_key);
+    pcmk__xml_free(cmd);
+    return rc;
 }
 
 /*!
