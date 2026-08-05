@@ -34,6 +34,37 @@ te_start_action_timer(const pcmk__graph_t *graph, pcmk__graph_action_t *action)
 
 /*!
  * \internal
+ * \brief Send a maintenance request to a given Pacemaker Remote node
+ *
+ * \param[in] key        Ignored
+ * \param[in] value      Node (<tt>const pcmk__node_status_t *</tt>)
+ * \param[in] user_data  Message data (<tt>xmlNode *</tt>)
+ *
+ * \note This is a \c GHFunc.
+ */
+static void
+send_remote_maintenance_request(void *key, void *value, void *user_data)
+{
+    const pcmk__node_status_t *node = value;
+    xmlNode *data = user_data;
+
+    xmlNode *cmd = NULL;
+
+    pcmk__assert(node != NULL);
+
+    if (controld_is_local_node(node->name)) {
+        return;
+    }
+
+    cmd = pcmk__new_request(pcmk_ipc_controld, CRM_SYSTEM_TENGINE, node->name,
+                            CRM_SYSTEM_CRMD, PCMK_ACTION_MAINTENANCE_NODES,
+                            data);
+    pcmk__cluster_send_message(node, pcmk_ipc_controld, cmd);
+    pcmk__xml_free(cmd);
+}
+
+/*!
+ * \internal
  * \brief Execute a graph pseudo-action
  *
  * \param[in,out] graph   Transition graph being executed
@@ -48,25 +79,10 @@ execute_pseudo_action(pcmk__graph_t *graph, pcmk__graph_action_t *pseudo)
 
     /* send to peers as well? */
     if (pcmk__str_eq(task, PCMK_ACTION_MAINTENANCE_NODES, pcmk__str_casei)) {
-        GHashTableIter iter;
-        pcmk__node_status_t *node = NULL;
-
-        g_hash_table_iter_init(&iter, pcmk__peer_cache);
-        while (g_hash_table_iter_next(&iter, NULL, (void **) &node)) {
-            xmlNode *cmd = NULL;
-
-            if (controld_is_local_node(node->name)) {
-                continue;
-            }
-
-            cmd = pcmk__new_request(pcmk_ipc_controld, CRM_SYSTEM_TENGINE,
-                                    node->name, CRM_SYSTEM_CRMD, task,
-                                    pseudo->xml);
-            pcmk__cluster_send_message(node, pcmk_ipc_controld, cmd);
-            pcmk__xml_free(cmd);
-        }
-
+        g_hash_table_foreach(pcmk__peer_cache,
+                             send_remote_maintenance_request, pseudo->xml);
         remote_ra_process_maintenance_nodes(pseudo->xml);
+
     } else {
         /* Check action for Pacemaker Remote node side effects */
         remote_ra_process_pseudo(pseudo->xml);
