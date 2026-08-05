@@ -813,7 +813,11 @@ delete_rsc_entry(lrm_state_t *lrm_state, ha_msg_input_t *input,
                  const char *rsc_id, GHashTableIter *rsc_iter, int rc,
                  const char *user_name, bool from_cib)
 {
-    struct delete_event_s event;
+    struct delete_event_s event = {
+        .rc = rc,
+        .rsc = rsc_id,
+        .lrm_state = lrm_state,
+    };
 
     CRM_CHECK(rsc_id != NULL, return);
 
@@ -840,9 +844,6 @@ delete_rsc_entry(lrm_state_t *lrm_state, ha_msg_input_t *input,
         notify_deleted(lrm_state, input, rsc_id, rc);
     }
 
-    event.rc = rc;
-    event.rsc = rsc_id;
-    event.lrm_state = lrm_state;
     g_hash_table_foreach_remove(lrm_state->deletion_ops,
                                 notify_deleted_if_matching, &event);
 }
