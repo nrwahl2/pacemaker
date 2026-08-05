@@ -173,8 +173,9 @@ execute_cluster_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
         graph->abort_reason = "local shutdown";
         te_action_confirmed(action, graph);
         return pcmk_rc_ok;
+    }
 
-    } else if (pcmk__str_eq(task, PCMK_ACTION_DO_SHUTDOWN, pcmk__str_none)) {
+    if (pcmk__str_eq(task, PCMK_ACTION_DO_SHUTDOWN, pcmk__str_none)) {
         pcmk__node_status_t *peer =
             pcmk__get_node(0, router_node, NULL,
                            pcmk__node_search_cluster_member);
@@ -199,20 +200,21 @@ execute_cluster_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
     if (!rc) {
         pcmk__err("Action %d failed: send", action->id);
         return ECOMM;
-
-    } else if (no_wait) {
-        te_action_confirmed(action, graph);
-
-    } else {
-        if (action->timeout <= 0) {
-            pcmk__err("Action %d: %s on %s had an invalid timeout (%dms). "
-                      "Using %ums instead",
-                      action->id, task, on_node, action->timeout,
-                      graph->network_delay);
-            action->timeout = (int) graph->network_delay;
-        }
-        te_start_action_timer(graph, action);
     }
+
+    if (no_wait) {
+        te_action_confirmed(action, graph);
+        return pcmk_rc_ok;
+    }
+
+    if (action->timeout <= 0) {
+        pcmk__err("Action %d: %s on %s had an invalid timeout (%dms). Using "
+                  "%ums instead", action->id, task, on_node, action->timeout,
+                  graph->network_delay);
+        action->timeout = (int) graph->network_delay;
+    }
+
+    te_start_action_timer(graph, action);
 
     return pcmk_rc_ok;
 }
@@ -458,8 +460,9 @@ execute_rsc_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
     if (!rc) {
         pcmk__err("Action %d failed: send", action->id);
         return ECOMM;
+    }
 
-    } else if (no_wait) {
+    if (no_wait) {
         /* Just mark confirmed. Don't bump the job count only to immediately
          * decrement it.
          */
@@ -467,22 +470,25 @@ execute_rsc_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
         pcmk__set_graph_action_flags(action, pcmk__graph_action_confirmed);
         pcmk__update_graph(controld_globals.transition_graph, action);
         trigger_graph();
+        return pcmk_rc_ok;
+    }
 
-    } else if (pcmk__is_set(action->flags, pcmk__graph_action_confirmed)) {
+    if (pcmk__is_set(action->flags, pcmk__graph_action_confirmed)) {
         pcmk__debug("Action %d: %s %s on %s (timeout %dms) was already "
                     "confirmed",
                     action->id, task, task_uuid, on_node, action->timeout);
-    } else {
-        if (action->timeout <= 0) {
-            pcmk__err("Action %d: %s %s on %s had an invalid timeout (%dms). "
-                      "Using %ums instead",
-                      action->id, task, task_uuid, on_node, action->timeout,
-                      graph->network_delay);
-            action->timeout = (int) graph->network_delay;
-        }
-        te_update_job_count(action, 1);
-        te_start_action_timer(graph, action);
+        return pcmk_rc_ok;
     }
+
+    if (action->timeout <= 0) {
+        pcmk__err("Action %d: %s %s on %s had an invalid timeout (%dms). Using "
+                  "%ums instead", action->id, task, task_uuid, on_node,
+                  action->timeout, graph->network_delay);
+        action->timeout = (int) graph->network_delay;
+    }
+
+    te_update_job_count(action, 1);
+    te_start_action_timer(graph, action);
 
     return pcmk_rc_ok;
 }
@@ -570,7 +576,9 @@ te_update_job_count(pcmk__graph_action_t *action, int offset)
         te_update_job_count_on(t1, offset, true);
         te_update_job_count_on(t2, offset, true);
         return;
-    } else if (target == NULL) {
+    }
+
+    if (target == NULL) {
         target = pcmk__xe_get(action->xml, PCMK__META_ON_NODE);
     }
 
@@ -596,11 +604,12 @@ allowed_on_node(const pcmk__graph_t *graph, const pcmk__graph_action_t *action,
     const char *task = pcmk__xe_get(action->xml, PCMK_XA_OPERATION);
     const char *id = pcmk__xe_get(action->xml, PCMK__XA_OPERATION_KEY);
 
-    if(target == NULL) {
+    if (target == NULL) {
         /* No limit on these */
         return true;
+    }
 
-    } else if(te_targets == NULL) {
+    if (te_targets == NULL) {
         return false;
     }
 
@@ -613,24 +622,25 @@ allowed_on_node(const pcmk__graph_t *graph, const pcmk__graph_action_t *action,
         g_hash_table_insert(te_targets, r->name, r);
     }
 
-    if(limit <= r->jobs) {
+    if (limit <= r->jobs) {
         pcmk__trace("Peer %s is over their job limit of %d (%d): deferring %s",
                     target, limit, r->jobs, id);
         return false;
+    }
 
-    } else if(graph->migration_limit > 0 && r->migrate_jobs >= graph->migration_limit) {
-        if (pcmk__strcase_any_of(task, PCMK_ACTION_MIGRATE_TO,
-                                 PCMK_ACTION_MIGRATE_FROM, NULL)) {
-            pcmk__trace("Peer %s is over their migration job limit of %d (%d): "
-                        "deferring %s",
-                        target, graph->migration_limit, r->migrate_jobs, id);
-            return false;
-        }
+    if ((graph->migration_limit > 0)
+        && (r->migrate_jobs >= graph->migration_limit)
+        && pcmk__strcase_any_of(task, PCMK_ACTION_MIGRATE_TO,
+                                PCMK_ACTION_MIGRATE_FROM, NULL)) {
+
+        pcmk__trace("Peer %s is over their migration job limit of %d (%d): "
+                    "deferring %s", target, graph->migration_limit,
+                    r->migrate_jobs, id);
+        return false;
     }
 
     pcmk__trace("Peer %s has not hit their limit yet (jobs=%d limit=%d)",
                 target, r->jobs, limit);
-
     return true;
 }
 
