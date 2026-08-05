@@ -165,21 +165,21 @@ execute_cluster_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
                on_node, (is_local? " locally" : ""),
                (no_wait? " without waiting" : ""));
 
-    if (is_local
-        && pcmk__str_eq(task, PCMK_ACTION_DO_SHUTDOWN, pcmk__str_none)) {
-        /* defer until everything else completes */
-        pcmk__info("Controller request '%s' is a local shutdown", id);
-        graph->completion_action = pcmk__graph_shutdown;
-        graph->abort_reason = "local shutdown";
-        te_action_confirmed(action, graph);
-        return pcmk_rc_ok;
-    }
-
     if (pcmk__str_eq(task, PCMK_ACTION_DO_SHUTDOWN, pcmk__str_none)) {
-        pcmk__node_status_t *peer =
-            pcmk__get_node(0, router_node, NULL,
-                           pcmk__node_search_cluster_member);
+        pcmk__node_status_t *peer = NULL;
 
+        if (is_local) {
+            // Defer until everything else completes
+            pcmk__info("Controller request '%s' is a local shutdown", id);
+            graph->completion_action = pcmk__graph_shutdown;
+            graph->abort_reason = "local shutdown";
+            te_action_confirmed(action, graph);
+
+            return pcmk_rc_ok;
+        }
+
+        peer = pcmk__get_node(0, router_node, NULL,
+                              pcmk__node_search_cluster_member);
         pcmk__update_peer_expected(peer, CRMD_JOINSTATE_DOWN);
     }
 
