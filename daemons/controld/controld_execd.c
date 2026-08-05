@@ -1030,6 +1030,30 @@ get_lrm_resource(lrm_state_t *lrm_state, const xmlNode *rsc_xml, bool do_create,
     return (*rsc_info != NULL)? pcmk_rc_ok : ENODEV;
 }
 
+/*!
+ * \internal
+ * \brief Create a deletion operation info object for a given deletion request
+ *
+ * \param[in] rsc_id   Resource ID
+ * \param[in] request  Deletion request
+ *
+ * \return Newly allocated deletion operation info
+ *
+ * \note The caller is responsible for freeing the return value using
+ *       \c free_pending_deletion_op().
+ */
+static struct pending_deletion_op_s *
+new_deletion_op_info(const char *rsc_id, ha_msg_input_t *request)
+{
+    struct pending_deletion_op_s *op = NULL;
+
+    op = pcmk__assert_alloc(1, sizeof(struct pending_deletion_op_s));
+    op->rsc = pcmk__str_copy(rsc_id);
+    op->input = copy_ha_msg_input(request);
+
+    return op;
+}
+
 static void
 delete_resource(lrm_state_t *lrm_state, const char *id, GHashTableIter *iter,
                 const char *sys, const char *user, ha_msg_input_t *request,
@@ -1051,12 +1075,10 @@ delete_resource(lrm_state_t *lrm_state, const char *id, GHashTableIter *iter,
         pcmk__info("Deletion of resource '%s' from executor is pending", id);
 
         if (request != NULL) {
-            struct pending_deletion_op_s *op = NULL;
             char *ref = pcmk__xe_get_copy(request->msg, PCMK_XA_REFERENCE);
+            struct pending_deletion_op_s *op = new_deletion_op_info(id,
+                                                                    request);
 
-            op = pcmk__assert_alloc(1, sizeof(struct pending_deletion_op_s));
-            op->rsc = pcmk__str_copy(id);
-            op->input = copy_ha_msg_input(request);
             g_hash_table_insert(lrm_state->deletion_ops, ref, op);
         }
 
