@@ -33,6 +33,11 @@ struct delete_event_s {
     lrm_state_t *lrm_state;
 };
 
+struct deletion_op_info {
+    char *rsc;
+    ha_msg_input_t *input;
+};
+
 static char *
 make_stop_id(const char *rsc, int call_id)
 {
@@ -745,10 +750,10 @@ static gboolean
 lrm_remove_deleted_rsc(void *key, void *value, void *user_data)
 {
     struct delete_event_s *event = user_data;
-    struct pending_deletion_op_s *op = value;
+    struct deletion_op_info *op_info = value;
 
-    if (pcmk__str_eq(event->rsc, op->rsc, pcmk__str_none)) {
-        notify_deleted(event->lrm_state, op->input, event->rsc, event->rc);
+    if (pcmk__str_eq(event->rsc, op_info->rsc, pcmk__str_none)) {
+        notify_deleted(event->lrm_state, op_info->input, event->rsc, event->rc);
         return true;
     }
 
@@ -1042,38 +1047,38 @@ get_lrm_resource(lrm_state_t *lrm_state, const xmlNode *rsc_xml, bool do_create,
  * \note The caller is responsible for freeing the return value using
  *       \c controld_execd_free_deletion_op_info().
  */
-static struct pending_deletion_op_s *
+static struct deletion_op_info *
 new_deletion_op_info(const char *rsc_id, ha_msg_input_t *request)
 {
-    struct pending_deletion_op_s *op = NULL;
+    struct deletion_op_info *op_info = NULL;
 
-    op = pcmk__assert_alloc(1, sizeof(struct pending_deletion_op_s));
-    op->rsc = pcmk__str_copy(rsc_id);
-    op->input = copy_ha_msg_input(request);
+    op_info = pcmk__assert_alloc(1, sizeof(struct deletion_op_info));
+    op_info->rsc = pcmk__str_copy(rsc_id);
+    op_info->input = copy_ha_msg_input(request);
 
-    return op;
+    return op_info;
 }
 
 /*!
  * \internal
  * \brief Free a deletion operation info object
  *
- * \param[in,out] data  Operation info (<tt>struct pending_deletion_op_s *</tt>)
+ * \param[in,out] data  Operation info (<tt>struct deletion_op_info *</tt>)
  *
  * \note This is a \c GDestroyNotify.
  */
 void
 controld_execd_free_deletion_op_info(void *data)
 {
-    struct pending_deletion_op_s *op = data;
+    struct deletion_op_info *op_info = data;
 
-    if (op == NULL) {
+    if (op_info == NULL) {
         return;
     }
 
-    free(op->rsc);
-    delete_ha_msg_input(op->input);
-    free(op);
+    free(op_info->rsc);
+    delete_ha_msg_input(op_info->input);
+    free(op_info);
 }
 
 static void
@@ -1098,10 +1103,10 @@ delete_resource(lrm_state_t *lrm_state, const char *id, GHashTableIter *iter,
 
         if (request != NULL) {
             char *ref = pcmk__xe_get_copy(request->msg, PCMK_XA_REFERENCE);
-            struct pending_deletion_op_s *op = new_deletion_op_info(id,
+            struct deletion_op_info *op_info = new_deletion_op_info(id,
                                                                     request);
 
-            g_hash_table_insert(lrm_state->deletion_ops, ref, op);
+            g_hash_table_insert(lrm_state->deletion_ops, ref, op_info);
         }
 
         return;

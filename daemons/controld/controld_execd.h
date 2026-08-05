@@ -107,11 +107,6 @@ typedef struct {
     int num_lrm_register_fails;
 } lrm_state_t;
 
-struct pending_deletion_op_s {
-    char *rsc;
-    ha_msg_input_t *input;
-};
-
 void controld_execd_free_deletion_op_info(void *data);
 
 void controld_execd_state_reset_tables(lrm_state_t *lrm_state);
