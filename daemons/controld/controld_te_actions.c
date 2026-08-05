@@ -118,7 +118,7 @@ execute_cluster_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
 {
     char *counter = NULL;
     xmlNode *cmd = NULL;
-    gboolean is_local = FALSE;
+    bool is_local = false;
 
     const char *id = NULL;
     const char *task = NULL;
@@ -126,8 +126,8 @@ execute_cluster_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
     const char *on_node = NULL;
     const char *router_node = NULL;
 
-    gboolean rc = TRUE;
-    gboolean no_wait = FALSE;
+    bool rc = true;
+    bool no_wait = false;
 
     const pcmk__node_status_t *node = NULL;
 
@@ -153,12 +153,12 @@ execute_cluster_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
     }
 
     if (controld_is_local_node(router_node)) {
-        is_local = TRUE;
+        is_local = true;
     }
 
     value = crm_meta_value(action->params, PCMK__META_OP_NO_WAIT);
     if (pcmk__is_true(value)) {
-        no_wait = TRUE;
+        no_wait = true;
     }
 
     pcmk__info("Handling controller request '%s' (%s on %s)%s%s", id, task,
@@ -196,7 +196,7 @@ execute_cluster_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
     free(counter);
     pcmk__xml_free(cmd);
 
-    if (rc == FALSE) {
+    if (!rc) {
         pcmk__err("Action %d failed: send", action->id);
         return ECOMM;
 
@@ -376,9 +376,9 @@ execute_rsc_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
     xmlNode *cmd = NULL;
     xmlNode *rsc_op = NULL;
 
-    gboolean rc = TRUE;
-    gboolean no_wait = FALSE;
-    gboolean is_local = FALSE;
+    bool rc = true;
+    bool no_wait = false;
+    bool is_local = false;
 
     char *counter = NULL;
     const char *task = NULL;
@@ -409,12 +409,12 @@ execute_rsc_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
     pcmk__xe_set(rsc_op, PCMK__XA_TRANSITION_KEY, counter);
 
     if (controld_is_local_node(router_node)) {
-        is_local = TRUE;
+        is_local = true;
     }
 
     value = crm_meta_value(action->params, PCMK__META_OP_NO_WAIT);
     if (pcmk__is_true(value)) {
-        no_wait = TRUE;
+        no_wait = true;
     }
 
     cmd = pcmk__new_request(pcmk_ipc_controld, CRM_SYSTEM_TENGINE, router_node,
@@ -455,7 +455,7 @@ execute_rsc_action(pcmk__graph_t *graph, pcmk__graph_action_t *action)
 
     pcmk__set_graph_action_flags(action, pcmk__graph_action_executed);
 
-    if (rc == FALSE) {
+    if (!rc) {
         pcmk__err("Action %d failed: send", action->id);
         return ECOMM;
 
@@ -567,14 +567,14 @@ te_update_job_count(pcmk__graph_action_t *action, int offset)
         const char *t2 = crm_meta_value(action->params,
                                         PCMK__META_MIGRATE_TARGET);
 
-        te_update_job_count_on(t1, offset, TRUE);
-        te_update_job_count_on(t2, offset, TRUE);
+        te_update_job_count_on(t1, offset, true);
+        te_update_job_count_on(t2, offset, true);
         return;
     } else if (target == NULL) {
         target = pcmk__xe_get(action->xml, PCMK__META_ON_NODE);
     }
 
-    te_update_job_count_on(target, offset, FALSE);
+    te_update_job_count_on(target, offset, false);
 }
 
 /*!
