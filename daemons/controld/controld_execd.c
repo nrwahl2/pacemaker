@@ -1972,6 +1972,33 @@ controld_invoke_execd(fsa_data_t *msg_data)
     }
 
     if (pcmk__str_eq(crm_op, PCMK_ACTION_LRM_DELETE, pcmk__str_none)) {
+        /* At time of writing, there appear to be two basic paths that send a
+         * PCMK_ACTION_LRM_DELETE (or equivalently CRM_OP_LRM_DELETE) operation
+         * to the controller.
+         *
+         * One is pcmk_controld_api_refresh().
+         * * Currently only crm_resource calls this internally, but it's public
+         *   API.
+         * * If its cib_only argument is set to true, the PCMK__XA_MODE
+         *   attribute of the message data gets set to PCMK__VALUE_CIB.
+         *
+         * The other is controld_te_actions.c:execute_cluster_action().
+         * * This sets PCMK__XA_CRM_SYS_FROM to CRM_SYSTEM_TENGINE.
+         * * This is called when the controller processes a PCMK__XE_CRM_EVENT
+         *   action with task PCMK_ACTION_LRM_DELETE from a transition graph --
+         *   see unpack_action() and initiate_action() in pcmk_graph_consumer.c.
+         * * The action is added to the graph by create_graph_action() in
+         *   pcmk_graph_producer.c.
+         * * It appears that pe__clear_resource_history() is the only function
+         *   that creates such an action.
+         * * It appears that PCMK__XA_MODE is always set to PCMK__VALUE_CIB in
+         *   this case. The purpose is to do a CIB-only cleanup of shutdown
+         *   locks, because the shutdown lock has expired
+         *   (unpack_shutdown_lock()) or because the resource is active
+         *   (pcmk__primitive_shutdown_lock()).
+         *
+         * See also controld_messages.c:handle_lrm_delete().
+         */
         if (!pcmk__str_eq(from_sys, CRM_SYSTEM_TENGINE, pcmk__str_none)) {
             crm_rsc_delete = true; // from crm_resource
         }
