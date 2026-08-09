@@ -21,8 +21,6 @@ from pacemaker._cts import logging
 from pacemaker._cts.scenarios import AllOnce, Boot, BootCluster, LeaveBooted, RandomTests, Sequence
 from pacemaker._cts.tests import test_list
 
-logging.add_stderr()
-
 
 def term_handler(scenario, signum, _frame):
     """Handle a SIGTERM by exiting gracefully."""
@@ -41,6 +39,8 @@ def plural_s(n):
 
 
 if __name__ == '__main__':
+    logging.add_stderr()
+
     env = Environment(sys.argv[1:])
     lab = CtsLab(env)
     iters = lab["iterations"]
