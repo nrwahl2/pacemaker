@@ -179,16 +179,20 @@ pacemakerd_corosync_connect_cfg(void)
     }
 
     /* CFG provider run as root (in given user namespace, anyway)? */
-    if (!(rv = crm_ipc_is_authentic_process(fd, (uid_t) 0,(gid_t) 0, &found_pid,
-                                            &found_uid, &found_gid))) {
+    rv = crm_ipc_is_authentic_process(fd, 0, 0, &found_pid, &found_uid,
+                                      &found_gid);
+
+    if (rv == 0) {
         pcmk__crit("Rejecting Corosync CFG provider because process %lld "
                    "is running as uid %lld gid %lld, not root",
                    (long long) PCMK__SPECIAL_PID_AS_0(found_pid),
                    (long long) found_uid, (long long) found_gid);
         goto bail;
-    } else if (rv < 0) {
+    }
+
+    if (rv < 0) {
         pcmk__crit("Could not authenticate Corosync CFG provider: %s "
-                   QB_XS " rc=%d", strerror(-rv), -rv);
+                   QB_XS " rc=%d", pcmk_strerror(rv), rv);
         goto bail;
     }
 
@@ -323,17 +327,21 @@ pacemakerd_corosync_read_config(void)
     }
 
     /* CMAP provider run as root (in given user namespace, anyway)? */
-    if (!(rv = crm_ipc_is_authentic_process(fd, (uid_t) 0,(gid_t) 0, &found_pid,
-                                            &found_uid, &found_gid))) {
+    rv = crm_ipc_is_authentic_process(fd, 0, 0, &found_pid, &found_uid,
+                                      &found_gid);
+
+    if (rv == 0) {
         pcmk__crit("Rejecting Corosync CMAP provider because process %lld "
                    "is running as uid %lld gid %lld, not root",
                    (long long) PCMK__SPECIAL_PID_AS_0(found_pid),
                    (long long) found_uid, (long long) found_gid);
         cmap_finalize(local_handle);
         return false;
-    } else if (rv < 0) {
+    }
+
+    if (rv < 0) {
         pcmk__crit("Could not authenticate Corosync CMAP provider: %s "
-                   QB_XS " rc=%d", strerror(-rv), -rv);
+                   QB_XS " rc=%d", pcmk_strerror(rv), rv);
         cmap_finalize(local_handle);
         return false;
     }
