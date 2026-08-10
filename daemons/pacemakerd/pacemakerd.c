@@ -411,7 +411,7 @@ main(int argc, char **argv)
     }
 
 #if SUPPORT_COROSYNC
-    if (pacemakerd_read_config() == FALSE) {
+    if (!pacemakerd_corosync_read_config()) {
         crm_exit(CRM_EX_UNAVAILABLE);
     }
 #endif

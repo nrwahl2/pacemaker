@@ -98,7 +98,7 @@ cluster_reconnect_cb(void *data)
     if (pacemakerd_corosync_connect_cfg()) {
         g_clear_pointer(&reconnect_timer, mainloop_timer_del);
         pcmk__notice("Cluster reconnect succeeded");
-        pacemakerd_read_config();
+        pacemakerd_corosync_read_config();
         restart_cluster_subdaemons();
         return G_SOURCE_REMOVE;
     } else {
@@ -277,18 +277,18 @@ get_config_opt(uint64_t unused, cmap_handle_t object_handle, const char *key, ch
     return rc;
 }
 
-gboolean
-pacemakerd_read_config(void)
+bool
+pacemakerd_corosync_read_config(void)
 {
     cs_error_t rc = CS_OK;
     int retries = 0;
-    cmap_handle_t local_handle;
+    cmap_handle_t local_handle = 0;
     uint64_t config = 0;
     int fd = -1;
     uid_t found_uid = 0;
     gid_t found_gid = 0;
     pid_t found_pid = 0;
-    int rv;
+    int rv = 0;
     enum pcmk_cluster_layer cluster_layer = pcmk_cluster_layer_unknown;
     const char *cluster_layer_s = NULL;
 
@@ -311,7 +311,7 @@ pacemakerd_read_config(void)
     if (rc != CS_OK) {
         pcmk__crit("Could not connect to Corosync CMAP: %s "
                    QB_XS " rc=%d", pcmk_rc_str(pcmk__corosync2rc(rc)), rc);
-        return FALSE;
+        return false;
     }
 
     rc = cmap_fd_get(local_handle, &fd);
@@ -319,7 +319,7 @@ pacemakerd_read_config(void)
         pcmk__crit("Could not get Corosync CMAP descriptor: %s " QB_XS " rc=%d",
                    pcmk_rc_str(pcmk__corosync2rc(rc)), rc);
         cmap_finalize(local_handle);
-        return FALSE;
+        return false;
     }
 
     /* CMAP provider run as root (in given user namespace, anyway)? */
@@ -330,12 +330,12 @@ pacemakerd_read_config(void)
                    (long long) PCMK__SPECIAL_PID_AS_0(found_pid),
                    (long long) found_uid, (long long) found_gid);
         cmap_finalize(local_handle);
-        return FALSE;
+        return false;
     } else if (rv < 0) {
         pcmk__crit("Could not authenticate Corosync CMAP provider: %s "
                    QB_XS " rc=%d", strerror(-rv), -rv);
         cmap_finalize(local_handle);
-        return FALSE;
+        return false;
     }
 
     cluster_layer = pcmk_get_cluster_layer();
@@ -345,7 +345,7 @@ pacemakerd_read_config(void)
         pcmk__crit("Expected Corosync cluster layer but detected %s "
                    QB_XS " cluster_layer=%d",
                    cluster_layer_s, cluster_layer);
-        return FALSE;
+        return false;
     }
 
     pcmk__info("Reading configuration for %s cluster layer", cluster_layer_s);
@@ -393,5 +393,5 @@ pacemakerd_read_config(void)
     }
     cmap_finalize(local_handle);
 
-    return TRUE;
+    return true;
 }
