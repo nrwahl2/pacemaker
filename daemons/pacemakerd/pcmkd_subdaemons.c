@@ -104,7 +104,7 @@ static bool fatal_error = false;
 static int child_liveness(pcmkd_child_t *child);
 static gboolean escalate_shutdown(void *data);
 static int start_child(pcmkd_child_t *child);
-static void pcmk_child_exit(mainloop_child_t *p, int core, int signo,
+static void pcmk_child_exit(pcmk__main_loop_child_t *p, int core, int signo,
                             int exitcode);
 static void pcmk_process_exit(pcmkd_child_t *child);
 static gboolean pcmk_shutdown_worker(void *user_data);
@@ -254,7 +254,7 @@ escalate_shutdown(void *data)
 }
 
 static void
-pcmk_child_exit(mainloop_child_t *p, int core, int signo, int exitcode)
+pcmk_child_exit(pcmk__main_loop_child_t *p, int core, int signo, int exitcode)
 {
     pcmkd_child_t *child = p->user_data;
 
