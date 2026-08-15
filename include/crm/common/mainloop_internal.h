@@ -63,7 +63,7 @@ struct mainloop_child_s {
 struct mainloop_timer_s {
     unsigned int id;
     unsigned int period_ms;
-    bool repeat;
+    gboolean repeat;
     char *name;
     GSourceFunc cb;
     void *userdata;
