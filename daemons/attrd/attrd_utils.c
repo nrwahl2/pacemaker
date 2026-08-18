@@ -213,7 +213,7 @@ attrd_free_attribute(void *data)
         free(a->set_type);
         free(a->user);
 
-        mainloop_timer_del(a->timer);
+        pcmk__main_loop_timer_free(a->timer);
         g_hash_table_destroy(a->values);
 
         free(a);
