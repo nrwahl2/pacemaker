@@ -1192,9 +1192,10 @@ build_device_from_xml(const xmlNode *dev)
 
     } else if (rc == EAGAIN) {
         if (device->timer == NULL) {
-            device->timer = mainloop_timer_add("get_agent_metadata", 10 * 1000,
-                                               true, get_agent_metadata_cb,
-                                               device);
+            device->timer = pcmk__main_loop_timer_new("get_agent_metadata",
+                                                      (10 * 1000),
+                                                      get_agent_metadata_cb,
+                                                      device);
         }
 
         if (!mainloop_timer_running(device->timer)) {
