@@ -1202,7 +1202,7 @@ build_device_from_xml(const xmlNode *dev)
         }
 
         if (!pcmk__main_loop_timer_running(device->timer)) {
-            mainloop_timer_start(device->timer);
+            pcmk__main_loop_timer_start(device->timer);
         }
     }
 
