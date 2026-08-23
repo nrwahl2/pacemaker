@@ -18,34 +18,38 @@ int
 pcmk__pid_active(pid_t pid, const char *daemon)
 {
     static pid_t last_asked_pid = 0;  /* log spam prevention */
-    int rc = 0;
+
+    int kill_rc = 0;
+    int rc = pcmk_rc_ok;
 
     if (pid <= 0) {
         return EINVAL;
     }
 
-    rc = kill(pid, 0);
-    if ((rc < 0) && (errno == ESRCH)) {
+    kill_rc = kill(pid, 0);
+    if ((kill_rc < 0) && (errno == ESRCH)) {
         return ESRCH;  /* no such PID detected */
 
     } else if ((daemon == NULL) || !pcmk__procfs_has_pids()) {
         // The kill result is all we have, we can't check the name
 
-        if (rc == 0) {
+        if (kill_rc == 0) {
             return pcmk_rc_ok;
         }
+
         rc = errno;
+
         if (last_asked_pid != pid) {
             pcmk__info("Cannot examine PID %lld: %s", (long long) pid,
                        pcmk_rc_str(rc));
             last_asked_pid = pid;
         }
+
         return rc; /* errno != ESRCH */
 
     } else {
         /* make sure PID hasn't been reused by another process
            XXX: might still be just a zombie, which could confuse decisions */
-        bool checked_through_kill = (rc == 0);
         bool paths_equal = false;
         char *exe_path = NULL;
         char *myexe_path = NULL;
@@ -74,7 +78,7 @@ pcmk__pid_active(pid_t pid, const char *daemon)
 
             if (rc == EACCES) {
                 // Trust kill if it was OK (we can't double-check via path)
-                return checked_through_kill? pcmk_rc_ok : EACCES;
+                return (kill_rc == 0)? pcmk_rc_ok : EACCES;
             } else {
                 return ESRCH;  /* most likely errno == ENOENT */
             }
