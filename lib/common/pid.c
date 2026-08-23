@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2025 the Pacemaker project contributors
+ * Copyright 2004-2026 the Pacemaker project contributors
  *
  * The version control history for this file may have further details.
  *
@@ -52,24 +52,26 @@ pcmk__pid_active(pid_t pid, const char *daemon)
 
         rc = pcmk__procfs_pid2path(pid, &exe_path);
         if (rc != pcmk_rc_ok) {
-            if (rc != EACCES) {
-                // Check again to filter out races
-                if ((kill(pid, 0) < 0) && (errno == ESRCH)) {
-                    return ESRCH;
-                }
+            // On non-EACCES, check again to filter out races
+            if ((rc != EACCES) && (kill(pid, 0) < 0) && (errno == ESRCH)) {
+                return ESRCH;
             }
+
             if (last_asked_pid != pid) {
                 if (rc == EACCES) {
                     pcmk__info("Could not get executable for PID %lld: %s "
-                               QB_XS " rc=%d",
-                               (long long) pid, pcmk_rc_str(rc), rc);
+                               QB_XS " rc=%d", (long long) pid, pcmk_rc_str(rc),
+                               rc);
+
                 } else {
                     pcmk__err("Could not get executable for PID %lld: %s "
-                              QB_XS " rc=%d",
-                              (long long) pid, pcmk_rc_str(rc), rc);
+                              QB_XS " rc=%d",(long long) pid, pcmk_rc_str(rc),
+                              rc);
                 }
+
                 last_asked_pid = pid;
             }
+
             if (rc == EACCES) {
                 // Trust kill if it was OK (we can't double-check via path)
                 return checked_through_kill? pcmk_rc_ok : EACCES;
