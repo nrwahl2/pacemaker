@@ -151,7 +151,7 @@ pcmk__procfs_pid_of(const char *name)
         char entry_name[64] = { 0, };
 
         if ((procfs_process_info(entry, entry_name, &pid) == pcmk_rc_ok)
-            && pcmk__str_eq(entry_name, name, pcmk__str_casei)
+            && pcmk__str_eq(entry_name, name, pcmk__str_none)
             && (pcmk__pid_active(pid, NULL) == pcmk_rc_ok)) {
 
             pcmk__info("Found %s active as process %lld", name,
