@@ -58,7 +58,7 @@ find_cib_loadfile(const char *server)
  *       limit, but there isn't.
  */
 static int
-pcmk__procfs_process_info(const struct dirent *entry, char *name, pid_t *pid)
+procfs_process_info(const struct dirent *entry, char *name, pid_t *pid)
 {
     int fd, local_pid;
     FILE *file;
@@ -150,7 +150,7 @@ pcmk__procfs_pid_of(const char *name)
 
         char entry_name[64] = { 0, };
 
-        if ((pcmk__procfs_process_info(entry, entry_name, &pid) == pcmk_rc_ok)
+        if ((procfs_process_info(entry, entry_name, &pid) == pcmk_rc_ok)
             && pcmk__str_eq(entry_name, name, pcmk__str_casei)
             && (pcmk__pid_active(pid, NULL) == pcmk_rc_ok)) {
 
