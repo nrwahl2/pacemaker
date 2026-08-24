@@ -395,9 +395,9 @@ pcmk__throttle_cib_load(const char *server, float *load)
 
     if (load == NULL) {
         return false;
-    } else {
-        *load = 0.0;
     }
+
+    *load = 0.0;
 
     if (loadfile == NULL) {
         last_call = 0;
@@ -438,9 +438,11 @@ pcmk__throttle_cib_load(const char *server, float *load)
             pcmk__err("Only %d of 15 fields found in %s", rc, loadfile);
             fclose(stream);
             return false;
+        }
 
-        } else if ((last_call > 0) && (last_call < now) && (last_utime <= utime) &&
-                   (last_stime <= stime)) {
+        if ((last_call > 0) && (last_call < now) && (last_utime <= utime)
+            && (last_stime <= stime)) {
+
             time_t elapsed = now - last_call;
             unsigned long delta_utime = utime - last_utime;
             unsigned long delta_stime = stime - last_stime;
