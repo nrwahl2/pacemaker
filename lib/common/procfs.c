@@ -47,10 +47,10 @@ find_cib_loadfile(const char *server)
  * \brief Get process ID and name associated with a /proc directory entry
  *
  * \param[in]  entry    Directory entry (must be result of readdir() on /proc)
- * \param[out] name     If not NULL, a char[16] to hold the process name
- * \param[out] pid      If not NULL, will be set to process ID of entry
+ * \param[out] name     A \c char[16] to hold the process name
+ * \param[out] pid      Where to store the process ID of \p entry
  *
- * \return Standard Pacemaker return code
+ * \return 1 on success, or 0 on error
  * \note This should be called only on Linux systems, as not all systems that
  *       support /proc store process names and IDs in the same way. The kernel
  *       limits the process name to the first 15 characters (plus terminator).
@@ -60,61 +60,64 @@ find_cib_loadfile(const char *server)
 static int
 procfs_process_info(const struct dirent *entry, char *name, pid_t *pid)
 {
-    int fd, local_pid;
-    FILE *file;
+    int fd = 0;
+    int local_pid = 0;
+    FILE *file = NULL;
     struct stat statbuf;
-    char procpath[128] = { 0 };
+    char procpath[128] = "/proc/";
 
-    /* We're only interested in entries whose name is a PID,
-     * so skip anything non-numeric or that is too long.
+    /* We're only interested in entries whose name is a PID, so skip anything
+     * that's non-numeric or too long.
      *
      * 114 = 128 - strlen("/proc/") - strlen("/status") - 1
      */
     local_pid = atoi(entry->d_name);
     if ((local_pid <= 0) || (strlen(entry->d_name) > 114)) {
-        return -1;
-    }
-    if (pid) {
-        *pid = (pid_t) local_pid;
+        return 0;
     }
 
+    *pid = (pid_t) local_pid;
+
     /* Get this entry's file information */
-    strcpy(procpath, "/proc/");
     strcat(procpath, entry->d_name);
+
     fd = open(procpath, O_RDONLY);
-    if (fd < 0 ) {
-        return -1;
+    if (fd < 0) {
+        return 0;
     }
+
     if (fstat(fd, &statbuf) < 0) {
         close(fd);
-        return -1;
+        return 0;
     }
+
     close(fd);
 
     /* We're only interested in subdirectories */
     if (!S_ISDIR(statbuf.st_mode)) {
-        return -1;
+        return 0;
     }
 
-    /* Read the first entry ("Name:") from the process's status file.
-     * We could handle the valgrind case if we parsed the cmdline file
-     * instead, but that's more of a pain than it's worth.
+    /* Read the first entry ("Name:") from the process's status file. We could
+     * handle the valgrind case if we parsed the cmdline file instead, but
+     * that's more of a pain than it's worth.
      */
-    if (name != NULL) {
-        strcat(procpath, "/status");
-        file = fopen(procpath, "r");
-        if (!file) {
-            return -1;
-        }
-        if (fscanf(file, "Name:\t%15[^\n]", name) != 1) {
-            fclose(file);
-            return -1;
-        }
-        name[15] = 0;
-        fclose(file);
+    strcat(procpath, "/status");
+
+    file = fopen(procpath, "r");
+    if (file == NULL) {
+        return 0;
     }
 
-    return 0;
+    if (fscanf(file, "Name:\t%15[^\n]", name) != 1) {
+        fclose(file);
+        return 0;
+    }
+
+    name[15] = '\0';
+
+    fclose(file);
+    return 1;
 }
 #endif // HAVE_LINUX_PROCFS
 
@@ -150,7 +153,7 @@ pcmk__procfs_pid_of(const char *name)
 
         char entry_name[64] = { 0, };
 
-        if ((procfs_process_info(entry, entry_name, &pid) == pcmk_rc_ok)
+        if ((procfs_process_info(entry, entry_name, &pid) != 0)
             && pcmk__str_eq(entry_name, name, pcmk__str_none)
             && (pcmk__pid_active(pid, NULL) == pcmk_rc_ok)) {
 
