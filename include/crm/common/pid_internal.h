@@ -27,19 +27,19 @@ extern "C" {
  * \internal
  * \brief Check whether process exists (by PID and optionally executable path)
  *
- * \param[in] pid     PID of process to check
- * \param[in] daemon  If not NULL, path component to match with procfs entry
+ * \param[in] pid            PID of process to check
+ * \param[in] expected_path  If not \c NULL, path to match with procfs entry
  *
  * \return Standard Pacemaker return code
  * \note Particular return codes of interest include pcmk_rc_ok for alive,
  *       ESRCH for process is not alive (verified by kill and/or executable path
  *       match), EACCES for caller unable or not allowed to check. A result of
- *       "alive" is less reliable when \p daemon is not provided or procfs is
- *       not available, since there is no guarantee that the PID has not been
- *       recycled for another process.
+ *       "alive" is less reliable when \p expected_path is not provided or
+ *       procfs is not available, since there is no guarantee that the PID has
+ *       not been recycled for another process.
  * \note This function cannot be used to verify \e authenticity of the process.
  */
-int pcmk__pid_active(pid_t pid, const char *daemon);
+int pcmk__pid_active(pid_t pid, const char *expected_path);
 
 static inline char *
 pcmk__getpid_s(void)

@@ -15,7 +15,7 @@
 #include <crm/crm.h>
 
 int
-pcmk__pid_active(pid_t pid, const char *daemon)
+pcmk__pid_active(pid_t pid, const char *expected_path)
 {
     static pid_t last_asked_pid = 0;  /* log spam prevention */
 
@@ -30,7 +30,7 @@ pcmk__pid_active(pid_t pid, const char *daemon)
     if ((kill_rc < 0) && (errno == ESRCH)) {
         return ESRCH;  /* no such PID detected */
 
-    } else if ((daemon == NULL) || !pcmk__procfs_has_pids()) {
+    } else if ((expected_path == NULL) || !pcmk__procfs_has_pids()) {
         // The kill result is all we have, we can't check the name
 
         if (kill_rc == 0) {
@@ -51,10 +51,9 @@ pcmk__pid_active(pid_t pid, const char *daemon)
         /* make sure PID hasn't been reused by another process
            XXX: might still be just a zombie, which could confuse decisions */
         bool paths_equal = false;
-        char *exe_path = NULL;
-        char *myexe_path = NULL;
+        char *found_path = NULL;
 
-        rc = pcmk__procfs_pid2path(pid, &exe_path);
+        rc = pcmk__procfs_pid2path(pid, &found_path);
         if (rc != pcmk_rc_ok) {
             // On non-EACCES, check again to filter out races
             if ((rc != EACCES) && (kill(pid, 0) < 0) && (errno == ESRCH)) {
@@ -85,15 +84,9 @@ pcmk__pid_active(pid_t pid, const char *daemon)
             return ESRCH;
         }
 
-        if (daemon[0] != '/') {
-            myexe_path = pcmk__assert_asprintf(CRM_DAEMON_DIR "/%s", daemon);
-        } else {
-            myexe_path = pcmk__str_copy(daemon);
-        }
+        paths_equal = pcmk__str_eq(found_path, expected_path, pcmk__str_none);
+        free(found_path);
 
-        paths_equal = pcmk__str_eq(exe_path, myexe_path, pcmk__str_none);
-        free(exe_path);
-        free(myexe_path);
         if (paths_equal) {
             return pcmk_rc_ok;
         }

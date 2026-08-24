@@ -570,8 +570,11 @@ child_liveness(pcmkd_child_t *child)
 
     const char *name = pcmk__server_name(child->server);
     const char *ipc_name = pcmk__server_ipc_name(child->server);
+    char *path = NULL;
     int rc = pcmk_rc_ok;
     pid_t ipc_pid = 0;
+
+    pcmk__assert((name != NULL) && (ipc_name != NULL));
 
     if (!pcmk__is_set(child->flags, child_as_root)) {
         rc = pcmk__daemon_user(&uid, &gid);
@@ -579,7 +582,7 @@ child_liveness(pcmkd_child_t *child)
             pcmk__err("Could not find user and group IDs for user "
                       CRM_DAEMON_USER ": %s " QB_XS " rc=%d",
                       pcmk_rc_str(rc), rc);
-            return rc;
+            goto done;
         }
     }
 
@@ -589,13 +592,14 @@ child_liveness(pcmkd_child_t *child)
             // Initialize the child using the found PID
             child->pid = ipc_pid;
         }
+
         if (child->pid == ipc_pid) {
             // The found PID matches the expected one (if any)
-            return pcmk_rc_ok;
+            goto done;
         }
 
     } else if (rc != pcmk_rc_ipc_unresponsive) {
-        return rc;
+        goto done;
     }
 
     /* If we get here, either no IPC liveness has been detected, or IPC liveness
@@ -603,12 +607,13 @@ child_liveness(pcmkd_child_t *child)
      * safe on FreeBSD since the only change possible from a proper child's PID
      * into "special" PID of 1 behind more loosely related process.
      */
-    rc = pcmk__pid_active(child->pid, name);
+    path = pcmk__assert_asprintf(CRM_DAEMON_DIR "/%s", name);
+    rc = pcmk__pid_active(child->pid, path);
 
     if ((ipc_pid != 0)
         && ((rc != pcmk_rc_ok)
             || (ipc_pid == PCMK__SPECIAL_PID)
-            || (pcmk__pid_active(ipc_pid, name) == pcmk_rc_ok))) {
+            || (pcmk__pid_active(ipc_pid, path) == pcmk_rc_ok))) {
         /* An unexpected (but authorized) process was detected at the IPC
          * endpoint, and either it is active, or the child we're tracking is
          * not.
@@ -625,24 +630,41 @@ child_liveness(pcmkd_child_t *child)
             /* not possessing IPC, afterall (what about corosync CPG?) */
             stop_child(child, SIGKILL);
         }
+
         child->pid = ipc_pid;
-        return pcmk_rc_ok;
+        rc = pcmk_rc_ok;
+        goto done;
     }
 
     switch (rc) {
         case pcmk_rc_ok:
             // Our tracked child's PID was found active, but not its IPC
-            return pcmk_rc_ipc_pid_only;
+            rc = pcmk_rc_ipc_pid_only;
+            break;
+
         case EINVAL:
             // FreeBSD can return EINVAL
-            return (child->pid == 0)? pcmk_rc_ipc_unresponsive : EINVAL;
+            if (child->pid == 0) {
+                rc = pcmk_rc_ipc_unresponsive;
+            }
+
+            break;
+
         case EACCES:
-            return pcmk_rc_ipc_unauthorized;
+            rc = pcmk_rc_ipc_unauthorized;
+            break;
+
         case ESRCH:
-            return pcmk_rc_ipc_unresponsive;
+            rc = pcmk_rc_ipc_unresponsive;
+            break;
+
         default:
-            return rc;
+            break;
     }
+
+done:
+    free(path);
+    return rc;
 }
 
 static void
