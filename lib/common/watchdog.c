@@ -35,26 +35,31 @@ static pid_t sbd_pid = 0;
 static void
 panic_local_nonroot(pid_t ppid)
 {
-    if (ppid > 1) { // pacemakerd is still our parent
-        pcmk__emerg("Escalating panic to " PCMK__SERVER_PACEMAKERD "[%lld]",
-                    (long long) ppid);
-    } else { // Signal (non-parent) pacemakerd if possible
-        ppid = pcmk__procfs_pid_of(PCMK__SERVER_PACEMAKERD);
-        if (ppid > 0) {
-            union sigval signal_value;
+    const char *server = pcmk__server_log_name(pcmk_ipc_pacemakerd);
 
-            pcmk__emerg("Signaling " PCMK__SERVER_PACEMAKERD "[%lld] to panic",
-                        (long long) ppid);
-            memset(&signal_value, 0, sizeof(signal_value));
-            if (sigqueue(ppid, SIGQUIT, signal_value) < 0) {
-                pcmk__emerg("Exiting after signal failure: %s",
-                            strerror(errno));
-            }
-        } else {
-            pcmk__emerg("Exiting with no known " PCMK__SERVER_PACEMAKERD
-                        "process");
-        }
+    if (ppid > 1) {
+        // pacemakerd is still our parent
+        pcmk__emerg("Escalating panic to %s [%lld]", server, (long long) ppid);
+        crm_exit(CRM_EX_PANIC);
     }
+
+    // Signal (non-parent) pacemakerd if possible
+    ppid = pcmk__procfs_pid_of(PCMK__SERVER_PACEMAKERD);
+
+    if (ppid > 0) {
+        union sigval signal_value;
+
+        pcmk__emerg("Signaling %s [%lld] to panic", server, (long long) ppid);
+        memset(&signal_value, 0, sizeof(signal_value));
+
+        if (sigqueue(ppid, SIGQUIT, signal_value) < 0) {
+            pcmk__emerg("Exiting after signal failure: %s", strerror(errno));
+        }
+
+    } else {
+        pcmk__emerg("Exiting with no known %s process", server);
+    }
+
     crm_exit(CRM_EX_PANIC);
 }
 
