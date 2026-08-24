@@ -128,7 +128,7 @@ throttle_mode(void)
     float load;
     float thresholds[4];
 
-    if (pcmk__throttle_cib_load(PCMK__SERVER_BASED, &load)) {
+    if (pcmk__throttle_based_load(&load)) {
         float cib_max_cpu = 0.95;
 
         /* The CIB is a single-threaded task and thus cannot consume more

@@ -32,13 +32,15 @@
  *       This should be called only on Linux systems.
  */
 static char *
-find_cib_loadfile(const char *server)
+find_based_loadfile(void)
 {
-    pid_t pid = pcmk__procfs_pid_of(server);
+    const char *server_name = pcmk__server_name(pcmk_ipc_based);
+    const pid_t pid = pcmk__procfs_pid_of(server_name);
 
     if (pid == 0) {
         return NULL;
     }
+
     return pcmk__assert_asprintf("/proc/%lld/stat", (long long) pid);
 }
 
@@ -338,7 +340,7 @@ pcmk__sysrq_trigger(char t)
 }
 
 bool
-pcmk__throttle_cib_load(const char *server, float *load)
+pcmk__throttle_based_load(float *load)
 {
 /* /proc/[pid]/stat
  *
@@ -404,9 +406,10 @@ pcmk__throttle_cib_load(const char *server, float *load)
         last_utime = 0;
         last_stime = 0;
 
-        loadfile = find_cib_loadfile(server);
+        loadfile = find_based_loadfile();
         if (loadfile == NULL) {
-            pcmk__warn("Couldn't find CIB load file");
+            pcmk__warn("Couldn't find %s load file",
+                       pcmk__server_log_name(pcmk_ipc_based));
             return false;
         }
 
