@@ -36,6 +36,7 @@ static void
 panic_local_nonroot(pid_t ppid)
 {
     const char *server = pcmk__server_log_name(pcmk_ipc_pacemakerd);
+    union sigval signal_value = { 0, };
 
     if (ppid > 1) {
         // pacemakerd is still our parent
@@ -45,19 +46,15 @@ panic_local_nonroot(pid_t ppid)
 
     // Signal (non-parent) pacemakerd if possible
     ppid = pcmk__procfs_pid_of(PCMK__SERVER_PACEMAKERD);
-
-    if (ppid > 0) {
-        union sigval signal_value;
-
-        pcmk__emerg("Signaling %s [%lld] to panic", server, (long long) ppid);
-        memset(&signal_value, 0, sizeof(signal_value));
-
-        if (sigqueue(ppid, SIGQUIT, signal_value) < 0) {
-            pcmk__emerg("Exiting after signal failure: %s", strerror(errno));
-        }
-
-    } else {
+    if (ppid <= 0) {
         pcmk__emerg("Exiting with no known %s process", server);
+        crm_exit(CRM_EX_PANIC);
+    }
+
+    pcmk__emerg("Signaling %s [%lld] to panic", server, (long long) ppid);
+
+    if (sigqueue(ppid, SIGQUIT, signal_value) < 0) {
+        pcmk__emerg("Exiting after signal failure: %s", strerror(errno));
     }
 
     crm_exit(CRM_EX_PANIC);
