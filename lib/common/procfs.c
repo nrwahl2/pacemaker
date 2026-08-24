@@ -127,25 +127,29 @@ pcmk__procfs_process_info(const struct dirent *entry, char *name, pid_t *pid)
  * \return Process ID of named process if running, 0 otherwise
  *
  * \note This will return 0 if the process is being run via valgrind.
- *       This should be called only on Linux systems.
+ * \note This should be called only on Linux systems.
  */
 pid_t
 pcmk__procfs_pid_of(const char *name)
 {
 #if HAVE_LINUX_PROCFS
-    DIR *dp;
-    struct dirent *entry;
+    DIR *dirp = NULL;
     pid_t pid = 0;
-    char entry_name[64] = { 0 };
 
-    dp = opendir("/proc");
-    if (dp == NULL) {
-        pcmk__notice("Can not read /proc directory to track existing "
-                     "components");
+    pcmk__assert(name != NULL);
+
+    dirp = opendir("/proc");
+    if (dirp == NULL) {
+        pcmk__notice("Could not open /proc directory to find PID of %s: %s",
+                     name, strerror(errno));
         return 0;
     }
 
-    while ((entry = readdir(dp)) != NULL) {
+    for (const struct dirent *entry = readdir(dirp); entry != NULL;
+         entry = readdir(dirp)) {
+
+        char entry_name[64] = { 0, };
+
         if ((pcmk__procfs_process_info(entry, entry_name, &pid) == pcmk_rc_ok)
             && pcmk__str_eq(entry_name, name, pcmk__str_casei)
             && (pcmk__pid_active(pid, NULL) == pcmk_rc_ok)) {
@@ -154,9 +158,11 @@ pcmk__procfs_pid_of(const char *name)
                        (long long) pid);
             break;
         }
+
         pid = 0;
     }
-    closedir(dp);
+
+    closedir(dirp);
     return pid;
 #else
     return 0;
