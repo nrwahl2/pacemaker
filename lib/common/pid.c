@@ -79,9 +79,10 @@ pcmk__pid_active(pid_t pid, const char *daemon)
             if (rc == EACCES) {
                 // Trust kill if it was OK (we can't double-check via path)
                 return (kill_rc == 0)? pcmk_rc_ok : EACCES;
-            } else {
-                return ESRCH;  /* most likely errno == ENOENT */
             }
+
+            // Most likely errno == ENOENT
+            return ESRCH;
         }
 
         if (daemon[0] != '/') {
