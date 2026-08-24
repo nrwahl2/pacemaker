@@ -54,42 +54,38 @@ pcmk__pid_active(pid_t pid, const char *expected_path)
         char *found_path = NULL;
 
         rc = pcmk__procfs_pid2path(pid, &found_path);
-        if (rc != pcmk_rc_ok) {
-            // On non-EACCES, check again to filter out races
-            if ((rc != EACCES) && (kill(pid, 0) < 0) && (errno == ESRCH)) {
-                return ESRCH;
-            }
-
-            if (last_asked_pid != pid) {
-                if (rc == EACCES) {
-                    pcmk__info("Could not get executable for PID %lld: %s "
-                               QB_XS " rc=%d", (long long) pid, pcmk_rc_str(rc),
-                               rc);
-
-                } else {
-                    pcmk__err("Could not get executable for PID %lld: %s "
-                              QB_XS " rc=%d",(long long) pid, pcmk_rc_str(rc),
-                              rc);
-                }
-
-                last_asked_pid = pid;
-            }
-
-            if (rc == EACCES) {
-                // Trust kill if it was OK (we can't double-check via path)
-                return (kill_rc == 0)? pcmk_rc_ok : EACCES;
-            }
-
-            // Most likely errno == ENOENT
-            return ESRCH;
-        }
-
         paths_equal = pcmk__str_eq(found_path, expected_path, pcmk__str_none);
         free(found_path);
 
-        if (paths_equal) {
-            return pcmk_rc_ok;
+        if (rc == pcmk_rc_ok) {
+            return paths_equal? pcmk_rc_ok : ESRCH;
         }
+
+        // On non-EACCES, check again to filter out races
+        if ((rc != EACCES) && (kill(pid, 0) < 0) && (errno == ESRCH)) {
+            return ESRCH;
+        }
+
+        if (last_asked_pid != pid) {
+            if (rc == EACCES) {
+                pcmk__info("Could not get executable for PID %lld: %s "
+                           QB_XS " rc=%d", (long long) pid, pcmk_rc_str(rc),
+                           rc);
+
+            } else {
+                pcmk__err("Could not get executable for PID %lld: %s "
+                          QB_XS " rc=%d",(long long) pid, pcmk_rc_str(rc), rc);
+            }
+
+            last_asked_pid = pid;
+        }
+
+        if (rc == EACCES) {
+            // Trust kill if it was OK (we can't double-check via path)
+            return (kill_rc == 0)? pcmk_rc_ok : EACCES;
+        }
+
+        // Most likely errno == ENOENT
     }
 
     return ESRCH;
