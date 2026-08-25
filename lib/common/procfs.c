@@ -60,51 +60,27 @@ find_cib_loadfile(const char *server)
 static int
 procfs_process_info(const struct dirent *entry, char *name, pid_t *pid)
 {
-    int fd = 0;
     int local_pid = 0;
+    char *proc_path = NULL;
     FILE *file = NULL;
-    struct stat statbuf;
-    char procpath[128] = "/proc/";
 
-    /* We're only interested in entries whose name is a PID, so skip anything
-     * that's non-numeric or too long.
-     *
-     * 114 = 128 - strlen("/proc/") - strlen("/status") - 1
-     */
+    // We're only interested in entries whose name is a PID
     local_pid = atoi(entry->d_name);
-    if ((local_pid <= 0) || (strlen(entry->d_name) > 114)) {
+    if (local_pid <= 0) {
         return 0;
     }
 
     *pid = (pid_t) local_pid;
 
-    /* Get this entry's file information */
-    strcat(procpath, entry->d_name);
-
-    fd = open(procpath, O_RDONLY);
-    if (fd < 0) {
-        return 0;
-    }
-
-    if (fstat(fd, &statbuf) < 0) {
-        close(fd);
-        return 0;
-    }
-
-    close(fd);
-
-    /* We're only interested in subdirectories */
-    if (!S_ISDIR(statbuf.st_mode)) {
-        return 0;
-    }
-
     /* Read the first entry ("Name:") from the process's status file. We could
      * handle the valgrind case if we parsed the cmdline file instead, but
      * that's more of a pain than it's worth.
      */
-    strcat(procpath, "/status");
+    proc_path = pcmk__assert_asprintf("/proc/%s/status", entry->d_name);
 
-    file = fopen(procpath, "r");
+    file = fopen(proc_path, "r");
+    free(proc_path);
+
     if (file == NULL) {
         return 0;
     }
