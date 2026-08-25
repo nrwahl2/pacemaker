@@ -35,6 +35,10 @@
  *         \c pcmk_rc_bad_input on failed string conversion due to invalid
  *         input, or \c ERANGE if outside long long range)
  * \note Sets \c errno on error
+ *
+ * \todo Expose this? There's at least one place (\c pid_of_filter()) outside
+ *       this file where checking the \c end_text after the scan would be
+ *       convenient.
  */
 static int
 scan_ll(const char *text, long long *result, long long default_value,

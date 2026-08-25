@@ -42,57 +42,86 @@ find_cib_loadfile(const char *server)
     return pcmk__assert_asprintf("/proc/%lld/stat", (long long) pid);
 }
 
+// Process name to compare against in pid_of_filter()
+static const char *pid_of_filter_data = NULL;
+
 /*!
  * \internal
- * \brief Get process ID and name associated with a /proc directory entry
+ * \brief \c scandir() filter for subdirectories with matching process name
  *
- * \param[in]  entry    Directory entry (must be result of readdir() on /proc)
- * \param[out] name     A \c char[16] to hold the process name
- * \param[out] pid      Where to store the process ID of \p entry
+ * This is intended for use with \c proc directory entries.
  *
- * \return 1 on success, or 0 on error
+ * A directory entry passes the filter if all of the following conditions are
+ * met:
+ * * The entry name consists of only digits.
+ * * The entry name parses as a valid, positive <tt>long long</tt> value.
+ * * The entry is a directory containing a readable file called \c status
+ * * The process name in the \c status file matches \c pid_of_filter_data.
+ * * The process whose PID is the entry name is active (see
+ *   \c pcmk__pid_active()).
+ *
+ * \param[in] entry  Directory entry
+ *
+ * \retval 1 if \p entry passes the filter
+ * \retval 0 otherwise
+ *
  * \note This should be called only on Linux systems, as not all systems that
- *       support /proc store process names and IDs in the same way. The kernel
- *       limits the process name to the first 15 characters (plus terminator).
- *       It would be nice if there were a public kernel API constant for that
- *       limit, but there isn't.
+ *       support \c /proc store process names and IDs in the same way. The
+ *       kernel limits the process name to the first 15 characters (plus
+ *       terminator). It would be nice if there were a public kernel API
+ *       constant for that limit, but there isn't.
  */
 static int
-procfs_process_info(const struct dirent *entry, char *name, pid_t *pid)
+pid_of_filter(const struct dirent *entry)
 {
-    int local_pid = 0;
-    char *proc_path = NULL;
-    FILE *file = NULL;
+    long long pid = 0;
+    char *status_path = NULL;
+    FILE *status_file = NULL;
+    char process_name[64] = { '\0', };
 
-    // We're only interested in entries whose name is a PID
-    local_pid = atoi(entry->d_name);
-    if (local_pid <= 0) {
+    pcmk__assert(entry != NULL);
+
+    // pcmk__scan_ll() allows trailing non-digits; don't allow those here
+    for (const char *s = entry->d_name; *s != '\0'; s++) {
+        if (!isdigit(*s)) {
+            return 0;
+        }
+    }
+
+    // Negative values and parse errors besides ERANGE should be impossible
+    if ((pcmk__scan_ll(entry->d_name, &pid, 0) != pcmk_rc_ok) || (pid <= 0)) {
         return 0;
     }
 
-    *pid = (pid_t) local_pid;
+    // This also implicitly checks that the entry is a directory
+    status_path = pcmk__assert_asprintf("/proc/%s/status", entry->d_name);
+    status_file = fopen(status_path, "r");
+    free(status_path);
+
+    if (status_file == NULL) {
+        return 0;
+    }
 
     /* Read the first entry ("Name:") from the process's status file. We could
      * handle the valgrind case if we parsed the cmdline file instead, but
      * that's more of a pain than it's worth.
      */
-    proc_path = pcmk__assert_asprintf("/proc/%s/status", entry->d_name);
-
-    file = fopen(proc_path, "r");
-    free(proc_path);
-
-    if (file == NULL) {
+    if (fscanf(status_file, "Name:\t%15[^\n]", process_name) != 1) {
+        fclose(status_file);
         return 0;
     }
 
-    if (fscanf(file, "Name:\t%15[^\n]", name) != 1) {
-        fclose(file);
+    process_name[15] = '\0';
+    fclose(status_file);
+
+    if (!pcmk__str_eq(process_name, pid_of_filter_data, pcmk__str_none)) {
         return 0;
     }
 
-    name[15] = '\0';
+    if (pcmk__pid_active((pid_t) pid, NULL) != pcmk_rc_ok) {
+        return 0;
+    }
 
-    fclose(file);
     return 1;
 }
 #endif // HAVE_LINUX_PROCFS
@@ -112,37 +141,42 @@ pid_t
 pcmk__procfs_pid_of(const char *name)
 {
 #if HAVE_LINUX_PROCFS
-    DIR *dirp = NULL;
-    pid_t pid = 0;
+    struct dirent **namelist = NULL;
+    int num_matches = 0;
+    long long pid = 0;
 
-    pcmk__assert(name != NULL);
+    pcmk__assert((name != NULL) && (pid_of_filter_data == NULL));
 
-    dirp = opendir("/proc");
-    if (dirp == NULL) {
-        pcmk__notice("Could not open /proc directory to find PID of %s: %s",
-                     name, strerror(errno));
-        return 0;
+    pid_of_filter_data = name;
+    num_matches = scandir("/proc", &namelist, pid_of_filter, NULL);
+
+    if (num_matches < 0) {
+        pcmk__err("Failed to scan /proc to find PID of '%s': %s", name,
+                  strerror(errno));
+        goto done;
     }
 
-    for (const struct dirent *entry = readdir(dirp); entry != NULL;
-         entry = readdir(dirp)) {
-
-        char entry_name[64] = { 0, };
-
-        if ((procfs_process_info(entry, entry_name, &pid) != 0)
-            && pcmk__str_eq(entry_name, name, pcmk__str_none)
-            && (pcmk__pid_active(pid, NULL) == pcmk_rc_ok)) {
-
-            pcmk__info("Found %s active as process %lld", name,
-                       (long long) pid);
-            break;
-        }
-
-        pid = 0;
+    if (num_matches == 0) {
+        goto done;
     }
 
-    closedir(dirp);
-    return pid;
+    if (num_matches > 1) {
+        pcmk__warn("Multiple (%d) '%s' processes found; using the first found",
+                   num_matches, name);
+    }
+
+    pcmk__assert(pcmk__scan_ll(namelist[0]->d_name, &pid, 0) == pcmk_rc_ok);
+    pcmk__info("Found '%s' active as process %lld", name, pid);
+
+done:
+    pid_of_filter_data = NULL;
+
+    for (int i = 0; i < num_matches; i++) {
+        free(namelist[i]);
+    }
+
+    free(namelist);
+    return (pid_t) pid;
 #else
     return 0;
 #endif // HAVE_LINUX_PROCFS
