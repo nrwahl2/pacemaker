@@ -75,9 +75,12 @@ static int
 pid_of_filter(const struct dirent *entry)
 {
     long long pid = 0;
-    char *status_path = NULL;
-    FILE *status_file = NULL;
-    char process_name[64] = { '\0', };
+    /*
+    char *cmdline_path = NULL;
+    char *cmdline_contents = NULL;
+    */
+    char *exe_path = NULL;
+    char *exe_real_path = NULL;
 
     pcmk__assert(entry != NULL);
 
@@ -94,29 +97,30 @@ pid_of_filter(const struct dirent *entry)
     }
 
     // This also implicitly checks that the entry is a directory
-    status_path = pcmk__assert_asprintf("/proc/%s/status", entry->d_name);
-    status_file = fopen(status_path, "r");
-    free(status_path);
-
-    if (status_file == NULL) {
-        return 0;
-    }
-
     /* Read the first entry ("Name:") from the process's status file. We could
      * handle the valgrind case if we parsed the cmdline file instead, but
      * that's more of a pain than it's worth.
      */
-    if (fscanf(status_file, "Name:\t%15[^\n]", process_name) != 1) {
-        fclose(status_file);
+    /*
+    cmdline_path = pcmk__assert_asprintf("/proc/%s/cmdline", entry->d_name);
+    g_file_get_contents(cmdline_path, &cmdline_contents, NULL, NULL);
+    free(cmdline_path);
+    */
+
+    exe_path = pcmk__assert_asprintf("/proc/%s/exe", entry->d_name);
+    pcmk__real_path(exe_path, &exe_real_path);
+    free(exe_path);
+
+    if (!pcmk__str_eq(basename(exe_real_path), pid_of_filter_data,
+                      pcmk__str_none)) {
+
+        free(exe_real_path);
         return 0;
     }
 
-    process_name[15] = '\0';
-    fclose(status_file);
+    free(exe_real_path);
 
-    if (!pcmk__str_eq(process_name, pid_of_filter_data, pcmk__str_none)) {
-        return 0;
-    }
+    // @TODO Handle valgrind
 
     if (pcmk__pid_active((pid_t) pid, NULL) != pcmk_rc_ok) {
         return 0;
