@@ -53,7 +53,6 @@ void pcmk__sync_directory(const char *name);
 
 int pcmk__file_contents(const char *filename, char **contents);
 int pcmk__write_sync(int fd, const char *contents);
-int pcmk__set_nonblocking(int fd);
 const char *pcmk__get_tmpdir(void);
 
 void pcmk__close_fds_in_child(void);

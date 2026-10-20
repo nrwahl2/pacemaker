@@ -509,28 +509,6 @@ pcmk__write_sync(int fd, const char *contents)
 
 /*!
  * \internal
- * \brief Set a file descriptor to non-blocking
- *
- * \param[in] fd  File descriptor to use
- *
- * \return Standard Pacemaker return code
- */
-int
-pcmk__set_nonblocking(int fd)
-{
-    int flag = fcntl(fd, F_GETFL);
-
-    if (flag < 0) {
-        return errno;
-    }
-    if (fcntl(fd, F_SETFL, flag | O_NONBLOCK) < 0) {
-        return errno;
-    }
-    return pcmk_rc_ok;
-}
-
-/*!
- * \internal
  * \brief Get directory name for temporary files
  *
  * Return the value of the TMPDIR environment variable if it is set to a

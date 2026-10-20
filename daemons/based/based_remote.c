@@ -22,6 +22,7 @@
 #include <unistd.h>                 // close
 
 #include <glib.h>                   // gboolean, g_source_remove, etc.
+#include <glib-unix.h>              // g_unix_set_fd_nonblocking
 #include <gnutls/gnutls.h>          // gnutls_bye, gnutls_deinit
 #include <libxml/tree.h>            // xmlNode
 #include <qb/qblog.h>               // QB_XS
@@ -556,7 +557,7 @@ cib_remote_listen(void *user_data)
     unsigned laddr;
     struct sockaddr_storage addr;
     char ipstr[INET6_ADDRSTRLEN];
-    int rc;
+    GError *error = NULL;
 
     pcmk__client_t *new_client = NULL;
 
@@ -577,11 +578,10 @@ cib_remote_listen(void *user_data)
 
     pcmk__sockaddr2str(&addr, ipstr);
 
-    rc = pcmk__set_nonblocking(csock);
-    if (rc != pcmk_rc_ok) {
+    if (!g_unix_set_fd_nonblocking(csock, true, &error)) {
         pcmk__warn("Dropping remote connection from %s because it could not be "
-                   "set to non-blocking: %s",
-                   ipstr, pcmk_rc_str(rc));
+                   "set to non-blocking: %s", ipstr, error->message);
+        g_clear_error(&error);
         close(csock);
         return 0;
     }

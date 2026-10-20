@@ -21,6 +21,9 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
+#include <glib.h>                       // gboolean, g_*, GError, etc.
+#include <glib-unix.h>                  // g_unix_set_fd_nonblocking
+
 #include "crm/crm.h"
 #include "crm/common/mainloop.h"
 #include "crm/services.h"
@@ -182,7 +185,7 @@ sigchld_handler(void)
 static bool
 sigchld_setup(struct sigchld_data_s *data)
 {
-    int rc;
+    GError *error = NULL;
 
     data->pipe_fd[0] = data->pipe_fd[1] = -1;
 
@@ -193,15 +196,15 @@ sigchld_setup(struct sigchld_data_s *data)
         return false;
     }
 
-    rc = pcmk__set_nonblocking(data->pipe_fd[0]);
-    if (rc != pcmk_rc_ok) {
-        pcmk__info("Could not set pipe input non-blocking: %s " QB_XS " rc=%d",
-                   pcmk_rc_str(rc), rc);
+    if (!g_unix_set_fd_nonblocking(data->pipe_fd[0], true, &error)) {
+        pcmk__info("Could not set pipe input non-blocking: %s", error->message);
+        g_clear_error(&error);
     }
-    rc = pcmk__set_nonblocking(data->pipe_fd[1]);
-    if (rc != pcmk_rc_ok) {
-        pcmk__info("Could not set pipe output non-blocking: %s " QB_XS " rc=%d",
-                   pcmk_rc_str(rc), rc);
+
+    if (!g_unix_set_fd_nonblocking(data->pipe_fd[1], true, &error)) {
+        pcmk__info("Could not set pipe output non-blocking: %s",
+                   error->message);
+        g_clear_error(&error);
     }
 
     // Set SIGCHLD handler
@@ -1234,6 +1237,7 @@ services__execute_file(svc_action_t *op)
     int rc;
     struct stat st;
     struct sigchld_data_s data = { .ignored = false };
+    GError *error = NULL;
 
     // Catch common failure conditions early
     if (stat(op->opaque->exec, &st) != 0) {
@@ -1352,31 +1356,30 @@ services__execute_file(svc_action_t *op)
     }
 
     op->opaque->stdout_fd = stdout_fd[0];
-    rc = pcmk__set_nonblocking(op->opaque->stdout_fd);
-    if (rc != pcmk_rc_ok) {
-        pcmk__info("Could not set '%s' output non-blocking: %s "
-                   QB_XS " rc=%d",
-                   op->opaque->exec, pcmk_rc_str(rc), rc);
+    if (!g_unix_set_fd_nonblocking(op->opaque->stdout_fd, true, &error)) {
+        pcmk__info("Could not set '%s' output non-blocking: %s",
+                   op->opaque->exec, error->message);
+        g_clear_error(&error);
     }
 
     op->opaque->stderr_fd = stderr_fd[0];
-    rc = pcmk__set_nonblocking(op->opaque->stderr_fd);
-    if (rc != pcmk_rc_ok) {
-        pcmk__info("Could not set '%s' error output non-blocking: %s "
-                   QB_XS " rc=%d",
-                   op->opaque->exec, pcmk_rc_str(rc), rc);
+    if (!g_unix_set_fd_nonblocking(op->opaque->stderr_fd, true, &error)) {
+        pcmk__info("Could not set '%s' error output non-blocking: %s",
+                   op->opaque->exec, error->message);
+        g_clear_error(&error);
     }
 
     op->opaque->stdin_fd = stdin_fd[1];
     if (op->opaque->stdin_fd >= 0) {
         // using buffer behind non-blocking-fd here - that could be improved
         // as long as no other standard uses stdin_fd assume stonith
-        rc = pcmk__set_nonblocking(op->opaque->stdin_fd);
-        if (rc != pcmk_rc_ok) {
+        if (!g_unix_set_fd_nonblocking(op->opaque->stderr_fd, true, &error)) {
             pcmk__info("Could not set '%s' input non-blocking: %s "
-                       QB_XS " fd=%d,rc=%d", op->opaque->exec,
-                       pcmk_rc_str(rc), op->opaque->stdin_fd, rc);
+                       QB_XS " fd=%d", op->opaque->exec, error->message,
+                       op->opaque->stdin_fd);
+            g_clear_error(&error);
         }
+
         pipe_in_action_stdin_parameters(op);
         // as long as we are handling parameters directly in here just close
         close(op->opaque->stdin_fd);

@@ -29,7 +29,8 @@
 #include <unistd.h>                 // close, read, write
 
 #include <bzlib.h>                  // BZ2_bzBuffToBuffDecompress
-#include <glib.h>                   // GUINT32_SWAP_LE_BE, g_string_*
+#include <glib.h>                   // gboolean, g_*, G_*, etc.
+#include <glib-unix.h>              // g_unix_set_fd_nonblocking
 #include <gnutls/gnutls.h>          // gnutls_strerror, GNUTLS_E_AGAIN
 #include <libxml/tree.h>            // xmlNode
 #include <qb/qblog.h>               // QB_XS
@@ -785,7 +786,7 @@ struct tcp_async_cb_data {
     void (*callback) (void *userdata, int rc, int sock);
 };
 
-/* \return G_SOURCE_CONTINUE if timer should be rescheduled, G_SOURCE_REMOVED
+/* \return G_SOURCE_CONTINUE if timer should be rescheduled, G_SOURCE_REMOVE
  *         otherwise
  */
 static gboolean
@@ -896,15 +897,16 @@ connect_socket_retry(int sock, const struct sockaddr *addr, socklen_t addrlen,
                      int timeout_ms, int *timer_id, void *userdata,
                      void (*callback) (void *userdata, int rc, int sock))
 {
+    GError *error = NULL;
     int rc = 0;
     int interval = 500;
     int timer;
     struct tcp_async_cb_data *cb_data = NULL;
 
-    rc = pcmk__set_nonblocking(sock);
-    if (rc != pcmk_rc_ok) {
-        pcmk__warn("Could not set socket non-blocking: %s " QB_XS " rc=%d",
-                   pcmk_rc_str(rc), rc);
+    if (!g_unix_set_fd_nonblocking(sock, true, &error)) {
+        rc = errno;
+        pcmk__warn("Could not set socket non-blocking: %s", error->message);
+        g_clear_error(&error);
         return rc;
     }
 
@@ -974,8 +976,10 @@ connect_socket_retry(int sock, const struct sockaddr *addr, socklen_t addrlen,
 static int
 connect_socket_once(int sock, const struct sockaddr *addr, socklen_t addrlen)
 {
-    int rc = connect(sock, addr, addrlen);
+    int rc = 0;
+    GError *error = NULL;
 
+    rc = connect(sock, addr, addrlen);
     if (rc < 0) {
         rc = errno;
         pcmk__warn("Could not connect socket: %s " QB_XS " rc=%d",
@@ -983,10 +987,10 @@ connect_socket_once(int sock, const struct sockaddr *addr, socklen_t addrlen)
         return rc;
     }
 
-    rc = pcmk__set_nonblocking(sock);
-    if (rc != pcmk_rc_ok) {
-        pcmk__warn("Could not set socket non-blocking: %s " QB_XS " rc=%d",
-                   pcmk_rc_str(rc), rc);
+    if (!g_unix_set_fd_nonblocking(sock, true, &error)) {
+        rc = errno;
+        pcmk__warn("Could not set socket non-blocking: %s", error->message);
+        g_clear_error(&error);
         return rc;
     }
 
@@ -1148,10 +1152,11 @@ pcmk__sockaddr2str(const void *sa, char *s)
 int
 pcmk__accept_remote_connection(int ssock, int *csock)
 {
-    int rc;
+    int rc = pcmk_rc_ok;
     struct sockaddr_storage addr;
     socklen_t laddr = sizeof(addr);
     char addr_str[INET6_ADDRSTRLEN];
+    GError *error = NULL;
 #ifdef TCP_USER_TIMEOUT
     long sbd_timeout = 0;
 #endif
@@ -1169,12 +1174,14 @@ pcmk__accept_remote_connection(int ssock, int *csock)
     pcmk__sockaddr2str(&addr, addr_str);
     pcmk__info("Accepted new remote client connection from %s", addr_str);
 
-    rc = pcmk__set_nonblocking(*csock);
-    if (rc != pcmk_rc_ok) {
-        pcmk__err("Could not set socket non-blocking: %s " QB_XS " rc=%d",
-                  pcmk_rc_str(rc), rc);
+    if (!g_unix_set_fd_nonblocking(*csock, true, &error)) {
+        rc = errno;
+        pcmk__err("Could not set socket non-blocking: %s", error->message);
+
+        g_clear_error(&error);
         close(*csock);
         *csock = -1;
+
         return rc;
     }
 
