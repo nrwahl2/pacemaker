@@ -513,17 +513,15 @@ pcmk__write_sync(int fd, const char *contents)
  * \internal
  * \brief Get directory name for temporary files
  *
- * Return the value of the TMPDIR environment variable if it is set to a
- * full path, otherwise return "/tmp".
- *
- * \return Name of directory to be used for temporary files
+ * \return The value of the \c TMPDIR environment variable if non-empty, or
+ *         \c "/tmp" otherwise
  */
 const char *
 pcmk__get_tmpdir(void)
 {
     const char *dir = getenv("TMPDIR");
 
-    return (dir && (*dir == '/'))? dir : "/tmp";
+    return !pcmk__str_empty(dir)? dir : "/tmp";
 }
 
 /*!
