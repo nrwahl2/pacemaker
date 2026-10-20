@@ -50,7 +50,6 @@ int pcmk__build_path(const char *path_c, mode_t mode);
 bool pcmk__daemon_can_write(const char *dir, const char *file);
 void pcmk__sync_directory(const char *name);
 
-int pcmk__file_contents(const char *filename, char **contents);
 int pcmk__write_sync(int fd, const char *contents);
 
 void pcmk__close_fds_in_child(void);
