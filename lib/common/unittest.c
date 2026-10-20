@@ -14,7 +14,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <gio/gio.h>                        // GFile, g_file_*
 #include <glib.h>                           // gchar, g_*, GError, etc.
+#include <glib-object.h>                    // g_object_unref
 #include <libxml/parser.h>                  // xmlCleanupParser()
 
 #include "crmcommon_private.h"              // pcmk__add_logfile()
@@ -117,24 +119,32 @@ pcmk__xml_test_teardown_group(void **state)
 }
 
 char *
-pcmk__cib_test_copy_cib(const char *in_file)
+pcmk__cib_test_copy_cib(const char *in_file_name)
 {
-    char *in_path = pcmk__assert_asprintf("%s/%s", getenv("PCMK_CTS_CLI_DIR"),
-                                          in_file);
-    char *out_path = NULL;
+    char *in_path = NULL;
+    GFile *in_file = NULL;
     char *contents = NULL;
+
+    char *out_path = NULL;
     int fd = -1;
+
     char *copy_path = NULL;
+
+    in_path = pcmk__assert_asprintf("%s/%s", getenv("PCMK_CTS_CLI_DIR"),
+                                    in_file_name);
+    in_file = g_file_new_for_path(in_path);
+
+    if (!g_file_load_contents(in_file, NULL, &contents, NULL, NULL, NULL)
+        || pcmk__str_empty(contents)) {
+
+        goto done;
+    }
 
     /* Copy the CIB over to a temp location so we can modify it. */
     out_path = pcmk__assert_asprintf("%s/test-cib.XXXXXX", g_get_tmp_dir());
 
     fd = mkstemp(out_path);
     if (fd < 0) {
-        goto done;
-    }
-
-    if (pcmk__file_contents(in_path, &contents) != pcmk_rc_ok) {
         goto done;
     }
 
@@ -149,13 +159,13 @@ pcmk__cib_test_copy_cib(const char *in_file)
 
 done:
     free(in_path);
+    g_clear_pointer(&in_file, g_object_unref);
+    g_free(contents);
 
     if (out_path != NULL) {
         unlink(out_path);
         free(out_path);
     }
-
-    free(contents);
 
     if (fd >= 0) {
         close(fd);
