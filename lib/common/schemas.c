@@ -18,7 +18,9 @@
 #include <sys/stat.h>
 #include <stdarg.h>
 
+#include <gio/gio.h>                    // GFile, g_file_*
 #include <glib.h>                       // g_str_has_prefix()
+#include <glib-object.h>                // g_object_unref
 #include <libxml/relaxng.h>
 #include <libxml/tree.h>                // xmlNode
 #include <libxml/xmlstring.h>           // xmlChar
@@ -1424,10 +1426,13 @@ add_schema_file_to_xml(xmlNode *parent, const char *file_name,
 {
     enum pcmk__xml_artefact_ns ns = pcmk__xml_artefact_ns_legacy_rng;
     char *path = NULL;
+
+    GFile *file = NULL;
     char *contents = NULL;
+    GError *error = NULL;
+
     xmlNode *file_node = NULL;
     GList *includes = NULL;
-    int rc = pcmk_rc_ok;
 
     CRM_CHECK(g_str_has_suffix(file_name, ".rng")
               || g_str_has_suffix(file_name, ".xsl"),
@@ -1444,11 +1449,16 @@ add_schema_file_to_xml(xmlNode *parent, const char *file_name,
     }
 
     path = pcmk__xml_artefact_path(ns, file_name);
+    file = g_file_new_for_path(path);
 
-    rc = pcmk__file_contents(path, &contents);
-    if (rc != pcmk_rc_ok || contents == NULL) {
-        pcmk__warn("Could not read schema file %s: %s", file_name,
-                   pcmk_rc_str(rc));
+    if (!g_file_load_contents(file, NULL, &contents, NULL, NULL, &error)) {
+        pcmk__err("Could not read schema file %s: %s", file_name,
+                  error->message);
+        goto done;
+    }
+
+    if (pcmk__str_empty(contents)) {
+        pcmk__warn("Ignoring empty schema file %s: %s", file_name);
         goto done;
     }
 
@@ -1478,7 +1488,9 @@ add_schema_file_to_xml(xmlNode *parent, const char *file_name,
 
 done:
     free(path);
-    free(contents);
+    g_clear_pointer(&file, g_object_unref);
+    g_free(contents);
+    g_clear_error(&error);
     g_list_free_full(includes, free);
 }
 
