@@ -1071,10 +1071,16 @@ PKG_CHECK_MODULES([UUID], [uuid],
                   [CPPFLAGS="${CPPFLAGS} ${UUID_CFLAGS}"
                    LIBS="${LIBS} ${UUID_LIBS}"])
 
-# Require minimum glib version
+# Require minimum glib, gobject, and gio version
 PKG_CHECK_MODULES([GLIB], [glib-2.0 >= 2.42.0],
                   [CPPFLAGS="${CPPFLAGS} ${GLIB_CFLAGS}"
                    LIBS="${LIBS} ${GLIB_LIBS}"])
+PKG_CHECK_MODULES([GOBJECT], [gobject-2.0 >= 2.42.0],
+                  [CPPFLAGS="${CPPFLAGS} ${GOBJECT_CFLAGS}"
+                   LIBS="${LIBS} ${GOBJECT_LIBS}"])
+PKG_CHECK_MODULES([GIO], [gio-2.0 >= 2.42.0],
+                  [CPPFLAGS="${CPPFLAGS} ${GIO_CFLAGS}"
+                   LIBS="${LIBS} ${GIO_LIBS}"])
 
 # Check whether high-resolution sleep function is available
 AC_CHECK_FUNCS([nanosleep usleep])

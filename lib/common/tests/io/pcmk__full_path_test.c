@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2025 the Pacemaker project contributors
+ * Copyright 2020-2026 the Pacemaker project contributors
  *
  * The version control history for this file may have further details.
  *
@@ -9,7 +9,7 @@
 
 #include <crm_internal.h>
 
-#include <stdbool.h>
+#include <glib.h>                           // g_free
 
 #include <crm/common/unittest_internal.h>
 
@@ -23,38 +23,27 @@ function_asserts(void **state)
 }
 
 static void
-function_exits(void **state)
-{
-    pcmk__assert_exits(
-        CRM_EX_OSERR,
-        {
-            pcmk__mock_strdup = true;   // strdup() will return NULL
-            expect_string(__wrap_strdup, s, "/full/path");
-            pcmk__full_path("/full/path", "/dir");
-            pcmk__mock_strdup = false;  // Use real strdup()
-        }
-    );
-}
-
-static void
 full_path(void **state)
 {
     char *path = NULL;
 
     path = pcmk__full_path("file", "/dir");
     assert_string_equal(path, "/dir/file");
-    free(path);
+    g_free(path);
 
     path = pcmk__full_path("/full/path", "/dir");
     assert_string_equal(path, "/full/path");
-    free(path);
+    g_free(path);
 
     path = pcmk__full_path("../relative/path", "/dir");
-    assert_string_equal(path, "/dir/../relative/path");
-    free(path);
+    assert_string_equal(path, "/relative/path");
+    g_free(path);
+
+    path = pcmk__full_path("../relative/path", "/dir1/dir2");
+    assert_string_equal(path, "/dir1/relative/path");
+    g_free(path);
 }
 
 PCMK__UNIT_TEST(NULL, NULL,
                 cmocka_unit_test(function_asserts),
-                cmocka_unit_test(function_exits),
                 cmocka_unit_test(full_path))

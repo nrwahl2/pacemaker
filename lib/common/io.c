@@ -23,6 +23,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <gio/gio.h>            // GFile, g_file_*
+#include <glib.h>               // g_clear_pointer
+#include <glib-object.h>        // g_object_unref()
+
 #include <crm/crm.h>
 #include <crm/common/util.h>
 
@@ -590,21 +594,35 @@ pcmk__close_fds_in_child(void)
 }
 
 /*!
+ * \internal
  * \brief Duplicate a file path, inserting a prefix if not absolute
  *
  * \param[in] filename  File path to duplicate
  * \param[in] dirname   If filename is not absolute, prefix to add
  *
  * \return Newly allocated memory with full path (guaranteed non-NULL)
+ *
+ * \note The caller is responsible for freeing the return value using
+ *       \c g_free().
  */
 char *
 pcmk__full_path(const char *filename, const char *dirname)
 {
-    pcmk__assert(filename != NULL);
+    GFile *dir = NULL;
+    GFile *resolved = NULL;
+    char *path = NULL;
 
-    if (filename[0] == '/') {
-        return pcmk__str_copy(filename);
-    }
+    pcmk__assert(filename != NULL);
     pcmk__assert(dirname != NULL);
-    return pcmk__assert_asprintf("%s/%s", dirname, filename);
+
+    dir = g_file_new_for_path(dirname);
+    resolved = g_file_resolve_relative_path(dir, filename);
+    pcmk__assert(resolved != NULL);
+
+    path = g_file_get_path(resolved);
+    pcmk__assert(path != NULL);
+
+    g_object_unref(dir);
+    g_object_unref(resolved);
+    return path;
 }
