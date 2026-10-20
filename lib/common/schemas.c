@@ -1437,32 +1437,28 @@ read_file_contents(const char *file, char **contents)
 }
 
 static void
-add_schema_file_to_xml(xmlNode *parent, const char *file, GList **already_included)
+add_schema_file_to_xml(xmlNode *parent, const char *file_name,
+                       GList **already_included)
 {
     char *contents = NULL;
-    char *path = NULL;
     xmlNode *file_node = NULL;
     GList *includes = NULL;
     int rc = pcmk_rc_ok;
 
+    CRM_CHECK(g_str_has_suffix(file_name, ".rng")
+              || g_str_has_suffix(file_name, ".xsl"),
+              return);
+
     /* If we already included this file, don't do so again. */
-    if (g_list_find_custom(*already_included, file, (GCompareFunc) strcmp) != NULL) {
+    if (g_list_find_custom(*already_included, file_name,
+                           (GCompareFunc) strcmp) != NULL) {
         return;
     }
 
-    /* Ensure whatever file we were given has a suffix we know about.  If not,
-     * just assume it's an RNG file.
-     */
-    if (!g_str_has_suffix(file, ".rng") && !g_str_has_suffix(file, ".xsl")) {
-        path = pcmk__assert_asprintf("%s.rng", file);
-    } else {
-        path = pcmk__str_copy(file);
-    }
-
-    rc = read_file_contents(path, &contents);
+    rc = read_file_contents(file_name, &contents);
     if (rc != pcmk_rc_ok || contents == NULL) {
-        pcmk__warn("Could not read schema file %s: %s", file, pcmk_rc_str(rc));
-        free(path);
+        pcmk__warn("Could not read schema file %s: %s", file_name,
+                   pcmk_rc_str(rc));
         return;
     }
 
@@ -1470,8 +1466,9 @@ add_schema_file_to_xml(xmlNode *parent, const char *file, GList **already_includ
      * as a CDATA block underneath it.
      */
     file_node = pcmk__xe_create(parent, PCMK__XE_FILE);
-    pcmk__xe_set(file_node, PCMK_XA_PATH, path);
-    *already_included = g_list_prepend(*already_included, path);
+    pcmk__xe_set(file_node, PCMK_XA_PATH, file_name);
+    *already_included = g_list_prepend(*already_included,
+                                       pcmk__str_copy(file_name));
 
     xmlAddChild(file_node,
                 xmlNewCDataBlock(parent->doc, (const xmlChar *) contents,
