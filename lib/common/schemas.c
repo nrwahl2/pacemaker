@@ -525,36 +525,38 @@ pcmk__sort_schemas(void)
 void
 pcmk__schema_init(void)
 {
-    if (!initialized) {
-        const char *remote_schema_dir = pcmk__remote_schema_dir();
-        char *base = pcmk__xml_artefact_root(pcmk__xml_artefact_ns_legacy_rng);
-        const pcmk__schema_version_t zero = SCHEMA_ZERO;
-        int schema_index = 0;
+    char *base = NULL;
+    const pcmk__schema_version_t zero = SCHEMA_ZERO;
+    int schema_index = 0;
 
-        initialized = true;
+    if (initialized) {
+        return;
+    }
 
-        wrap_libxslt(false);
+    initialized = true;
+    base = pcmk__xml_artefact_root(pcmk__xml_artefact_ns_legacy_rng);
 
-        pcmk__load_schemas_from_dir(base);
-        pcmk__load_schemas_from_dir(remote_schema_dir);
-        free(base);
+    wrap_libxslt(false);
 
-        // @COMPAT Deprecated since 2.1.8
-        add_schema(pcmk__schema_validator_none, &zero, PCMK_VALUE_NONE, NULL);
+    pcmk__load_schemas_from_dir(base);
+    pcmk__load_schemas_from_dir(pcmk__remote_schema_dir());
+    free(base);
 
-        /* add_schema() prepends items to the list, so in the simple case, this
-         * just reverses the list. However if there were any remote schemas,
-         * sorting is necessary.
-         */
-        pcmk__sort_schemas();
+    // @COMPAT Deprecated since 2.1.8
+    add_schema(pcmk__schema_validator_none, &zero, PCMK_VALUE_NONE, NULL);
 
-        // Now set the schema indexes and log the final result
-        for (GList *iter = known_schemas; iter != NULL; iter = iter->next) {
-            pcmk__schema_t *schema = iter->data;
+    /* add_schema() prepends items to the list, so in the simple case, this just
+     * reverses the list. However, if there were any remote schemas, sorting is
+     * necessary.
+     */
+    pcmk__sort_schemas();
 
-            pcmk__debug("Loaded schema %d: %s", schema_index, schema->name);
-            schema->schema_index = schema_index++;
-        }
+    // Now set the schema indexes and log the final result
+    for (GList *iter = known_schemas; iter != NULL; iter = iter->next) {
+        pcmk__schema_t *schema = iter->data;
+
+        pcmk__debug("Loaded schema %d: %s", schema_index, schema->name);
+        schema->schema_index = schema_index++;
     }
 }
 
