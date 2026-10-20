@@ -29,7 +29,7 @@ void pcmk__schema_cleanup(void);
 void pcmk__load_schemas_from_dir(const char *dir);
 void pcmk__sort_schemas(void);
 GList *pcmk__schema_files_later_than(const char *name);
-void pcmk__build_schema_xml_node(xmlNode *parent, const char *name,
+void pcmk__build_schema_xml_node(xmlNode *parent, const char *file_name,
                                  GList **already_included);
 const char *pcmk__remote_schema_dir(void);
 GList *pcmk__get_schema(const char *name);

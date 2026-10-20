@@ -50,7 +50,7 @@ invalid_name(void **state)
     GList *already_included = NULL;
     xmlNode *parent = pcmk__xe_create(NULL, PCMK__XA_SCHEMAS);
 
-    pcmk__build_schema_xml_node(parent, "pacemaker-9.0", &already_included);
+    pcmk__build_schema_xml_node(parent, "pacemaker-9.0.rng", &already_included);
     assert_null(parent->children);
     assert_null(already_included);
     pcmk__xml_free(parent);
@@ -65,7 +65,7 @@ single_schema(void **state)
     xmlNode *file_node = NULL;
     int i = 0;
 
-    pcmk__build_schema_xml_node(parent, "pacemaker-3.0", &already_included);
+    pcmk__build_schema_xml_node(parent, "pacemaker-3.0.rng", &already_included);
 
     assert_non_null(already_included);
     assert_non_null(parent->children);
@@ -81,7 +81,7 @@ single_schema(void **state)
      * </schemas>
      */
     schema_node = pcmk__xe_first_child(parent, NULL, NULL, NULL);
-    assert_string_equal("pacemaker-3.0",
+    assert_string_equal("pacemaker-3.0.rng",
                         pcmk__xe_get(schema_node, PCMK_XA_VERSION));
 
     file_node = pcmk__xe_first_child(schema_node, NULL, NULL, NULL);
@@ -106,8 +106,8 @@ multiple_schemas(void **state)
     xmlNode *file_node = NULL;
     int i = 0;
 
-    pcmk__build_schema_xml_node(parent, "pacemaker-2.0", &already_included);
-    pcmk__build_schema_xml_node(parent, "pacemaker-2.1", &already_included);
+    pcmk__build_schema_xml_node(parent, "pacemaker-2.0.rng", &already_included);
+    pcmk__build_schema_xml_node(parent, "pacemaker-2.1.rng", &already_included);
 
     assert_non_null(already_included);
     assert_non_null(parent->children);
@@ -116,7 +116,7 @@ multiple_schemas(void **state)
      * when the function is called repeatedly.
      */
     schema_node = pcmk__xe_first_child(parent, NULL, NULL, NULL);
-    assert_string_equal("pacemaker-2.0",
+    assert_string_equal("pacemaker-2.0.rng",
                         pcmk__xe_get(schema_node, PCMK_XA_VERSION));
 
     file_node = pcmk__xe_first_child(schema_node, NULL, NULL, NULL);
@@ -129,7 +129,7 @@ multiple_schemas(void **state)
     }
 
     schema_node = pcmk__xe_next(schema_node, NULL);
-    assert_string_equal("pacemaker-2.1",
+    assert_string_equal("pacemaker-2.1.rng",
                         pcmk__xe_get(schema_node, PCMK_XA_VERSION));
 
     file_node = pcmk__xe_first_child(schema_node, NULL, NULL, NULL);
