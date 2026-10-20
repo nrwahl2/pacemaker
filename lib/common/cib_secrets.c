@@ -19,7 +19,9 @@
 #include <sys/stat.h>
 #include <time.h>
 
+#include <gio/gio.h>            // GFile, g_file_*
 #include <glib.h>
+#include <glib-object.h>        // g_object_unref
 
 #include <crm/common/util.h>
 
@@ -36,25 +38,35 @@
  *       existing value files that have trailing whitespace. Similarly, if we
  *       trim trailing whitespace, it would make sense to trim leading
  *       whitespace, but this changes existing hashes.
+ * \note The caller is responsible for freeing the return value using \c free().
  */
 static char *
 read_file_trimmed(const char *filename)
 {
-    char *buf = NULL;
-    int rc = pcmk__file_contents(filename, &buf);
+    GFile *file = g_file_new_for_path(filename);
+    char *contents = NULL;
+    GError *error = NULL;
 
-    if (rc != pcmk_rc_ok) {
-        pcmk__err("Failed to read %s: %s", filename, pcmk_rc_str(rc));
-        free(buf);
-        return NULL;
+    char *result = NULL;
+
+    if (!g_file_load_contents(file, NULL, &contents, NULL, NULL, &error)) {
+        pcmk__err("Failed to read %s: %s", filename, error->message);
+        goto done;
     }
 
-    if (buf == NULL) {
+    if (pcmk__str_empty(contents)) {
         pcmk__err("File %s is empty", filename);
-        return NULL;
+        goto done;
     }
 
-    return g_strchomp(buf);
+    result = pcmk__str_copy(g_strchomp(contents));
+
+done:
+    g_clear_pointer(&file, g_object_unref);
+    g_free(contents);
+    g_clear_error(&error);
+
+    return contents;
 }
 
 /*!
