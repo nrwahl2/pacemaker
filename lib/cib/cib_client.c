@@ -485,7 +485,7 @@ get_shadow_file(const char *suffix)
                 }
             }
 
-            dir = pcmk__get_tmpdir();
+            dir = g_get_tmp_dir();
             if (home && home[0] == '/') {
                 int rc = 0;
 

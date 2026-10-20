@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <glib.h>                           // gchar, g_*, GError, etc.
 #include <libxml/parser.h>                  // xmlCleanupParser()
 
 #include "crmcommon_private.h"              // pcmk__add_logfile()
@@ -34,7 +35,7 @@ pcmk__assert_validates(xmlNode *xml)
     int status;
     GError *gerr = NULL;
     char *xmllint_input = pcmk__assert_asprintf("%s/test-xmllint.XXXXXX",
-                                                pcmk__get_tmpdir());
+                                                g_get_tmp_dir());
     int fd;
     int rc;
 
@@ -125,7 +126,7 @@ pcmk__cib_test_copy_cib(const char *in_file)
     int fd;
 
     /* Copy the CIB over to a temp location so we can modify it. */
-    out_path = pcmk__assert_asprintf("%s/test-cib.XXXXXX", pcmk__get_tmpdir());
+    out_path = pcmk__assert_asprintf("%s/test-cib.XXXXXX", g_get_tmp_dir());
 
     fd = mkstemp(out_path);
     if (fd < 0) {

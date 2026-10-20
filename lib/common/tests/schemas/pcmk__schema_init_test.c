@@ -1,5 +1,5 @@
 /*
- * Copyright 2023-2025 the Pacemaker project contributors
+ * Copyright 2023-2026 the Pacemaker project contributors
  *
  * The version control history for this file may have further details.
  *
@@ -11,6 +11,8 @@
 
 #include <ftw.h>
 #include <unistd.h>
+
+#include <glib.h>                           // g_get_tmp_dir
 
 #include <crm/common/xml.h>
 #include <crm/common/unittest_internal.h>
@@ -56,7 +58,7 @@ setup(void **state)
      * to be anything special - we can just copy existing schemas but give
      * them new names.
      */
-    dir = pcmk__assert_asprintf("%s/test-schemas.XXXXXX", pcmk__get_tmpdir());
+    dir = pcmk__assert_asprintf("%s/test-schemas.XXXXXX", g_get_tmp_dir());
     remote_schema_dir = mkdtemp(dir);
 
     if (remote_schema_dir == NULL) {

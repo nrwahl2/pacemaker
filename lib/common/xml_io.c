@@ -637,7 +637,7 @@ pcmk__xml_write_temp_file(const xmlNode *xml, const char *desc,
         uuid = pcmk__generate_uuid();
         filename = uuid;
     }
-    path = pcmk__assert_asprintf("%s/%s", pcmk__get_tmpdir(), filename);
+    path = pcmk__assert_asprintf("%s/%s", g_get_tmp_dir(), filename);
 
     pcmk__info("Saving %s to %s", desc, path);
     pcmk__xml_write_file(xml, filename, false);
@@ -659,7 +659,7 @@ save_xml_to_file(const xmlNode *xml, const char *desc, const char *filename)
     if (filename == NULL) {
         char *uuid = pcmk__generate_uuid();
 
-        f = pcmk__assert_asprintf("%s/%s", pcmk__get_tmpdir(), uuid);
+        f = pcmk__assert_asprintf("%s/%s", g_get_tmp_dir(), uuid);
         filename = f;
         free(uuid);
     }

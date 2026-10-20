@@ -23,7 +23,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <glib.h>               // g_clear_pointer
+#include <glib.h>               // g_*
 
 #include <crm/crm.h>
 #include <crm/common/util.h>
@@ -507,21 +507,6 @@ pcmk__write_sync(int fd, const char *contents)
     }
     fclose(fp);
     return rc;
-}
-
-/*!
- * \internal
- * \brief Get directory name for temporary files
- *
- * \return The value of the \c TMPDIR environment variable if non-empty, or
- *         \c "/tmp" otherwise
- */
-const char *
-pcmk__get_tmpdir(void)
-{
-    const char *dir = getenv("TMPDIR");
-
-    return !pcmk__str_empty(dir)? dir : "/tmp";
 }
 
 /*!
