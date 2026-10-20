@@ -1,5 +1,5 @@
 /*
- * Copyright 2010-2025 the Pacemaker project contributors
+ * Copyright 2010-2026 the Pacemaker project contributors
  *
  * The version control history for this file may have further details.
  *
@@ -14,7 +14,7 @@
 #include <errno.h>
 #include <sys/stat.h>
 
-#include <glib.h>               // g_str_has_prefix()
+#include <glib.h>               // gboolean, g_*, etc.
 
 #include <crm/crm.h>
 #include <crm/common/xml.h>
@@ -257,7 +257,7 @@ services__lsb_agent_exists(const char *agent)
     char *path = pcmk__full_path(agent, PCMK__LSB_INIT_DIR);
 
     rc = (stat(path, &st) == 0);
-    free(path);
+    g_free(path);
     return rc;
 }
 
