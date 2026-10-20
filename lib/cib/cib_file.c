@@ -18,10 +18,12 @@
 #include <stdarg.h>
 #include <string.h>
 #include <pwd.h>
-
 #include <sys/stat.h>
 #include <sys/types.h>
+
+#include <gio/gio.h>            // GFile, g_file_*
 #include <glib.h>
+#include <glib-object.h>        // g_object_unref
 
 #include <crm/crm.h>
 #include <crm/cib/internal.h>
@@ -793,37 +795,48 @@ cib_file_new(const char *cib_location)
  * \internal
  * \brief Compare the calculated digest of an XML tree against a signature file
  *
- * \param[in] root     Root of XML tree to compare
- * \param[in] sigfile  Name of signature file containing digest to compare
+ * \param[in] root       Root of XML tree to compare
+ * \param[in] file_name  Name of signature file containing digest to compare
  *
  * \return \c true if digests match or signature file does not exist, or
  *         \c false otherwise
  */
 static bool
-verify_digest(xmlNode *root, const char *sigfile)
+verify_digest(xmlNode *root, const char *file_name)
 {
-    bool passed = false;
-    char *expected;
-    int rc = pcmk__file_contents(sigfile, &expected);
+    GFile *file = NULL;
+    char *expected = NULL;
+    GError *error = NULL;
+    bool rc = true;
 
-    switch (rc) {
-        case pcmk_rc_ok:
-            if (expected == NULL) {
-                pcmk__err("On-disk digest at %s is empty", sigfile);
-                return false;
-            }
-            break;
-        case ENOENT:
-            pcmk__warn("No on-disk digest present at %s", sigfile);
-            return true;
-        default:
-            pcmk__err("Could not read on-disk digest from %s: %s", sigfile,
-                      pcmk_rc_str(rc));
-            return false;
+    file = g_file_new_for_path(file_name);
+
+    // Ignore potential TOCTOU. Next step can error out if file gets removed.
+    if (!g_file_query_exists(file, NULL)) {
+        pcmk__warn("No on-disk digest present at %s", file_name);
+        goto done;
     }
-    passed = pcmk__verify_digest(root, expected);
-    free(expected);
-    return passed;
+
+    if (!g_file_load_contents(file, NULL, &expected, NULL, NULL, &error)) {
+        rc = false;
+        pcmk__err("Could not read on-disk digest from %s: %s", file_name,
+                  error->message);
+        goto done;
+    }
+
+    if (pcmk__str_empty(expected)) {
+        rc = false;
+        pcmk__err("On-disk digest at %s is empty", file_name);
+        goto done;
+    }
+
+    rc = pcmk__verify_digest(root, expected);
+
+done:
+    g_clear_pointer(&file, g_object_unref);
+    g_free(expected);
+    g_clear_error(&error);
+    return rc;
 }
 
 /*!
