@@ -1499,21 +1499,27 @@ add_schema_file_to_xml(xmlNode *parent, const char *file, GList **already_includ
  *        of a given XML node
  *
  * \param[in,out] parent            The parent XML node
- * \param[in] name                  The schema version to compare against
- *                                  (for example, "pacemaker-3.1" or "pacemaker-3.1.rng")
- * \param[in,out] already_included  A list of names that have already been added
- *                                  to the parent node.
+ * \param[in]     file_name         Base name of RNG or XSLT file
+ * \param[in,out] already_included  A list of file names that have already been
+ *                                  added to the parent node
  *
  * \note The caller is responsible for freeing both the returned list and
  *       the elements of the list
  */
 void
-pcmk__build_schema_xml_node(xmlNode *parent, const char *name, GList **already_included)
+pcmk__build_schema_xml_node(xmlNode *parent, const char *file_name,
+                            GList **already_included)
 {
-    xmlNode *schema_node = pcmk__xe_create(parent, PCMK__XA_SCHEMA);
+    xmlNode *schema_node = NULL;
 
-    pcmk__xe_set(schema_node, PCMK_XA_VERSION, name);
-    add_schema_file_to_xml(schema_node, name, already_included);
+    CRM_CHECK(g_str_has_suffix(file_name, ".rng")
+              || g_str_has_suffix(file_name, ".xsl"),
+              return);
+
+    schema_node = pcmk__xe_create(parent, PCMK__XA_SCHEMA);
+    pcmk__xe_set(schema_node, PCMK_XA_VERSION, file_name);
+
+    add_schema_file_to_xml(schema_node, file_name, already_included);
 
     if (schema_node->children == NULL) {
         // Not needed if empty. May happen if name was invalid, for example.
