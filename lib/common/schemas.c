@@ -1418,28 +1418,12 @@ external_refs_in_schema(GList **list, const char *contents)
     pcmk__xml_free(xml);
 }
 
-static int
-read_file_contents(const char *file, char **contents)
-{
-    int rc = pcmk_rc_ok;
-    char *path = NULL;
-
-    if (g_str_has_suffix(file, ".rng")) {
-        path = pcmk__xml_artefact_path(pcmk__xml_artefact_ns_legacy_rng, file);
-    } else {
-        path = pcmk__xml_artefact_path(pcmk__xml_artefact_ns_legacy_xslt, file);
-    }
-
-    rc = pcmk__file_contents(path, contents);
-
-    free(path);
-    return rc;
-}
-
 static void
 add_schema_file_to_xml(xmlNode *parent, const char *file_name,
                        GList **already_included)
 {
+    enum pcmk__xml_artefact_ns ns = pcmk__xml_artefact_ns_legacy_rng;
+    char *path = NULL;
     char *contents = NULL;
     xmlNode *file_node = NULL;
     GList *includes = NULL;
@@ -1447,19 +1431,25 @@ add_schema_file_to_xml(xmlNode *parent, const char *file_name,
 
     CRM_CHECK(g_str_has_suffix(file_name, ".rng")
               || g_str_has_suffix(file_name, ".xsl"),
-              return);
+              goto done);
 
     /* If we already included this file, don't do so again. */
     if (g_list_find_custom(*already_included, file_name,
                            (GCompareFunc) strcmp) != NULL) {
-        return;
+        goto done;
     }
 
-    rc = read_file_contents(file_name, &contents);
+    if (g_str_has_suffix(file_name, ".xsl")) {
+        ns = pcmk__xml_artefact_ns_legacy_xslt;
+    }
+
+    path = pcmk__xml_artefact_path(ns, file_name);
+
+    rc = pcmk__file_contents(path, &contents);
     if (rc != pcmk_rc_ok || contents == NULL) {
         pcmk__warn("Could not read schema file %s: %s", file_name,
                    pcmk_rc_str(rc));
-        return;
+        goto done;
     }
 
     /* Create a new <file path="..."> node with the contents of the file
@@ -1486,6 +1476,8 @@ add_schema_file_to_xml(xmlNode *parent, const char *file_name,
         add_schema_file_to_xml(parent, iter->data, already_included);
     }
 
+done:
+    free(path);
     free(contents);
     g_list_free_full(includes, free);
 }
