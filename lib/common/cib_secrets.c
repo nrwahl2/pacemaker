@@ -40,7 +40,6 @@
 static char *
 read_file_trimmed(const char *filename)
 {
-    char *p = NULL;
     char *buf = NULL;
     int rc = pcmk__file_contents(filename, &buf);
 
@@ -55,11 +54,7 @@ read_file_trimmed(const char *filename)
         return NULL;
     }
 
-    // Strip trailing white space
-    for (p = buf + strlen(buf) - 1; (p >= buf) && isspace(*p); p--);
-    *(p + 1) = '\0';
-
-    return buf;
+    return g_strchomp(buf);
 }
 
 /*!
