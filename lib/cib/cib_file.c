@@ -385,38 +385,6 @@ get_op_function(const cib__operation_t *operation)
     return op_functions[type];
 }
 
-/*!
- * \internal
- * \brief Check whether a file is the live CIB
- *
- * \param[in] filename Name of file to check
- *
- * \return \c true if file exists and its real path is same as the live CIB's,
- *         or \c false otherwise
- */
-static bool
-is_live(const char *filename)
-{
-    bool same = false;
-
-    if (filename != NULL) {
-        // Canonicalize file names for true comparison
-        char *real_filename = NULL;
-
-        if (pcmk__real_path(filename, &real_filename) == pcmk_rc_ok) {
-            char *real_livename = NULL;
-
-            if (pcmk__real_path(CRM_CONFIG_DIR "/" CIB_LIVE_NAME,
-                                &real_livename) == pcmk_rc_ok) {
-                same = !strcmp(real_filename, real_livename);
-                free(real_livename);
-            }
-            free(real_filename);
-        }
-    }
-    return same;
-}
-
 static int
 file_perform_op_delegate(cib_t *cib, const char *op, const char *host,
                          const char *section, xmlNode *data,
@@ -755,6 +723,8 @@ cib_file_new(const char *cib_location)
 {
     cib_t *cib = NULL;
     file_opaque_t *private = NULL;
+    struct stat sb_loc = { 0, };
+    struct stat sb_live = { 0, };
 
     if (cib_location == NULL) {
         cib_location = getenv("CIB_file");
@@ -773,7 +743,13 @@ cib_file_new(const char *cib_location)
     cib->variant_opaque = private;
 
     private->flags = 0;
-    if (is_live(cib_location)) {
+
+    if ((stat(cib_location, &sb_loc) == 0)
+        && (stat(CRM_CONFIG_DIR "/" CIB_LIVE_NAME, &sb_live) == 0)
+        && (sb_loc.st_dev == sb_live.st_dev)
+        && (sb_loc.st_ino == sb_live.st_ino)) {
+
+        // Devices and inodes match, so cib_location and live CIB are same file
         set_file_flags(private, file_flag_live);
         pcmk__trace("File %s detected as live CIB", cib_location);
     }

@@ -35,8 +35,6 @@ extern "C" {
 #define PCMK__BZ2_WORK      20
 #define PCMK__BZ2_THRESHOLD (128 * 1024)
 
-int pcmk__real_path(const char *path, char **resolved_path);
-
 char *pcmk__series_filename(const char *directory, const char *series,
                             unsigned int sequence, bool bzip);
 int pcmk__read_series_sequence(const char *directory, const char *series,
