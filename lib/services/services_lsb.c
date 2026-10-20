@@ -14,7 +14,9 @@
 #include <errno.h>
 #include <sys/stat.h>
 
+#include <gio/gio.h>            // GFile, g_file_*
 #include <glib.h>               // gboolean, g_*, etc.
+#include <glib-object.h>        // g_object_unref()
 
 #include <crm/crm.h>
 #include <crm/common/xml.h>
@@ -249,12 +251,51 @@ services__list_lsb_agents(void)
     return services__list_dir(PCMK__LSB_INIT_DIR, true);
 }
 
+/*!
+ * \internal
+ * \brief Get a canonical path for an LSB agent
+ *
+ * If \p agent is an absolute path, return a copy of it. Otherwise, return a
+ * path formed by resolving \p agent relative to \c PCMK__LSB_INIT_DIR.
+ *
+ * The returned path is guaranteed to be absolute and partly canonicalized. It's
+ * canonicalized based on the string values of \p agent and
+ * \c PCMK__LSB_INIT_DIR, but it may still contain symlinks.
+ *
+ * \param[in] agent  LSB agent
+ *
+ * \return Newly allocated path for \p agent (guaranteed not to be \c NULL)
+ *
+ * \note The caller is responsible for freeing the return value using
+ *       \c g_free().
+ */
+static char *
+lsb_exec_path(const char *agent)
+{
+    GFile *dir = NULL;
+    GFile *resolved = NULL;
+    char *path = NULL;
+
+    pcmk__assert(agent != NULL);
+
+    dir = g_file_new_for_path(PCMK__LSB_INIT_DIR);
+    resolved = g_file_resolve_relative_path(dir, agent);
+    pcmk__assert(resolved != NULL);
+
+    path = g_file_get_path(resolved);
+    pcmk__assert(path != NULL);
+
+    g_clear_pointer(&dir, g_object_unref);
+    g_clear_pointer(&resolved, g_object_unref);
+    return path;
+}
+
 bool
 services__lsb_agent_exists(const char *agent)
 {
     bool rc = FALSE;
     struct stat st;
-    char *path = pcmk__full_path(agent, PCMK__LSB_INIT_DIR);
+    char *path = lsb_exec_path(agent);
 
     rc = (stat(path, &st) == 0);
     g_free(path);
@@ -272,7 +313,7 @@ services__lsb_agent_exists(const char *agent)
 int
 services__lsb_prepare(svc_action_t *op)
 {
-    op->opaque->exec = pcmk__full_path(op->agent, PCMK__LSB_INIT_DIR);
+    op->opaque->exec = lsb_exec_path(op->agent);
     op->opaque->args[0] = strdup(op->opaque->exec);
     op->opaque->args[1] = strdup(op->action);
     if ((op->opaque->args[0] == NULL) || (op->opaque->args[1] == NULL)) {
