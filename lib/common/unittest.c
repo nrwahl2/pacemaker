@@ -123,33 +123,45 @@ pcmk__cib_test_copy_cib(const char *in_file)
                                           in_file);
     char *out_path = NULL;
     char *contents = NULL;
-    int fd;
+    int fd = -1;
+    char *copy_path = NULL;
 
     /* Copy the CIB over to a temp location so we can modify it. */
     out_path = pcmk__assert_asprintf("%s/test-cib.XXXXXX", g_get_tmp_dir());
 
     fd = mkstemp(out_path);
     if (fd < 0) {
-        free(out_path);
-        return NULL;
+        goto done;
     }
 
     if (pcmk__file_contents(in_path, &contents) != pcmk_rc_ok) {
-        free(out_path);
-        close(fd);
-        return NULL;
+        goto done;
     }
 
     if (pcmk__write_sync(fd, contents) != pcmk_rc_ok) {
-        free(out_path);
-        free(in_path);
-        free(contents);
-        close(fd);
-        return NULL;
+        goto done;
     }
 
-    setenv("CIB_file", out_path, 1);
-    return out_path;
+    copy_path = out_path;
+    out_path = NULL;
+
+    setenv("CIB_file", copy_path, 1);
+
+done:
+    free(in_path);
+
+    if (out_path != NULL) {
+        unlink(out_path);
+        free(out_path);
+    }
+
+    free(contents);
+
+    if (fd >= 0) {
+        close(fd);
+    }
+
+    return copy_path;
 }
 
 void
