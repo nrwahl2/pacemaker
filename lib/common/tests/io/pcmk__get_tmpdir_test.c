@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2025 the Pacemaker project contributors
+ * Copyright 2021-2026 the Pacemaker project contributors
  *
  * The version control history for this file may have further details.
  *
@@ -35,7 +35,7 @@ getenv_returns_invalid(void **state)
     expect_string(__wrap_getenv, name, "TMPDIR");
     will_return(__wrap_getenv, "subpath");              // getenv("TMPDIR") return value
     result = pcmk__get_tmpdir();
-    assert_string_equal(result, "/tmp");
+    assert_string_equal(result, "subpath");
 
     pcmk__mock_getenv = false;
 }
