@@ -520,19 +520,23 @@ file_signon(cib_t *cib, const char *name, enum cib_conn_type type)
  * \internal
  * \brief Write out the in-memory CIB to a live CIB file
  *
- * \param[in]     cib_root  Root of XML tree to write
- * \param[in,out] path      Full path to file to write
+ * \param[in] cib_root  Root of XML tree to write
+ * \param[in] path      Full path to file to write
  *
  * \return Standard Pacemaker return code
  */
 static int
-write_live(xmlNode *cib_root, char *path)
+write_live(xmlNode *cib_root, const char *path)
 {
     uid_t euid = geteuid();
     uid_t daemon_uid = 0;
     gid_t daemon_gid = 0;
-    char *sep = strrchr(path, '/');
-    const char *cib_dirname, *cib_filename;
+
+    GFile *file = NULL;
+    GFile *dir = NULL;
+    char *dname = NULL;
+    char *bname = NULL;
+
     int rc = pcmk_rc_ok;
 
     /* Get the desired uid/gid */
@@ -540,7 +544,7 @@ write_live(xmlNode *cib_root, char *path)
     if (rc != pcmk_rc_ok) {
         pcmk__err("Could not find user " CRM_DAEMON_USER ": %s",
                   pcmk_rc_str(rc));
-        return rc;
+        goto done;
     }
 
     /* If we're root, we can change the ownership;
@@ -551,23 +555,7 @@ write_live(xmlNode *cib_root, char *path)
         pcmk__err("Must be root or " CRM_DAEMON_USER " to modify live CIB");
 
         // @TODO Should this return an error instead?
-        return pcmk_rc_ok;
-    }
-
-    /* fancy footwork to separate dirname from filename
-     * (we know the canonical name maps to the live CIB,
-     * but the given name might be relative, or symlinked)
-     */
-    if (sep == NULL) { /* no directory component specified */
-        cib_dirname = "./";
-        cib_filename = path;
-    } else if (sep == path) { /* given name is in / */
-        cib_dirname = "/";
-        cib_filename = path + 1;
-    } else { /* typical case; split given name into parts */
-        *sep = '\0';
-        cib_dirname = path;
-        cib_filename = sep + 1;
+        goto done;
     }
 
     /* if we're root, we want to update the file ownership */
@@ -577,8 +565,17 @@ write_live(xmlNode *cib_root, char *path)
         do_chown = true;
     }
 
+    file = g_file_new_for_path(path);
+    dir = g_file_get_parent(file);
+
+    // Should be impossible since path of live CIB is not "/"
+    pcmk__assert(dir != NULL);
+
+    dname = g_file_get_path(dir);
+    bname = g_file_get_basename(file);
+
     /* write the file */
-    rc = cib_file_write_with_digest(cib_root, cib_dirname, cib_filename);
+    rc = cib_file_write_with_digest(cib_root, dname, bname);
     rc = pcmk_legacy2rc(rc);
 
     /* turn off file ownership changes, for other callers */
@@ -586,11 +583,11 @@ write_live(xmlNode *cib_root, char *path)
         do_chown = false;
     }
 
-    /* undo fancy stuff */
-    if ((sep != NULL) && (*sep == '\0')) {
-        *sep = '/';
-    }
-
+done:
+    g_clear_pointer(&file, g_object_unref);
+    g_clear_pointer(&dir, g_object_unref);
+    g_free(dname);
+    g_free(bname);
     return rc;
 }
 
