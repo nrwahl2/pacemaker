@@ -497,26 +497,23 @@ file_signon(cib_t *cib, const char *name, enum cib_conn_type type)
     int rc = pcmk_ok;
     file_opaque_t *private = cib->variant_opaque;
 
-    if (private->filename == NULL) {
-        rc = -EINVAL;
-    } else {
-        rc = load_file_cib(private->filename, &private->cib_xml);
-    }
+    pcmk__assert(!pcmk__str_empty(private->filename));
 
-    if (rc == pcmk_ok) {
-        pcmk__debug("Opened connection to local file '%s' for %s",
-                    private->filename, pcmk__s(name, "client"));
-        cib->state = cib_connected_command;
-        cib->type = cib_command;
-        register_client(cib);
-
-    } else {
+    rc = load_file_cib(private->filename, &private->cib_xml);
+    if (rc != pcmk_ok) {
         pcmk__info("Connection to local file '%s' for %s (client %s) failed: "
-                   "%s",
-                   private->filename, pcmk__s(name, "client"), private->id,
-                   pcmk_strerror(rc));
+                   "%s", private->filename, pcmk__s(name, "client"),
+                   private->id, pcmk_strerror(rc));
+        return rc;
     }
-    return rc;
+
+    pcmk__debug("Opened connection to local file '%s' for %s",
+                private->filename, pcmk__s(name, "client"));
+    cib->state = cib_connected_command;
+    cib->type = cib_command;
+    register_client(cib);
+
+    return pcmk_ok;
 }
 
 /*!
