@@ -450,6 +450,7 @@ get_shadow_file(const char *suffix)
     struct passwd *pwent = NULL;
     const char *user = NULL;
     const char *home = NULL;
+    int rc = 0;
 
     if (dir != NULL) {
         goto done;
@@ -490,20 +491,20 @@ get_shadow_file(const char *suffix)
 
     dir = g_get_tmp_dir();
 
-    if (home && home[0] == '/') {
-        int rc = 0;
+    if ((home == NULL) || (home[0] != '/')) {
+        goto done;
+    }
 
-        cib_home = pcmk__assert_asprintf("%s/.cib", home);
+    cib_home = pcmk__assert_asprintf("%s/.cib", home);
 
-        rc = mkdir(cib_home, 0700);
-        if (rc < 0 && errno != EEXIST) {
-            pcmk__err("Couldn't create user-specific shadow directory "
-                      "%s: %s",
-                      cib_home, strerror(errno));
+    rc = mkdir(cib_home, 0700);
+    if (rc < 0 && errno != EEXIST) {
+        pcmk__err("Couldn't create user-specific shadow directory "
+                  "%s: %s",
+                  cib_home, strerror(errno));
 
-        } else {
-            dir = cib_home;
-        }
+    } else {
+        dir = cib_home;
     }
 
 done:
