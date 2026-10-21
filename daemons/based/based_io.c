@@ -320,8 +320,6 @@ read_current_cib(void)
     cib_status = pcmk_rc_ok;
 
     rc = cib__file_read_and_verify(cibfile_path, sigfile_path, &cib_xml);
-    rc = pcmk_legacy2rc(rc);
-
     if (rc == pcmk_rc_ok) {
         pcmk__info("Loaded CIB from %s (with digest %s)", cibfile_path,
                    sigfile_path);
@@ -467,8 +465,6 @@ read_backup_cib(void)
 
         int rc = cib__file_read_and_verify(cibfile_path, sigfile_path,
                                            &cib_xml);
-
-        rc = pcmk_legacy2rc(rc);
 
         if (rc == pcmk_rc_ok) {
             pcmk__notice("Loaded CIB from last valid backup %s (with digest "
