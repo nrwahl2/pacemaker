@@ -449,6 +449,7 @@ get_shadow_file(const char *suffix)
 
     struct passwd *pwent = NULL;
     const char *user = NULL;
+    const char *home = NULL;
 
     if (dir != NULL) {
         goto done;
@@ -478,31 +479,30 @@ get_shadow_file(const char *suffix)
 
     if (pcmk__strcase_any_of(user, "root", CRM_DAEMON_USER, NULL)) {
         dir = CRM_CONFIG_DIR;
+        goto done;
+    }
 
-    } else {
-        const char *home = NULL;
-
-        if ((home = getenv("HOME")) == NULL) {
-            if (pwent) {
-                home = pwent->pw_dir;
-            }
+    if ((home = getenv("HOME")) == NULL) {
+        if (pwent) {
+            home = pwent->pw_dir;
         }
+    }
 
-        dir = g_get_tmp_dir();
-        if (home && home[0] == '/') {
-            int rc = 0;
+    dir = g_get_tmp_dir();
 
-            cib_home = pcmk__assert_asprintf("%s/.cib", home);
+    if (home && home[0] == '/') {
+        int rc = 0;
 
-            rc = mkdir(cib_home, 0700);
-            if (rc < 0 && errno != EEXIST) {
-                pcmk__err("Couldn't create user-specific shadow directory "
-                          "%s: %s",
-                          cib_home, strerror(errno));
+        cib_home = pcmk__assert_asprintf("%s/.cib", home);
 
-            } else {
-                dir = cib_home;
-            }
+        rc = mkdir(cib_home, 0700);
+        if (rc < 0 && errno != EEXIST) {
+            pcmk__err("Couldn't create user-specific shadow directory "
+                      "%s: %s",
+                      cib_home, strerror(errno));
+
+        } else {
+            dir = cib_home;
         }
     }
 
