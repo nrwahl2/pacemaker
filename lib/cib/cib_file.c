@@ -820,15 +820,17 @@ done:
  *       successful return.
  */
 int
-cib_file_read_and_verify(const char *filename, const char *sigfile, xmlNode **root)
+cib__file_read_and_verify(const char *filename, const char *sigfile,
+                         xmlNode **root)
 {
-    int s_res;
-    struct stat buf;
+    int s_res = 0;
+    struct stat buf = { 0, };
     char *local_sigfile = NULL;
     xmlNode *local_root = NULL;
 
     pcmk__assert(filename != NULL);
-    if (root) {
+
+    if (root != NULL) {
         *root = NULL;
     }
 
@@ -836,10 +838,11 @@ cib_file_read_and_verify(const char *filename, const char *sigfile, xmlNode **ro
     s_res = stat(filename, &buf);
     if (s_res < 0) {
         pcmk__warn("Could not verify cluster configuration file %s: "
-                   "stat() failed: %s",
-                   filename, strerror(errno));
+                   "stat() failed: %s", filename, strerror(errno));
         return -errno;
-    } else if (buf.st_size == 0) {
+    }
+
+    if (buf.st_size == 0) {
         pcmk__warn("Cluster configuration file %s is corrupt (size is zero)",
                    filename);
         return -pcmk_err_cib_corrupt;
@@ -849,14 +852,14 @@ cib_file_read_and_verify(const char *filename, const char *sigfile, xmlNode **ro
     local_root = pcmk__xml_read(filename);
     if (local_root == NULL) {
         pcmk__warn("Cluster configuration file %s is corrupt (unparseable as "
-                   "XML)",
-                   filename);
+                   "XML)", filename);
         return -pcmk_err_cib_corrupt;
     }
 
     /* If sigfile is not specified, use original file name plus .sig */
     if (sigfile == NULL) {
-        sigfile = local_sigfile = pcmk__assert_asprintf("%s.sig", filename);
+        local_sigfile = pcmk__assert_asprintf("%s.sig", filename);
+        sigfile = local_sigfile;
     }
 
     /* Verify that digests match */
@@ -867,11 +870,14 @@ cib_file_read_and_verify(const char *filename, const char *sigfile, xmlNode **ro
     }
 
     free(local_sigfile);
-    if (root) {
+
+    if (root != NULL) {
         *root = local_root;
+
     } else {
         pcmk__xml_free(local_root);
     }
+
     return pcmk_ok;
 }
 
@@ -1033,7 +1039,7 @@ cib_file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
 
     /* Ensure the admin didn't modify the existing CIB underneath us */
     pcmk__trace("Reading cluster configuration file %s", cib_path);
-    rc = cib_file_read_and_verify(cib_path, NULL, NULL);
+    rc = cib__file_read_and_verify(cib_path, NULL, NULL);
     if ((rc != pcmk_ok) && (rc != -ENOENT)) {
         pcmk__err("%s was manually modified while the cluster was active!",
                   cib_path);
@@ -1116,7 +1122,7 @@ cib_file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
     /* Verify that what we wrote is sane */
     pcmk__info("Reading cluster configuration file %s (digest: %s)", tmp_cib,
                tmp_digest);
-    rc = cib_file_read_and_verify(tmp_cib, tmp_digest, NULL);
+    rc = cib__file_read_and_verify(tmp_cib, tmp_digest, NULL);
     pcmk__assert(rc == 0);
 
     /* Rename temporary files to live, and sync directory changes to media */

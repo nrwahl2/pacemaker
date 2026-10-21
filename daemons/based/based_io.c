@@ -319,7 +319,7 @@ read_current_cib(void)
 
     cib_status = pcmk_rc_ok;
 
-    rc = cib_file_read_and_verify(cibfile_path, sigfile_path, &cib_xml);
+    rc = cib__file_read_and_verify(cibfile_path, sigfile_path, &cib_xml);
     rc = pcmk_legacy2rc(rc);
 
     if (rc == pcmk_rc_ok) {
@@ -465,7 +465,8 @@ read_backup_cib(void)
         char *cibfile_path = pcmk__assert_asprintf("%s/%s", cib_root, cibfile);
         char *sigfile_path = pcmk__assert_asprintf("%s.sig", cibfile_path);
 
-        int rc = cib_file_read_and_verify(cibfile_path, sigfile_path, &cib_xml);
+        int rc = cib__file_read_and_verify(cibfile_path, sigfile_path,
+                                           &cib_xml);
 
         rc = pcmk_legacy2rc(rc);
 
