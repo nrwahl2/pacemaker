@@ -447,64 +447,68 @@ get_shadow_file(const char *suffix)
     char *name = pcmk__assert_asprintf("shadow.%s", suffix);
     const char *dir = getenv("CIB_shadow_dir");
 
-    if (dir == NULL) {
-        /* @TODO This basically duplicates pcmk__uid2username(), but we need the
-         * password database entry, not just the user name from it. We should
-         * reduce the duplication.
-         */
-        struct passwd *pwent = NULL;
-        const char *user = NULL;
+    struct passwd *pwent = NULL;
+    const char *user = NULL;
 
-        errno = 0;
-        pwent = getpwuid(geteuid());
+    if (dir != NULL) {
+        goto done;
+    }
 
-        if (pwent) {
-            user = pwent->pw_name;
+    /* @TODO This basically duplicates pcmk__uid2username(), but we need the
+     * password database entry, not just the user name from it. We should
+     * reduce the duplication.
+     */
+    errno = 0;
+    pwent = getpwuid(geteuid());
 
-        } else {
-            // Save errno before getenv()
-            int rc = errno;
+    if (pwent) {
+        user = pwent->pw_name;
 
-            user = getenv("USER");
-            pcmk__warn("Could not get password database entry for effective "
-                       "user ID %lld: %s. Assuming user is %s.",
-                       (long long) geteuid(),
-                       ((rc != 0)? strerror(rc) : "No matching entry found"),
-                       pcmk__s(user, "unprivileged user"));
+    } else {
+        // Save errno before getenv()
+        int rc = errno;
+
+        user = getenv("USER");
+        pcmk__warn("Could not get password database entry for effective "
+                   "user ID %lld: %s. Assuming user is %s.",
+                   (long long) geteuid(),
+                   ((rc != 0)? strerror(rc) : "No matching entry found"),
+                   pcmk__s(user, "unprivileged user"));
+    }
+
+    if (pcmk__strcase_any_of(user, "root", CRM_DAEMON_USER, NULL)) {
+        dir = CRM_CONFIG_DIR;
+
+    } else {
+        const char *home = NULL;
+
+        if ((home = getenv("HOME")) == NULL) {
+            if (pwent) {
+                home = pwent->pw_dir;
+            }
         }
 
-        if (pcmk__strcase_any_of(user, "root", CRM_DAEMON_USER, NULL)) {
-            dir = CRM_CONFIG_DIR;
+        dir = g_get_tmp_dir();
+        if (home && home[0] == '/') {
+            int rc = 0;
 
-        } else {
-            const char *home = NULL;
+            cib_home = pcmk__assert_asprintf("%s/.cib", home);
 
-            if ((home = getenv("HOME")) == NULL) {
-                if (pwent) {
-                    home = pwent->pw_dir;
-                }
-            }
+            rc = mkdir(cib_home, 0700);
+            if (rc < 0 && errno != EEXIST) {
+                pcmk__err("Couldn't create user-specific shadow directory "
+                          "%s: %s",
+                          cib_home, strerror(errno));
 
-            dir = g_get_tmp_dir();
-            if (home && home[0] == '/') {
-                int rc = 0;
-
-                cib_home = pcmk__assert_asprintf("%s/.cib", home);
-
-                rc = mkdir(cib_home, 0700);
-                if (rc < 0 && errno != EEXIST) {
-                    pcmk__err("Couldn't create user-specific shadow directory "
-                              "%s: %s",
-                              cib_home, strerror(errno));
-
-                } else {
-                    dir = cib_home;
-                }
+            } else {
+                dir = cib_home;
             }
         }
     }
 
+done:
     fullname = pcmk__assert_asprintf("%s/%s", dir, name);
+
     free(cib_home);
     free(name);
 
