@@ -821,20 +821,14 @@ int
 cib__file_read_and_verify(const char *filename, const char *sigfile,
                           xmlNode **root)
 {
-    int s_res = 0;
     struct stat buf = { 0, };
     char *local_sigfile = NULL;
     xmlNode *local_root = NULL;
 
-    pcmk__assert(filename != NULL);
-
-    if (root != NULL) {
-        *root = NULL;
-    }
+    pcmk__assert((filename != NULL) && ((root == NULL) || (*root == NULL)));
 
     /* Verify that file exists and its size is nonzero */
-    s_res = stat(filename, &buf);
-    if (s_res < 0) {
+    if (stat(filename, &buf) < 0) {
         int rc = errno;
 
         pcmk__warn("Could not verify cluster configuration file %s: "
