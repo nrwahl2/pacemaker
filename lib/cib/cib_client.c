@@ -34,27 +34,32 @@ ciblib_GCompareFunc(const void *a, const void *b)
     const cib_notify_client_t *a_client = a;
     const cib_notify_client_t *b_client = b;
 
-    CRM_CHECK(a_client->event != NULL && b_client->event != NULL, return 0);
+    CRM_CHECK((a_client->event != NULL) && (b_client->event != NULL), return 0);
+
     rc = strcmp(a_client->event, b_client->event);
-    if (rc == 0) {
-        if (a_client->callback == b_client->callback) {
-            return 0;
-        } else if (((long)a_client->callback) < ((long)b_client->callback)) {
-            pcmk__trace("callbacks for %s are not equal: %p < %p",
-                        a_client->event, a_client->callback, b_client->callback);
-            return -1;
-        }
-        pcmk__trace("callbacks for %s are not equal: %p > %p", a_client->event,
-                    a_client->callback, b_client->callback);
-        return 1;
+    if (rc != 0) {
+        return rc;
     }
-    return rc;
+
+    if (a_client->callback == b_client->callback) {
+        return 0;
+    }
+
+    if (((long) a_client->callback) < ((long) b_client->callback)) {
+        pcmk__trace("Callbacks for %s are not equal: %p < %p", a_client->event,
+                    a_client->callback, b_client->callback);
+        return -1;
+    }
+
+    pcmk__trace("Callbacks for %s are not equal: %p > %p", a_client->event,
+                a_client->callback, b_client->callback);
+    return 1;
 }
 
 static int
-cib_client_add_notify_callback(cib_t * cib, const char *event,
-                               void (*callback) (const char *event,
-                                                 xmlNode * msg))
+cib_client_add_notify_callback(cib_t *cib, const char *event,
+                               void (*callback)(const char *event,
+                                                xmlNode *msg))
 {
     GList *list_item = NULL;
     cib_notify_client_t *new_client = NULL;
@@ -77,14 +82,13 @@ cib_client_add_notify_callback(cib_t * cib, const char *event,
         pcmk__warn("Callback already present");
         free(new_client);
         return -EINVAL;
-
-    } else {
-        cib->notify_list = g_list_append(cib->notify_list, new_client);
-
-        cib->cmds->register_notification(cib, event, 1);
-
-        pcmk__trace("Callback added (%d)", g_list_length(cib->notify_list));
     }
+
+    cib->notify_list = g_list_append(cib->notify_list, new_client);
+
+    cib->cmds->register_notification(cib, event, 1);
+
+    pcmk__trace("Callback added (%d)", g_list_length(cib->notify_list));
     return pcmk_ok;
 }
 
@@ -93,14 +97,16 @@ get_notify_list_event_count(cib_t *cib, const char *event)
 {
     int count = 0;
 
-    for (GList *iter = g_list_first(cib->notify_list); iter != NULL;
+    for (const GList *iter = g_list_first(cib->notify_list); iter != NULL;
          iter = iter->next) {
-        cib_notify_client_t *client = (cib_notify_client_t *) iter->data;
+
+        cib_notify_client_t *client = iter->data;
 
         if (strcmp(client->event, event) == 0) {
             count++;
         }
     }
+
     pcmk__trace("event(%s) count : %d", event, count);
     return count;
 }
@@ -110,16 +116,19 @@ cib_client_del_notify_callback(cib_t *cib, const char *event,
                                void (*callback) (const char *event,
                                                  xmlNode *msg))
 {
+    int rc = pcmk_ok;
     GList *list_item = NULL;
     cib_notify_client_t *new_client = NULL;
+    cib_notify_client_t *list_client = NULL;
 
-    if (cib->variant != cib_native && cib->variant != cib_remote) {
-        return -EPROTONOSUPPORT;
+    if ((cib->variant != cib_native) && (cib->variant != cib_remote)) {
+        rc = -EPROTONOSUPPORT;
+        goto done;
     }
 
     if (get_notify_list_event_count(cib, event) == 0) {
         pcmk__debug("The callback of the event does not exist(%s)", event);
-        return pcmk_ok;
+        goto done;
     }
 
     pcmk__debug("Removing callback for %s events", event);
@@ -128,27 +137,27 @@ cib_client_del_notify_callback(cib_t *cib, const char *event,
     new_client->event = event;
     new_client->callback = callback;
 
-    list_item = g_list_find_custom(cib->notify_list, new_client, ciblib_GCompareFunc);
-
-    if (list_item != NULL) {
-        cib_notify_client_t *list_client = list_item->data;
-
-        cib->notify_list = g_list_remove(cib->notify_list, list_client);
-        free(list_client);
-
-        pcmk__trace("Removed callback");
-
-    } else {
+    list_item = g_list_find_custom(cib->notify_list, new_client,
+                                   ciblib_GCompareFunc);
+    if (list_item == NULL) {
         pcmk__trace("Callback not present");
+        goto done;
     }
 
+    list_client = (cib_notify_client_t *) list_item->data;
+    cib->notify_list = g_list_remove(cib->notify_list, list_client);
+
+    pcmk__trace("Removed callback");
+
     if (get_notify_list_event_count(cib, event) == 0) {
-        /* When there is not the registration of the event, the processing turns off a notice. */
+        // Disable notifications for event with no more callbacks registered
         cib->cmds->register_notification(cib, event, 0);
     }
 
+done:
     free(new_client);
-    return pcmk_ok;
+    free(list_client);
+    return rc;
 }
 
 static gboolean
@@ -175,15 +184,18 @@ cib_client_register_callback_full(cib_t *cib, int call_id, int timeout,
     cib_callback_client_t *blob = NULL;
 
     if (call_id < 0) {
-        if (only_success == FALSE) {
-            callback(NULL, call_id, call_id, NULL, user_data);
-        } else {
+        if (only_success) {
             pcmk__warn("CIB call failed: %s", pcmk_strerror(call_id));
+
+        } else {
+            callback(NULL, call_id, call_id, NULL, user_data);
         }
-        if (user_data && free_func) {
+
+        if ((user_data != NULL) && (free_func != NULL)) {
             free_func(user_data);
         }
-        return FALSE;
+
+        return false;
     }
 
     blob = pcmk__assert_alloc(1, sizeof(cib_callback_client_t));
@@ -193,24 +205,23 @@ cib_client_register_callback_full(cib_t *cib, int call_id, int timeout,
     blob->callback = callback;
     blob->free_func = free_func;
 
-    if (timeout > 0) {
-        struct timer_rec_s *async_timer =
-            pcmk__assert_alloc(1, sizeof(struct timer_rec_s));
-
-        blob->timer = async_timer;
-
-        async_timer->cib = cib;
-        async_timer->call_id = call_id;
-        async_timer->timeout = timeout * 1000;
-        async_timer->ref = pcmk__create_timer(async_timer->timeout,
-                                              cib_async_timeout_handler,
-                                              async_timer);
+    if (timeout <= 0) {
+        goto success;
     }
 
-    pcmk__trace("Adding callback %s for call %d", callback_name, call_id);
+    blob->timer = pcmk__assert_alloc(1, sizeof(struct timer_rec_s));
+    blob->timer->cib = cib;
+    blob->timer->call_id = call_id;
+    blob->timer->timeout = timeout * 1000;
+    blob->timer->ref = pcmk__create_timer(blob->timer->timeout,
+                                          cib_async_timeout_handler,
+                                          blob->timer);
+
+success:
     pcmk__intkey_table_insert(cib_op_callback_table, call_id, blob);
 
-    return TRUE;
+    pcmk__trace("Added callback %s for call %d", callback_name, call_id);
+    return true;
 }
 
 static gboolean
@@ -226,21 +237,22 @@ cib_client_register_callback(cib_t *cib, int call_id, int timeout,
 }
 
 static int
-cib_client_noop(cib_t * cib, int call_options)
+cib_client_noop(cib_t *cib, int call_options)
 {
     return cib_internal_op(cib, PCMK__CIB_REQUEST_NOOP, NULL, NULL, NULL, NULL,
                            call_options, cib->user);
 }
 
 static int
-cib_client_ping(cib_t * cib, xmlNode ** output_data, int call_options)
+cib_client_ping(cib_t *cib, xmlNode **output_data, int call_options)
 {
     return cib_internal_op(cib, CRM_OP_PING, NULL, NULL, NULL, output_data,
                            call_options, cib->user);
 }
 
 static int
-cib_client_query(cib_t * cib, const char *section, xmlNode ** output_data, int call_options)
+cib_client_query(cib_t *cib, const char *section, xmlNode **output_data,
+                 int call_options)
 {
     return cib->cmds->query_from(cib, NULL, section, output_data, call_options);
 }
@@ -268,14 +280,14 @@ set_primary(cib_t *cib, int call_options)
 }
 
 static int
-cib_client_bump_epoch(cib_t * cib, int call_options)
+cib_client_bump_epoch(cib_t *cib, int call_options)
 {
     return cib_internal_op(cib, PCMK__CIB_REQUEST_BUMP, NULL, NULL, NULL, NULL,
                            call_options, cib->user);
 }
 
 static int
-cib_client_upgrade(cib_t * cib, int call_options)
+cib_client_upgrade(cib_t *cib, int call_options)
 {
     return cib_internal_op(cib, PCMK__CIB_REQUEST_UPGRADE, NULL, NULL, NULL,
                            NULL, call_options, cib->user);
@@ -283,48 +295,53 @@ cib_client_upgrade(cib_t * cib, int call_options)
 
 // @COMPAT cib_api_operations_t:sync is deprecated since 3.1.0
 static int
-cib_client_sync(cib_t * cib, const char *section, int call_options)
+cib_client_sync(cib_t *cib, const char *section, int call_options)
 {
     return cib->cmds->sync_from(cib, NULL, section, call_options);
 }
 
 static int
-cib_client_sync_from(cib_t * cib, const char *host, const char *section, int call_options)
+cib_client_sync_from(cib_t *cib, const char *host, const char *section,
+                     int call_options)
 {
     return cib_internal_op(cib, PCMK__CIB_REQUEST_SYNC, host, section, NULL,
                            NULL, call_options, cib->user);
 }
 
 static int
-cib_client_create(cib_t * cib, const char *section, xmlNode * data, int call_options)
+cib_client_create(cib_t *cib, const char *section, xmlNode *data,
+                  int call_options)
 {
     return cib_internal_op(cib, PCMK__CIB_REQUEST_CREATE, NULL, section, data,
                            NULL, call_options, cib->user);
 }
 
 static int
-cib_client_modify(cib_t * cib, const char *section, xmlNode * data, int call_options)
+cib_client_modify(cib_t *cib, const char *section, xmlNode *data,
+                  int call_options)
 {
     return cib_internal_op(cib, PCMK__CIB_REQUEST_MODIFY, NULL, section, data,
                            NULL, call_options, cib->user);
 }
 
 static int
-cib_client_replace(cib_t * cib, const char *section, xmlNode * data, int call_options)
+cib_client_replace(cib_t *cib, const char *section, xmlNode *data,
+                   int call_options)
 {
     return cib_internal_op(cib, PCMK__CIB_REQUEST_REPLACE, NULL, section, data,
                            NULL, call_options, cib->user);
 }
 
 static int
-cib_client_delete(cib_t * cib, const char *section, xmlNode * data, int call_options)
+cib_client_delete(cib_t *cib, const char *section, xmlNode *data,
+                  int call_options)
 {
     return cib_internal_op(cib, PCMK__CIB_REQUEST_DELETE, NULL, section, data,
                            NULL, call_options, cib->user);
 }
 
 static int
-cib_client_erase(cib_t * cib, xmlNode ** output_data, int call_options)
+cib_client_erase(cib_t *cib, xmlNode **output_data, int call_options)
 {
     return cib_internal_op(cib, PCMK__CIB_REQUEST_ERASE, NULL, NULL, NULL,
                            output_data, call_options, cib->user);
@@ -336,25 +353,25 @@ cib_client_init_transaction(cib_t *cib)
     int rc = pcmk_rc_ok;
 
     if (cib == NULL) {
-        return -EINVAL;
+        rc = EINVAL;
+        goto done;
     }
 
     if (cib->transaction != NULL) {
         // A client can have at most one transaction at a time
-        rc = pcmk_rc_already;
-    }
-
-    if (rc == pcmk_rc_ok) {
-        cib->transaction = pcmk__xe_create(NULL, PCMK__XE_CIB_TRANSACTION);
-    }
-
-    if (rc != pcmk_rc_ok) {
         const char *client_id = NULL;
 
+        rc = pcmk_rc_already;
         cib->cmds->client_id(cib, NULL, &client_id);
+
         pcmk__err("Failed to initialize CIB transaction for client %s: %s",
                   client_id, pcmk_rc_str(rc));
+        goto done;
     }
+
+    cib->transaction = pcmk__xe_create(NULL, PCMK__XE_CIB_TRANSACTION);
+
+done:
     return pcmk_rc2legacy(rc);
 }
 
@@ -371,33 +388,37 @@ cib_client_end_transaction(cib_t *cib, bool commit, int call_options)
     cib->cmds->client_id(cib, NULL, &client_id);
     client_id = pcmk__s(client_id, "(unidentified)");
 
-    if (commit) {
-        if (cib->transaction == NULL) {
-            rc = pcmk_rc_no_transaction;
-
-            pcmk__err("Failed to commit transaction for CIB client %s: %s",
-                      client_id, pcmk_rc_str(rc));
-            return pcmk_rc2legacy(rc);
-        }
-        rc = cib_internal_op(cib, PCMK__CIB_REQUEST_COMMIT_TRANSACT, NULL, NULL,
-                             cib->transaction, NULL, call_options, cib->user);
-
-    } else {
+    if (!commit) {
         // Discard always succeeds
         if (cib->transaction != NULL) {
             pcmk__trace("Discarded transaction for CIB client %s", client_id);
-        } else {
-            pcmk__trace("No transaction found for CIB client %s", client_id);
+            goto done;
         }
+
+        pcmk__trace("No transaction found for CIB client %s", client_id);
+        goto done;
     }
 
+    if (cib->transaction == NULL) {
+        rc = pcmk_rc_no_transaction;
+
+        pcmk__err("Failed to commit transaction for CIB client %s: %s",
+                  client_id, pcmk_rc_str(rc));
+        rc = pcmk_rc2legacy(rc);
+        goto done;
+    }
+
+    rc = cib_internal_op(cib, PCMK__CIB_REQUEST_COMMIT_TRANSACT, NULL, NULL,
+                         cib->transaction, NULL, call_options, cib->user);
+
+done:
     g_clear_pointer(&cib->transaction, pcmk__xml_free);
     return rc;
 }
 
 static int
-cib_client_fetch_schemas(cib_t *cib, xmlNode **output_data, const char *after_ver,
-                         int call_options)
+cib_client_fetch_schemas(cib_t *cib, xmlNode **output_data,
+                         const char *after_ver, int call_options)
 {
     xmlNode *data = pcmk__xe_create(NULL, PCMK__XA_SCHEMA);
     int rc = pcmk_ok;
@@ -421,12 +442,17 @@ cib_destroy_op_callback(void *data)
 {
     cib_callback_client_t *blob = data;
 
-    if (blob->timer && blob->timer->ref > 0) {
-        g_source_remove(blob->timer->ref);
-    }
-    free(blob->timer);
+    pcmk__assert(blob != NULL);
 
-    if (blob->user_data && blob->free_func) {
+    if (blob->timer != NULL) {
+        if (blob->timer->ref > 0) {
+            g_source_remove(blob->timer->ref);
+        }
+
+        free(blob->timer);
+    }
+
+    if ((blob->user_data != NULL) && (blob->free_func != NULL)) {
         blob->free_func(blob->user_data);
     }
 
@@ -551,7 +577,7 @@ cib_new(void)
     const char *server = NULL;
     const char *user = NULL;
     const char *pass = NULL;
-    gboolean encrypted = TRUE;
+    bool encrypted = true;
     int port;
 
     if (!pcmk__str_empty(value)) {
@@ -575,7 +601,7 @@ cib_new(void)
     pcmk__scan_port(value, &port);
 
     if (!pcmk__is_true(getenv("CIB_encrypted"))) {
-        encrypted = FALSE;
+        encrypted = false;
     }
 
     server = getenv("CIB_server");
@@ -611,7 +637,7 @@ cib_new_variant(void)
 
     new_cib = pcmk__assert_alloc(1, sizeof(cib_t));
 
-    remove_cib_op_callback(0, TRUE); /* remove all */
+    remove_cib_op_callback(0, true);
 
     new_cib->call_id = 1;
     new_cib->variant = cib_undefined;
@@ -659,21 +685,25 @@ cib_new_variant(void)
     return new_cib;
 }
 
-void 
+void
 cib_free_notify(cib_t *cib)
 {
+    GList *list = NULL;
 
-    if (cib) {
-        GList *list = cib->notify_list;
-
-        while (list != NULL) {
-            cib_notify_client_t *client = g_list_nth_data(list, 0);
-
-            list = g_list_remove(list, client);
-            free(client);
-        }
-        cib->notify_list = NULL;
+    if (cib == NULL) {
+        return;
     }
+
+    list = cib->notify_list;
+
+    while (list != NULL) {
+        cib_notify_client_t *client = g_list_nth_data(list, 0);
+
+        list = g_list_remove(list, client);
+        free(client);
+    }
+
+    cib->notify_list = NULL;
 }
 
 /*!
@@ -698,9 +728,12 @@ void
 cib_delete(cib_t *cib)
 {
     cib_free_callbacks(cib);
-    if (cib) {
-        cib->cmds->free(cib);
+
+    if (cib == NULL) {
+        return;
     }
+
+    cib->cmds->free(cib);
 }
 
 void
@@ -709,9 +742,10 @@ remove_cib_op_callback(int call_id, gboolean all_callbacks)
     if (all_callbacks) {
         destroy_op_callback_table();
         cib_op_callback_table = pcmk__intkey_table(cib_destroy_op_callback);
-    } else {
-        pcmk__intkey_table_remove(cib_op_callback_table, call_id);
+        return;
     }
+
+    pcmk__intkey_table_remove(cib_op_callback_table, call_id);
 }
 
 int
@@ -720,6 +754,7 @@ num_cib_op_callbacks(void)
     if (cib_op_callback_table == NULL) {
         return 0;
     }
+
     return g_hash_table_size(cib_op_callback_table);
 }
 
@@ -738,7 +773,9 @@ cib_dump_pending_callbacks(void)
     if (cib_op_callback_table == NULL) {
         return;
     }
-    return g_hash_table_foreach(cib_op_callback_table, cib_dump_pending_op, NULL);
+
+    return g_hash_table_foreach(cib_op_callback_table, cib_dump_pending_op,
+                                NULL);
 }
 
 cib_callback_client_t*
@@ -764,6 +801,7 @@ cib_new_no_shadow(void)
     if (shadow != NULL) {
         setenv("CIB_shadow", shadow, 1);
     }
+
     return cib;
 }
 
