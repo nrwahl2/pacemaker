@@ -616,33 +616,36 @@ file_signoff(cib_t *cib)
     unregister_client(cib);
     cib->cmds->end_transaction(cib, false, cib_none);
 
-    /* If the in-memory CIB has been changed, write it to disk */
-    if (pcmk__is_set(private->flags, file_flag_dirty)) {
+    if (!pcmk__is_set(private->flags, file_flag_dirty)) {
+        goto done;
+    }
 
-        /* If this is the live CIB, write it out with a digest */
-        if (pcmk__is_set(private->flags, file_flag_live)) {
-            rc = write_live(private->cib_xml, private->filename);
-            rc = pcmk_rc2legacy(rc);
+    // The in-memory CIB has been changed, so write it to disk
 
-        /* Otherwise, it's a simple write */
-        } else {
-            bool compress = g_str_has_suffix(private->filename, ".bz2");
+    if (pcmk__is_set(private->flags, file_flag_live)) {
+        // Write the live CIB with a digest
+        rc = write_live(private->cib_xml, private->filename);
+        rc = pcmk_rc2legacy(rc);
 
-            if (pcmk__xml_write_file(private->cib_xml, private->filename,
-                                     compress) != pcmk_rc_ok) {
-                rc = pcmk_err_generic;
-            }
-        }
+    } else {
+        // Not the live CIB, so don't write a digest
+        const bool compress = g_str_has_suffix(private->filename, ".bz2");
 
-        if (rc == pcmk_ok) {
-            pcmk__info("Wrote CIB to %s", private->filename);
-            clear_file_flags(private, file_flag_dirty);
-        } else {
-            pcmk__err("Could not write CIB to %s", private->filename);
+        if (pcmk__xml_write_file(private->cib_xml, private->filename,
+                                 compress) != pcmk_rc_ok) {
+            rc = pcmk_err_generic;
         }
     }
 
-    /* Free the in-memory CIB */
+    if (rc != pcmk_ok) {
+        pcmk__err("Could not write CIB to %s", private->filename);
+        goto done;
+    }
+
+    pcmk__info("Wrote CIB to %s", private->filename);
+    clear_file_flags(private, file_flag_dirty);
+
+done:
     g_clear_pointer(&private->cib_xml, pcmk__xml_free);
     return rc;
 }
