@@ -726,12 +726,7 @@ cib_file_new(const char *cib_location)
     struct stat sb_loc = { 0, };
     struct stat sb_live = { 0, };
 
-    if (cib_location == NULL) {
-        cib_location = getenv("CIB_file");
-        if (cib_location == NULL) {
-            return NULL; // Shouldn't be possible if we were called internally
-        }
-    }
+    pcmk__assert(!pcmk__str_empty(cib_location));
 
     cib = cib_new_variant();
 
