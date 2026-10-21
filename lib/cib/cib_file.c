@@ -1006,20 +1006,30 @@ cib_file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
                            const char *cib_filename)
 {
     int exit_rc = pcmk_ok;
-    int rc, fd;
+    int rc = 0;
+    int fd = -1;
+    const char *epoch = NULL;
+    const char *admin_epoch = NULL;
+    char *cib_path = NULL;
+    char *digest_path = NULL;
+    char *tmp_cib = NULL;
+    char *tmp_digest = NULL;
     char *digest = NULL;
 
+    pcmk__assert((cib_root != NULL) && (cib_dirname != NULL)
+                 && (cib_filename != NULL));
+
     /* Detect CIB version for diagnostic purposes */
-    const char *epoch = pcmk__xe_get(cib_root, PCMK_XA_EPOCH);
-    const char *admin_epoch = pcmk__xe_get(cib_root, PCMK_XA_ADMIN_EPOCH);
+    epoch = pcmk__xe_get(cib_root, PCMK_XA_EPOCH);
+    admin_epoch = pcmk__xe_get(cib_root, PCMK_XA_ADMIN_EPOCH);
 
     /* Determine full CIB and signature pathnames */
-    char *cib_path = pcmk__assert_asprintf("%s/%s", cib_dirname, cib_filename);
-    char *digest_path = pcmk__assert_asprintf("%s.sig", cib_path);
+    cib_path = pcmk__assert_asprintf("%s/%s", cib_dirname, cib_filename);
+    digest_path = pcmk__assert_asprintf("%s.sig", cib_path);
 
     /* Create temporary file name patterns for writing out CIB and signature */
-    char *tmp_cib = pcmk__assert_asprintf("%s/cib.XXXXXX", cib_dirname);
-    char *tmp_digest = pcmk__assert_asprintf("%s/cib.XXXXXX", cib_dirname);
+    tmp_cib = pcmk__assert_asprintf("%s/cib.XXXXXX", cib_dirname);
+    tmp_digest = pcmk__assert_asprintf("%s/cib.XXXXXX", cib_dirname);
 
     /* Ensure the admin didn't modify the existing CIB underneath us */
     pcmk__trace("Reading cluster configuration file %s", cib_path);
