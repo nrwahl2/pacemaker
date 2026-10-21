@@ -349,26 +349,19 @@ pcmk__daemon_can_write(const char *dir, const char *file)
 void
 pcmk__sync_directory(const char *name)
 {
-    int fd;
-    DIR *directory;
+    int fd = -1;
 
-    directory = opendir(name);
-    if (directory == NULL) {
-        pcmk__err("Could not open %s for syncing: %s", name, strerror(errno));
-        return;
-    }
-
-    fd = dirfd(directory);
+    fd = open(name, O_DIRECTORY | O_RDONLY);
     if (fd < 0) {
-        pcmk__err("Could not obtain file descriptor for %s: %s", name,
-                  strerror(errno));
+        pcmk__err("Could not open %s for syncing: %s", name, strerror(errno));
         return;
     }
 
     if (fsync(fd) < 0) {
         pcmk__err("Could not sync %s: %s", name, strerror(errno));
     }
-    if (closedir(directory) < 0) {
+
+    if (close(fd) < 0) {
         pcmk__err("Could not close %s after fsync: %s", name, strerror(errno));
     }
 }
