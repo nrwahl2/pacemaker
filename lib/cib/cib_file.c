@@ -996,8 +996,6 @@ cib__file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
 {
     int rc = pcmk_rc_ok;
     int fd = -1;
-    const char *epoch = NULL;
-    const char *admin_epoch = NULL;
     char *cib_path = NULL;
     char *digest_path = NULL;
     char *tmp_cib = NULL;
@@ -1006,10 +1004,6 @@ cib__file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
 
     pcmk__assert((cib_root != NULL) && (cib_dirname != NULL)
                  && (cib_filename != NULL));
-
-    /* Detect CIB version for diagnostic purposes */
-    epoch = pcmk__xe_get(cib_root, PCMK_XA_EPOCH);
-    admin_epoch = pcmk__xe_get(cib_root, PCMK_XA_ADMIN_EPOCH);
 
     /* Determine full CIB and signature pathnames */
     cib_path = pcmk__assert_asprintf("%s/%s", cib_dirname, cib_filename);
@@ -1020,6 +1014,7 @@ cib__file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
 
     /* Ensure the admin didn't modify the existing CIB underneath us */
     pcmk__trace("Reading cluster configuration file %s", cib_path);
+
     rc = cib__file_read_and_verify(cib_path, NULL);
     if ((rc != pcmk_rc_ok) && (rc != ENOENT)) {
         pcmk__err("%s was manually modified while the cluster was active!",
@@ -1048,13 +1043,9 @@ cib__file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
     }
 
     /* Protect the temporary file */
-    if (fchmod(fd, S_IRUSR | S_IWUSR) < 0) {
-        pcmk__err("Couldn't protect temporary file %s for writing CIB: %s",
-                  tmp_cib, strerror(errno));
-        rc = pcmk_rc_cib_save;
-        goto cleanup;
-    }
-    if (do_chown && (fchown(fd, file_owner, file_group) < 0)) {
+    if ((fchmod(fd, S_IRUSR | S_IWUSR) < 0)
+        || (do_chown && (fchown(fd, file_owner, file_group) < 0))) {
+
         pcmk__err("Couldn't protect temporary file %s for writing CIB: %s",
                   tmp_cib, strerror(errno));
         rc = pcmk_rc_cib_save;
@@ -1072,7 +1063,8 @@ cib__file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
     digest = pcmk__digest_on_disk_cib(cib_root);
     pcmk__assert(digest != NULL);
     pcmk__info("Wrote version %s.%s.0 of the CIB to disk (digest: %s)",
-               pcmk__s(admin_epoch, "0"), pcmk__s(epoch, "0"), digest);
+               pcmk__s(pcmk__xe_get(cib_root, PCMK_XA_ADMIN_EPOCH), "0"),
+               pcmk__s(pcmk__xe_get(cib_root, PCMK_XA_EPOCH), "0"), digest);
 
     /* Write the CIB digest to a temporary file */
     tmp_digest = pcmk__assert_asprintf("%s.sig", tmp_cib);
@@ -1084,6 +1076,7 @@ cib__file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
         rc = pcmk_rc_cib_save;
         goto cleanup;
     }
+
     if (do_chown && (fchown(fd, file_owner, file_group) < 0)) {
         pcmk__err("Couldn't protect temporary file %s for writing CIB: %s",
                   tmp_cib, strerror(errno));
@@ -1091,6 +1084,7 @@ cib__file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
         close(fd);
         goto cleanup;
     }
+
     rc = pcmk__write_sync(fd, digest);
     if (rc != pcmk_rc_ok) {
         pcmk__err("Could not write digest to %s: %s", tmp_digest,
@@ -1099,27 +1093,32 @@ cib__file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
         close(fd);
         goto cleanup;
     }
+
     close(fd);
     pcmk__debug("Wrote digest %s to disk", digest);
 
     /* Verify that what we wrote is sane */
     pcmk__info("Reading cluster configuration file %s (digest: %s)", tmp_cib,
                tmp_digest);
+
     rc = cib__file_read_and_verify(tmp_cib, NULL);
     pcmk__assert(rc == pcmk_rc_ok);
 
     /* Rename temporary files to live, and sync directory changes to media */
     pcmk__debug("Activating %s", tmp_cib);
+
     if (rename(tmp_cib, cib_path) < 0) {
         pcmk__err("Couldn't rename %s as %s: %s", tmp_cib, cib_path,
                   strerror(errno));
         rc = pcmk_rc_cib_save;
     }
+
     if (rename(tmp_digest, digest_path) < 0) {
         pcmk__err("Couldn't rename %s as %s: %s", tmp_digest, digest_path,
                   strerror(errno));
         rc = pcmk_rc_cib_save;
     }
+
     pcmk__sync_directory(cib_dirname);
 
   cleanup:
