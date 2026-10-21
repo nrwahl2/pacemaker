@@ -808,8 +808,10 @@ done:
  * \internal
  * \brief Read an XML tree from a file and verify its digest
  *
+ * The digest file is assumed to reside in the same directory as the XML file,
+ * and its name is assumed to be the XML file's name with \c ".sig" appended.
+ *
  * \param[in]  filename  Name of XML file to read
- * \param[in]  sigfile   Name of signature file containing digest to compare
  * \param[out] root      If non-NULL, will be set to pointer to parsed XML tree
  *
  * \return Standard Pacemaker return code
@@ -818,11 +820,10 @@ done:
  *       successful return.
  */
 int
-cib__file_read_and_verify(const char *filename, const char *sigfile,
-                          xmlNode **root)
+cib__file_read_and_verify(const char *filename, xmlNode **root)
 {
     struct stat buf = { 0, };
-    char *local_sigfile = NULL;
+    char *sigfile = NULL;
     xmlNode *local_root = NULL;
 
     pcmk__assert((filename != NULL) && ((root == NULL) || (*root == NULL)));
@@ -850,20 +851,16 @@ cib__file_read_and_verify(const char *filename, const char *sigfile,
         return pcmk_rc_cib_corrupt;
     }
 
-    /* If sigfile is not specified, use original file name plus .sig */
-    if (sigfile == NULL) {
-        local_sigfile = pcmk__assert_asprintf("%s.sig", filename);
-        sigfile = local_sigfile;
-    }
+    sigfile = pcmk__assert_asprintf("%s.sig", filename);
 
     /* Verify that digests match */
     if (!verify_digest(local_root, sigfile)) {
-        free(local_sigfile);
+        free(sigfile);
         pcmk__xml_free(local_root);
         return pcmk_rc_cib_modified;
     }
 
-    free(local_sigfile);
+    free(sigfile);
 
     if (root != NULL) {
         *root = local_root;
@@ -1027,13 +1024,12 @@ cib_file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
     cib_path = pcmk__assert_asprintf("%s/%s", cib_dirname, cib_filename);
     digest_path = pcmk__assert_asprintf("%s.sig", cib_path);
 
-    /* Create temporary file name patterns for writing out CIB and signature */
+    /* Create temporary file name pattern for writing out CIB and signature */
     tmp_cib = pcmk__assert_asprintf("%s/cib.XXXXXX", cib_dirname);
-    tmp_digest = pcmk__assert_asprintf("%s/cib.XXXXXX", cib_dirname);
 
     /* Ensure the admin didn't modify the existing CIB underneath us */
     pcmk__trace("Reading cluster configuration file %s", cib_path);
-    rc = cib__file_read_and_verify(cib_path, NULL, NULL);
+    rc = cib__file_read_and_verify(cib_path, NULL);
     if ((rc != pcmk_rc_ok) && (rc != ENOENT)) {
         pcmk__err("%s was manually modified while the cluster was active!",
                   cib_path);
@@ -1088,7 +1084,9 @@ cib_file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
                pcmk__s(admin_epoch, "0"), pcmk__s(epoch, "0"), digest);
 
     /* Write the CIB digest to a temporary file */
-    fd = mkstemp(tmp_digest);
+    tmp_digest = pcmk__assert_asprintf("%s.sig", tmp_cib);
+
+    fd = creat(tmp_digest, 0600);
     if (fd < 0) {
         pcmk__err("Could not create temporary file %s for CIB digest: %s",
                   tmp_digest, strerror(errno));
@@ -1116,7 +1114,7 @@ cib_file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
     /* Verify that what we wrote is sane */
     pcmk__info("Reading cluster configuration file %s (digest: %s)", tmp_cib,
                tmp_digest);
-    rc = cib__file_read_and_verify(tmp_cib, tmp_digest, NULL);
+    rc = cib__file_read_and_verify(tmp_cib, NULL);
     pcmk__assert(rc == pcmk_rc_ok);
 
     /* Rename temporary files to live, and sync directory changes to media */

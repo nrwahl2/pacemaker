@@ -319,15 +319,14 @@ read_current_cib(void)
 
     cib_status = pcmk_rc_ok;
 
-    rc = cib__file_read_and_verify(cibfile_path, sigfile_path, &cib_xml);
+    rc = cib__file_read_and_verify(cibfile_path, &cib_xml);
     if (rc == pcmk_rc_ok) {
-        pcmk__info("Loaded CIB from %s (with digest %s)", cibfile_path,
-                   sigfile_path);
+        pcmk__info("Loaded CIB from %s", cibfile_path);
         goto done;
     }
 
-    pcmk__warn("Continuing but NOT using CIB from %s (with digest %s): %s",
-               cibfile_path, sigfile_path, pcmk_rc_str(rc));
+    pcmk__warn("Continuing but NOT using CIB from %s: %s", cibfile_path,
+               pcmk_rc_str(rc));
 
     if (rc == pcmk_rc_cib_modified) {
         // Archive the original files so the contents are not lost
@@ -461,22 +460,18 @@ read_backup_cib(void)
     for (int i = 0; i < num_files; i++) {
         const char *cibfile = namelist[i]->d_name;
         char *cibfile_path = pcmk__assert_asprintf("%s/%s", cib_root, cibfile);
-        char *sigfile_path = pcmk__assert_asprintf("%s.sig", cibfile_path);
 
-        int rc = cib__file_read_and_verify(cibfile_path, sigfile_path,
-                                           &cib_xml);
+        int rc = cib__file_read_and_verify(cibfile_path, &cib_xml);
 
         if (rc == pcmk_rc_ok) {
-            pcmk__notice("Loaded CIB from last valid backup %s (with digest "
-                         "%s)", cibfile_path, sigfile_path);
+            pcmk__notice("Loaded CIB from last valid backup %s", cibfile_path);
+
         } else {
-            pcmk__warn("Not using next most recent CIB backup from %s (with "
-                       "digest %s): %s", cibfile_path, sigfile_path,
-                       pcmk_rc_str(rc));
+            pcmk__warn("Not using next most recent CIB backup from %s: %s",
+                       cibfile_path, pcmk_rc_str(rc));
         }
 
         free(cibfile_path);
-        free(sigfile_path);
 
         if (rc == pcmk_rc_ok) {
             break;
