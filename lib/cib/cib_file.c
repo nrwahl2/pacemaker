@@ -822,54 +822,51 @@ done:
 int
 cib__file_read_and_verify(const char *filename, xmlNode **root)
 {
-    struct stat buf = { 0, };
-    char *sigfile = NULL;
+    int rc = pcmk_rc_ok;
+    struct stat sb = { 0, };
     xmlNode *local_root = NULL;
+    char *sigfile = NULL;
 
     pcmk__assert((filename != NULL) && ((root == NULL) || (*root == NULL)));
 
-    /* Verify that file exists and its size is nonzero */
-    if (stat(filename, &buf) < 0) {
-        int rc = errno;
-
+    if (stat(filename, &sb) < 0) {
+        rc = errno;
         pcmk__warn("Could not verify cluster configuration file %s: "
                    "stat() failed: %s", filename, strerror(rc));
-        return rc;
+        goto done;
     }
 
-    if (buf.st_size == 0) {
+    if (sb.st_size == 0) {
         pcmk__warn("Cluster configuration file %s is corrupt (size is zero)",
                    filename);
-        return pcmk_rc_cib_corrupt;
+        rc = pcmk_rc_cib_corrupt;
+        goto done;
     }
 
-    /* Parse XML */
     local_root = pcmk__xml_read(filename);
     if (local_root == NULL) {
         pcmk__warn("Cluster configuration file %s is corrupt (unparseable as "
                    "XML)", filename);
-        return pcmk_rc_cib_corrupt;
+        rc = pcmk_rc_cib_corrupt;
+        goto done;
     }
 
     sigfile = pcmk__assert_asprintf("%s.sig", filename);
-
-    /* Verify that digests match */
     if (!verify_digest(local_root, sigfile)) {
-        free(sigfile);
-        pcmk__xml_free(local_root);
-        return pcmk_rc_cib_modified;
+        // Error already logged
+        rc = pcmk_rc_cib_modified;
+        goto done;
     }
-
-    free(sigfile);
 
     if (root != NULL) {
         *root = local_root;
-
-    } else {
-        pcmk__xml_free(local_root);
+        local_root = NULL;
     }
 
-    return pcmk_rc_ok;
+done:
+    pcmk__xml_free(local_root);
+    free(sigfile);
+    return rc;
 }
 
 /*!
