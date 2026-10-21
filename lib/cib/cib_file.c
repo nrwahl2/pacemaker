@@ -653,27 +653,23 @@ done:
 static int
 file_free(cib_t *cib)
 {
-    int rc = pcmk_ok;
+    file_opaque_t *private = cib->variant_opaque;
 
     if (cib->state != cib_disconnected) {
-        rc = file_signoff(cib);
+        int rc = file_signoff(cib);
+
+        fprintf(stderr, "Couldn't sign off: %s\n", pcmk_strerror(rc));
+        return rc;
     }
 
-    if (rc == pcmk_ok) {
-        file_opaque_t *private = cib->variant_opaque;
+    free(private->id);
+    free(private->filename);
+    free(private);
+    free(cib->cmds);
+    free(cib->user);
+    free(cib);
 
-        free(private->id);
-        free(private->filename);
-        free(private);
-        free(cib->cmds);
-        free(cib->user);
-        free(cib);
-
-    } else {
-        fprintf(stderr, "Couldn't sign off: %d\n", rc);
-    }
-
-    return rc;
+    return pcmk_ok;
 }
 
 static int
