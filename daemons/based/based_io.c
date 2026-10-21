@@ -251,28 +251,25 @@ rename_one(const char *old_path, const char *new_path)
  * <tt>CIB_FILE ".sig"</tt> are moved to that directory.
  *
  * \param[in] old_cibfile_path  Original path of CIB file
- * \param[in] old_sigfile_path  Original path of digest file
  */
 static void
-archive_on_digest_mismatch(const char *old_cibfile_path,
-                           const char *old_sigfile_path)
+archive_on_digest_mismatch(const char *old_cibfile_path)
 {
     char *new_dir = pcmk__assert_asprintf("%s/cib.auto.XXXXXX", cib_root);
-    char *new_cibfile_path = NULL;
-    char *new_sigfile_path = NULL;
+    char *new_cibfile_path = pcmk__assert_asprintf("%s/%s", new_dir, CIBFILE);
+
+    char *old_sigfile_path = pcmk__assert_asprintf("%s.sig", old_cibfile_path);
+    char *new_sigfile_path = pcmk__assert_asprintf("%s.sig", new_cibfile_path);
 
     umask(S_IWGRP | S_IWOTH | S_IROTH);
 
     if (mkdtemp(new_dir) == NULL) {
-        pcmk__err("Failed to create directory to archive %s and %s after "
-                  "digest mismatch: %s. Disabling disk writes.",
-                  old_cibfile_path, old_sigfile_path, strerror(errno));
+        pcmk__err("Failed to create directory to archive %s after digest "
+                  "mismatch: %s. Disabling disk writes.", old_cibfile_path,
+                  strerror(errno));
         writes_enabled = false;
         goto done;
     }
-
-    new_cibfile_path = pcmk__assert_asprintf("%s/%s", new_dir, CIBFILE);
-    new_sigfile_path = pcmk__assert_asprintf("%s.sig", new_cibfile_path);
 
     if ((rename_one(old_cibfile_path, new_cibfile_path) != pcmk_rc_ok)
         || (rename_one(old_sigfile_path, new_sigfile_path) != pcmk_rc_ok)) {
@@ -281,12 +278,13 @@ archive_on_digest_mismatch(const char *old_cibfile_path,
         goto done;
     }
 
-    pcmk__err("Archived %s and %s in %s after digest mismatch",
-              old_cibfile_path, old_sigfile_path, new_dir);
+    pcmk__err("Archived %s in %s after digest mismatch", old_cibfile_path,
+              new_dir);
 
 done:
     free(new_dir);
     free(new_cibfile_path);
+    free(old_sigfile_path);
     free(new_sigfile_path);
 }
 
@@ -304,14 +302,11 @@ static xmlNode *
 read_current_cib(void)
 {
     char *cibfile_path = pcmk__assert_asprintf("%s/%s", cib_root, CIBFILE);
-    char *sigfile_path = pcmk__assert_asprintf("%s.sig", cibfile_path);
-    const char *sigfile = strrchr(sigfile_path, '/') + 1;
-
     xmlNode *cib_xml = NULL;
     int rc = pcmk_rc_ok;
 
     if (!pcmk__daemon_can_write(cib_root, CIBFILE)
-        || !pcmk__daemon_can_write(cib_root, sigfile)) {
+        || !pcmk__daemon_can_write(cib_root, CIBFILE ".sig")) {
 
         cib_status = EACCES;
         goto done;
@@ -330,12 +325,11 @@ read_current_cib(void)
 
     if (rc == pcmk_rc_cib_modified) {
         // Archive the original files so the contents are not lost
-        archive_on_digest_mismatch(cibfile_path, sigfile_path);
+        archive_on_digest_mismatch(cibfile_path);
     }
 
 done:
     free(cibfile_path);
-    free(sigfile_path);
     return cib_xml;
 }
 
