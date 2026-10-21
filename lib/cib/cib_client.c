@@ -463,17 +463,15 @@ get_shadow_file(const char *suffix)
     errno = 0;
     pwent = getpwuid(geteuid());
 
-    if (pwent) {
+    if (pwent != NULL) {
         user = pwent->pw_name;
 
     } else {
-        // Save errno before getenv()
-        int rc = errno;
-
+        rc = errno;
         user = getenv("USER");
-        pcmk__warn("Could not get password database entry for effective "
-                   "user ID %lld: %s. Assuming user is %s.",
-                   (long long) geteuid(),
+
+        pcmk__warn("Could not get password database entry for effective user "
+                   "ID %lld: %s. Assuming user is %s.", (long long) geteuid(),
                    ((rc != 0)? strerror(rc) : "No matching entry found"),
                    pcmk__s(user, "unprivileged user"));
     }
@@ -483,36 +481,35 @@ get_shadow_file(const char *suffix)
         goto done;
     }
 
-    if ((home = getenv("HOME")) == NULL) {
-        if (pwent) {
-            home = pwent->pw_dir;
-        }
+    home = getenv("HOME");
+    if ((home == NULL) && (pwent != NULL)) {
+        home = pwent->pw_dir;
     }
-
-    dir = g_get_tmp_dir();
 
     if ((home == NULL) || (home[0] != '/')) {
         goto done;
     }
 
     cib_home = pcmk__assert_asprintf("%s/.cib", home);
-
     rc = mkdir(cib_home, 0700);
-    if (rc < 0 && errno != EEXIST) {
-        pcmk__err("Couldn't create user-specific shadow directory "
-                  "%s: %s",
-                  cib_home, strerror(errno));
 
-    } else {
-        dir = cib_home;
+    if ((rc < 0) && (errno != EEXIST)) {
+        pcmk__err("Couldn't create user-specific shadow directory %s: %s",
+                  cib_home, strerror(errno));
+        goto done;
     }
 
+    dir = cib_home;
+
 done:
+    if (dir == NULL) {
+        dir = g_get_tmp_dir();
+    }
+
     fullname = pcmk__assert_asprintf("%s/%s", dir, name);
 
     free(cib_home);
     free(name);
-
     return fullname;
 }
 
