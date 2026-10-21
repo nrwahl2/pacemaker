@@ -49,7 +49,7 @@ typedef struct {
     xmlNode *cib_xml;
 } file_opaque_t;
 
-/* backup_cib_file() and cib_file_write_with_digest() need to chown the
+/* backup_cib_file() and cib__file_write_with_digest() need to chown the
  * written files only in limited circumstances, so these variables allow
  * that to be indicated without affecting external callers
  */
@@ -575,8 +575,7 @@ write_live(xmlNode *cib_root, const char *path)
     bname = g_file_get_basename(file);
 
     /* write the file */
-    rc = cib_file_write_with_digest(cib_root, dname, bname);
-    rc = pcmk_legacy2rc(rc);
+    rc = cib__file_write_with_digest(cib_root, dname, bname);
 
     /* turn off file ownership changes, for other callers */
     if (euid == 0) {
@@ -989,16 +988,13 @@ prepare_xml(xmlNode *root)
  * \param[in]     cib_dirname   Directory containing CIB and signature files
  * \param[in]     cib_filename  Name (relative to cib_dirname) of file to write
  *
- * \return pcmk_ok on success,
- *         pcmk_err_cib_modified if existing cib_filename doesn't match digest,
- *         pcmk_err_cib_backup if existing cib_filename couldn't be backed up,
- *         or pcmk_err_cib_save if new cib_filename couldn't be saved
+ * \return Standard Pacemaker return code
  */
 int
-cib_file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
-                           const char *cib_filename)
+cib__file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
+                            const char *cib_filename)
 {
-    int exit_rc = pcmk_ok;
+    int exit_rc = pcmk_rc_ok;
     int rc = 0;
     int fd = -1;
     const char *epoch = NULL;
@@ -1029,13 +1025,13 @@ cib_file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
     if ((rc != pcmk_rc_ok) && (rc != ENOENT)) {
         pcmk__err("%s was manually modified while the cluster was active!",
                   cib_path);
-        exit_rc = pcmk_err_cib_modified;
+        exit_rc = pcmk_rc_cib_modified;
         goto cleanup;
     }
 
     /* Back up the existing CIB */
     if (backup_cib_file(cib_dirname, cib_filename) < 0) {
-        exit_rc = pcmk_err_cib_backup;
+        exit_rc = pcmk_rc_cib_backup;
         goto cleanup;
     }
 
@@ -1048,7 +1044,7 @@ cib_file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
     if (fd < 0) {
         pcmk__err("Couldn't open temporary file %s for writing CIB: %s",
                   tmp_cib, strerror(errno));
-        exit_rc = pcmk_err_cib_save;
+        exit_rc = pcmk_rc_cib_save;
         goto cleanup;
     }
 
@@ -1056,20 +1052,20 @@ cib_file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
     if (fchmod(fd, S_IRUSR | S_IWUSR) < 0) {
         pcmk__err("Couldn't protect temporary file %s for writing CIB: %s",
                   tmp_cib, strerror(errno));
-        exit_rc = pcmk_err_cib_save;
+        exit_rc = pcmk_rc_cib_save;
         goto cleanup;
     }
     if (do_chown && (fchown(fd, file_owner, file_group) < 0)) {
         pcmk__err("Couldn't protect temporary file %s for writing CIB: %s",
                   tmp_cib, strerror(errno));
-        exit_rc = pcmk_err_cib_save;
+        exit_rc = pcmk_rc_cib_save;
         goto cleanup;
     }
 
     /* Write out the CIB */
     if (pcmk__xml_write_fd(cib_root, tmp_cib, fd) != pcmk_rc_ok) {
         pcmk__err("Changes couldn't be written to %s", tmp_cib);
-        exit_rc = pcmk_err_cib_save;
+        exit_rc = pcmk_rc_cib_save;
         goto cleanup;
     }
 
@@ -1086,13 +1082,13 @@ cib_file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
     if (fd < 0) {
         pcmk__err("Could not create temporary file %s for CIB digest: %s",
                   tmp_digest, strerror(errno));
-        exit_rc = pcmk_err_cib_save;
+        exit_rc = pcmk_rc_cib_save;
         goto cleanup;
     }
     if (do_chown && (fchown(fd, file_owner, file_group) < 0)) {
         pcmk__err("Couldn't protect temporary file %s for writing CIB: %s",
                   tmp_cib, strerror(errno));
-        exit_rc = pcmk_err_cib_save;
+        exit_rc = pcmk_rc_cib_save;
         close(fd);
         goto cleanup;
     }
@@ -1100,7 +1096,7 @@ cib_file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
     if (rc != pcmk_rc_ok) {
         pcmk__err("Could not write digest to %s: %s", tmp_digest,
                   pcmk_rc_str(rc));
-        exit_rc = pcmk_err_cib_save;
+        exit_rc = pcmk_rc_cib_save;
         close(fd);
         goto cleanup;
     }
@@ -1118,12 +1114,12 @@ cib_file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
     if (rename(tmp_cib, cib_path) < 0) {
         pcmk__err("Couldn't rename %s as %s: %s", tmp_cib, cib_path,
                   strerror(errno));
-        exit_rc = pcmk_err_cib_save;
+        exit_rc = pcmk_rc_cib_save;
     }
     if (rename(tmp_digest, digest_path) < 0) {
         pcmk__err("Couldn't rename %s as %s: %s", tmp_digest, digest_path,
                   strerror(errno));
-        exit_rc = pcmk_err_cib_save;
+        exit_rc = pcmk_rc_cib_save;
     }
     pcmk__sync_directory(cib_dirname);
 
