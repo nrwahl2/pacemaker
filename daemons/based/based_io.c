@@ -92,6 +92,7 @@ write_cib_async(void *user_data)
     int rc = pcmk_rc_ok;
     pid_t pid = 0;
     int blackbox_state = qb_log_ctl(QB_LOG_BLACKBOX, QB_LOG_CONF_STATE_GET, 0);
+    char *cib_path = NULL;
 
     /* Disable blackbox logging before the fork to avoid two processes writing
      * to the same shared memory. The disable should not be done in the child,
@@ -129,7 +130,9 @@ write_cib_async(void *user_data)
     /* Write the CIB. Note that this modifies based_cib, but this child is about
      * to exit. The parent's copy of based_cib won't be affected.
      */
-    rc = cib__file_write_live(based_cib, cib_root, "cib.xml");
+    cib_path = pcmk__assert_asprintf("%s/%s", cib_root, "cib.xml");
+    rc = cib__file_write_live(based_cib, cib_path);
+    free(cib_path);
 
     pcmk_common_cleanup();
 
