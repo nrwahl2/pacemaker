@@ -124,8 +124,9 @@ handle_pecalc_request(pcmk__request_t *request)
 
     value = pcmk__cluster_option(scheduler->priv->options,
                                  series[series_id].param);
-    if ((value == NULL)
-        || (pcmk__scan_min_int(value, &series_wrap, -1) != pcmk_rc_ok)) {
+    pcmk__assert(value != NULL);
+
+    if (pcmk__scan_min_int(value, &series_wrap, -1) != pcmk_rc_ok) {
         series_wrap = series[series_id].wrap;
     }
 
