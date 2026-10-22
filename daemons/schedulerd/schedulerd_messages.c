@@ -129,11 +129,9 @@ handle_pecalc_request(pcmk__request_t *request)
         series_wrap = series[series_id].wrap;
     }
 
-    if (pcmk__read_series_sequence(PCMK_SCHEDULER_INPUT_DIR, series[series_id].name,
-                                   &seq) != pcmk_rc_ok) {
-        // @TODO maybe handle errors better ...
-        seq = 0U;
-    }
+    pcmk__read_series_sequence(PCMK_SCHEDULER_INPUT_DIR, series[series_id].name,
+                               &seq);
+
     pcmk__trace("Series %s: wrap=%d, seq=%u, pref=%s", series[series_id].name,
                 series_wrap, seq, value);
 

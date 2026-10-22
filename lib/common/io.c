@@ -90,45 +90,48 @@ pcmk__series_filename(const char *directory, const char *series,
  *
  * \param[in]  directory  Directory that contains the file series
  * \param[in]  series     Start of file name
- * \param[out] seq        Where to store the sequence number
+ * \param[out] seq        Where to store the sequence number (unchanged on
+ *                        error)
  *
- * \return Standard Pacemaker return code
+ * \todo Consider returning error and checking in callers
  */
-int
+void
 pcmk__read_series_sequence(const char *directory, const char *series,
                            unsigned int *seq)
 {
-    int rc;
     FILE *fp = NULL;
     char *series_file = NULL;
+    unsigned int dest = 0;
 
     if ((directory == NULL) || (series == NULL) || (seq == NULL)) {
-        return EINVAL;
+        return;
     }
 
     series_file = pcmk__assert_asprintf("%s/%s.last", directory, series);
+
     fp = fopen(series_file, "r");
     if (fp == NULL) {
-        rc = errno;
         pcmk__debug("Could not open series file %s: %s", series_file,
-                    strerror(rc));
+                    strerror(errno));
         free(series_file);
-        return rc;
+        return;
     }
+
     errno = 0;
-    if (fscanf(fp, "%u", seq) != 1) {
-        rc = (errno == 0)? ENODATA : errno;
+    if (fscanf(fp, "%u", &dest) != 1) {
         pcmk__debug("Could not read sequence number from series file %s: %s",
-                    series_file, pcmk_rc_str(rc));
+                    series_file, strerror((errno != 0)? errno : ENODATA));
         fclose(fp);
         free(series_file);
-        return rc;
+        return;
     }
-    fclose(fp);
+
+    *seq = dest;
     pcmk__trace("Found last sequence number %u in series file %s", *seq,
                 series_file);
+
+    fclose(fp);
     free(series_file);
-    return pcmk_rc_ok;
 }
 
 /*!
