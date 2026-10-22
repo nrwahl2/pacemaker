@@ -513,38 +513,6 @@ file_signon(cib_t *cib, const char *name, enum cib_conn_type type)
 
 /*!
  * \internal
- * \brief Write out the in-memory CIB to a live CIB file
- *
- * \param[in] cib_root  Root of XML tree to write
- * \param[in] path      Full path to file to write
- *
- * \return Standard Pacemaker return code
- */
-static int
-write_live(xmlNode *cib_root, const char *path)
-{
-    int rc = pcmk_rc_ok;
-
-    GFile *file = g_file_new_for_path(path);
-    GFile *dir = g_file_get_parent(file);
-    char *bname = g_file_get_basename(file);
-    char *dname = NULL;
-
-    // Should be impossible since path of live CIB is not "/"
-    pcmk__assert(dir != NULL);
-
-    dname = g_file_get_path(dir);
-    rc = cib__file_write_live(cib_root, dname, bname);
-
-    g_clear_pointer(&file, g_object_unref);
-    g_clear_pointer(&dir, g_object_unref);
-    g_free(bname);
-    g_free(dname);
-    return rc;
-}
-
-/*!
- * \internal
  * \brief Sign-off method for CIB file variants
  *
  * This will write the file to disk if needed, and free the in-memory CIB. If
@@ -576,7 +544,7 @@ file_signoff(cib_t *cib)
 
     if (pcmk__is_set(private->flags, file_flag_live)) {
         // Write the live CIB with a digest
-        rc = write_live(private->cib_xml, private->filename);
+        rc = cib__file_write_live(private->cib_xml, private->filename);
         rc = pcmk_rc2legacy(rc);
 
     } else {
@@ -951,26 +919,35 @@ prepare_xml(xmlNode *root)
  * files atomic, by writing to temp files and then renaming them to the live CIB
  * and signature paths.
  *
- * \param[in,out] cib_root      Root of XML tree to write
- * \param[in]     cib_dirname   Directory containing CIB and signature files
- * \param[in]     cib_filename  Name (relative to cib_dirname) of file to write
+ * \param[in,out] cib_root  Root of XML tree to write
+ * \param[in]     cib_path  CIB file path
  *
  * \return Standard Pacemaker return code
  */
 int
-cib__file_write_live(xmlNode *cib_root, const char *cib_dirname,
-                     const char *cib_filename)
+cib__file_write_live(xmlNode *cib_root, const char *cib_path)
 {
     int rc = pcmk_rc_ok;
     int fd = -1;
-    char *cib_path = NULL;
+
+    GFile *cib_file = NULL;
+    GFile *dir_file = NULL;
+    char *cib_filename = NULL;
+    char *cib_dirname = NULL;
+
     char *digest_path = NULL;
     char *tmp_cib = NULL;
     char *tmp_digest = NULL;
     char *digest = NULL;
 
-    pcmk__assert((cib_root != NULL) && (cib_dirname != NULL)
-                 && (cib_filename != NULL));
+    pcmk__assert((cib_root != NULL) && (cib_path != NULL));
+
+    cib_file = g_file_new_for_path(cib_path);
+    dir_file = g_file_get_parent(cib_file);
+    cib_filename = g_file_get_basename(cib_file);
+    cib_dirname = g_file_get_path(dir_file);
+
+    pcmk__assert((cib_filename != NULL) && (cib_dirname != NULL));
 
     rc = pcmk__daemon_user(&daemon_uid, &daemon_gid);
     if (rc != pcmk_rc_ok) {
@@ -992,11 +969,7 @@ cib__file_write_live(xmlNode *cib_root, const char *cib_dirname,
         goto cleanup;
     }
 
-    /* Determine full CIB and signature pathnames */
-    cib_path = pcmk__assert_asprintf("%s/%s", cib_dirname, cib_filename);
     digest_path = pcmk__assert_asprintf("%s.sig", cib_path);
-
-    /* Create temporary file name pattern for writing out CIB and signature */
     tmp_cib = pcmk__assert_asprintf("%s/cib.XXXXXX", cib_dirname);
 
     /* Ensure the admin didn't modify the existing CIB underneath us */
@@ -1109,10 +1082,15 @@ cib__file_write_live(xmlNode *cib_root, const char *cib_dirname,
     pcmk__sync_directory(cib_dirname);
 
   cleanup:
-    free(cib_path);
+    g_clear_pointer(&cib_file, g_object_unref);
+    g_clear_pointer(&dir_file, g_object_unref);
+    g_free(cib_filename);
+    g_free(cib_dirname);
+
     free(digest_path);
     free(digest);
     free(tmp_digest);
     free(tmp_cib);
+
     return rc;
 }
