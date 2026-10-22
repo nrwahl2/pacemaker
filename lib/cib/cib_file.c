@@ -525,46 +525,21 @@ write_live(xmlNode *cib_root, const char *path)
 {
     int rc = pcmk_rc_ok;
 
-    GFile *file = NULL;
-    GFile *dir = NULL;
+    GFile *file = g_file_new_for_path(path);
+    GFile *dir = g_file_get_parent(file);
+    char *bname = g_file_get_basename(file);
     char *dname = NULL;
-    char *bname = NULL;
-
-    rc = pcmk__daemon_user(&daemon_uid, &daemon_gid);
-    if (rc != pcmk_rc_ok) {
-        pcmk__err("Could not find user " CRM_DAEMON_USER ": %s",
-                  pcmk_rc_str(rc));
-        goto done;
-    }
-
-    /* The live CIB file and related files should be owned by the daemon user
-     * and group. If we're running as the daemon user, this will happen
-     * automatically for any files we create. If we're running as root, we'll
-     * change the ownership to the daemon user and group. Otherwise, we can't
-     * change the ownership in general, so bail.
-     */
-    if ((geteuid() != 0) && (geteuid() != daemon_uid)) {
-        pcmk__err("Must be root or " CRM_DAEMON_USER " to modify live CIB");
-
-        // @TODO Should this return an error instead?
-        goto done;
-    }
-
-    file = g_file_new_for_path(path);
-    dir = g_file_get_parent(file);
 
     // Should be impossible since path of live CIB is not "/"
     pcmk__assert(dir != NULL);
 
     dname = g_file_get_path(dir);
-    bname = g_file_get_basename(file);
-    rc = cib__file_write_with_digest(cib_root, dname, bname);
+    rc = cib__file_write_live(cib_root, dname, bname);
 
-done:
     g_clear_pointer(&file, g_object_unref);
     g_clear_pointer(&dir, g_object_unref);
-    g_free(dname);
     g_free(bname);
+    g_free(dname);
     return rc;
 }
 
@@ -967,7 +942,14 @@ prepare_xml(xmlNode *root)
 
 /*!
  * \internal
- * \brief Write CIB to disk, along with a signature file containing its digest
+ * \brief Write the live CIB file to disk
+ *
+ * Also write with a signature file containing its digest, and back up the
+ * existing CIB and signature files beforehand.
+ *
+ * We make a reasonable effort to make the writes of the new CIB and signature
+ * files atomic, by writing to temp files and then renaming them to the live CIB
+ * and signature paths.
  *
  * \param[in,out] cib_root      Root of XML tree to write
  * \param[in]     cib_dirname   Directory containing CIB and signature files
@@ -976,8 +958,8 @@ prepare_xml(xmlNode *root)
  * \return Standard Pacemaker return code
  */
 int
-cib__file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
-                            const char *cib_filename)
+cib__file_write_live(xmlNode *cib_root, const char *cib_dirname,
+                     const char *cib_filename)
 {
     int rc = pcmk_rc_ok;
     int fd = -1;
@@ -989,6 +971,26 @@ cib__file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
 
     pcmk__assert((cib_root != NULL) && (cib_dirname != NULL)
                  && (cib_filename != NULL));
+
+    rc = pcmk__daemon_user(&daemon_uid, &daemon_gid);
+    if (rc != pcmk_rc_ok) {
+        pcmk__err("Could not find user " CRM_DAEMON_USER ": %s",
+                  pcmk_rc_str(rc));
+        goto cleanup;
+    }
+
+    /* The live CIB file and related files should be owned by the daemon user
+     * and group. If we're running as the daemon user, this will happen
+     * automatically for any files we create. If we're running as root, we'll
+     * change the ownership to the daemon user and group. Otherwise, we can't
+     * change the ownership in general, so bail.
+     */
+    if ((geteuid() != 0) && (geteuid() != daemon_uid)) {
+        pcmk__err("Must be root or " CRM_DAEMON_USER " to modify live CIB");
+
+        // @TODO Should this return an error instead?
+        goto cleanup;
+    }
 
     /* Determine full CIB and signature pathnames */
     cib_path = pcmk__assert_asprintf("%s/%s", cib_dirname, cib_filename);
