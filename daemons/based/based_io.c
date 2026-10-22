@@ -129,7 +129,7 @@ write_cib_async(void *user_data)
     /* Write the CIB. Note that this modifies based_cib, but this child is about
      * to exit. The parent's copy of based_cib won't be affected.
      */
-    rc = cib__file_write_with_digest(based_cib, cib_root, "cib.xml");
+    rc = cib__file_write_live(based_cib, cib_root, "cib.xml");
 
     pcmk_common_cleanup();
 
