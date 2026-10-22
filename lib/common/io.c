@@ -99,13 +99,11 @@ void
 pcmk__read_series_sequence(const char *directory, const char *series,
                            unsigned int *seq)
 {
-    FILE *fp = NULL;
     char *series_file = NULL;
+    FILE *fp = NULL;
     unsigned int dest = 0;
 
-    if ((directory == NULL) || (series == NULL) || (seq == NULL)) {
-        return;
-    }
+    pcmk__assert((directory != NULL) && (series != NULL) && (seq != NULL));
 
     series_file = pcmk__assert_asprintf("%s/%s.last", directory, series);
 
@@ -113,25 +111,23 @@ pcmk__read_series_sequence(const char *directory, const char *series,
     if (fp == NULL) {
         pcmk__debug("Could not open series file %s: %s", series_file,
                     strerror(errno));
-        free(series_file);
-        return;
+        goto done;
     }
 
     errno = 0;
     if (fscanf(fp, "%u", &dest) != 1) {
         pcmk__debug("Could not read sequence number from series file %s: %s",
                     series_file, strerror((errno != 0)? errno : ENODATA));
-        fclose(fp);
-        free(series_file);
-        return;
+        goto done;
     }
 
     *seq = dest;
     pcmk__trace("Found last sequence number %u in series file %s", *seq,
                 series_file);
 
-    fclose(fp);
+done:
     free(series_file);
+    g_clear_pointer(&fp, (GDestroyNotify) fclose);
 }
 
 /*!
