@@ -906,46 +906,48 @@ backup_cib_file(const char *cib_dirname, const char *cib_filename)
         pcmk__err("Could not archive %s by linking to %s: %s", cib_path,
                   backup_path, strerror(errno));
         rc = -1;
+        goto done;
+    }
 
     /* Back up the CIB signature similarly */
-    } else if ((link(cib_digest, backup_digest) < 0) && (errno != ENOENT)) {
+    if ((link(cib_digest, backup_digest) < 0) && (errno != ENOENT)) {
         pcmk__err("Could not archive %s by linking to %s: %s", cib_digest,
                   backup_digest, strerror(errno));
         rc = -1;
-
-    /* Update the last counter and ensure everything is sync'd to media */
-    } else {
-        pcmk__write_series_sequence(cib_dirname, CIB_SERIES, ++seq,
-                                    CIB_SERIES_MAX);
-        if (do_chown) {
-            int rc2;
-
-            if ((chown(backup_path, file_owner, file_group) < 0)
-                && (errno != ENOENT)) {
-
-                pcmk__err("Could not set owner of %s: %s", backup_path,
-                          strerror(errno));
-                rc = -1;
-            }
-            if ((chown(backup_digest, file_owner, file_group) < 0)
-                && (errno != ENOENT)) {
-
-                pcmk__err("Could not set owner of %s: %s", backup_digest,
-                          strerror(errno));
-                rc = -1;
-            }
-            rc2 = pcmk__chown_series_sequence(cib_dirname, CIB_SERIES,
-                                              file_owner, file_group);
-            if (rc2 != pcmk_rc_ok) {
-                pcmk__err("Could not set owner of sequence file in %s: %s",
-                          cib_dirname, pcmk_rc_str(rc2));
-                rc = -1;
-            }
-        }
-        pcmk__sync_directory(cib_dirname);
-        pcmk__info("Archived previous version as %s", backup_path);
+        goto done;
     }
 
+    /* Update the last counter and ensure everything is sync'd to media */
+    pcmk__write_series_sequence(cib_dirname, CIB_SERIES, ++seq, CIB_SERIES_MAX);
+    if (do_chown) {
+        int rc2;
+
+        if ((chown(backup_path, file_owner, file_group) < 0)
+            && (errno != ENOENT)) {
+
+            pcmk__err("Could not set owner of %s: %s", backup_path,
+                      strerror(errno));
+            rc = -1;
+        }
+        if ((chown(backup_digest, file_owner, file_group) < 0)
+            && (errno != ENOENT)) {
+
+            pcmk__err("Could not set owner of %s: %s", backup_digest,
+                      strerror(errno));
+            rc = -1;
+        }
+        rc2 = pcmk__chown_series_sequence(cib_dirname, CIB_SERIES, file_owner,
+                                          file_group);
+        if (rc2 != pcmk_rc_ok) {
+            pcmk__err("Could not set owner of sequence file in %s: %s",
+                      cib_dirname, pcmk_rc_str(rc2));
+            rc = -1;
+        }
+    }
+    pcmk__sync_directory(cib_dirname);
+    pcmk__info("Archived previous version as %s", backup_path);
+
+done:
     free(cib_path);
     free(cib_digest);
     free(backup_path);
