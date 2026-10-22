@@ -927,6 +927,7 @@ backup_cib_file(const char *cib_dirname, const char *cib_filename)
         pcmk__err("Could not set owner of %s: %s", backup_path,
                   strerror(errno));
         rc = -1;
+        goto done;
     }
 
     if ((chown(backup_digest, file_owner, file_group) < 0)
@@ -935,6 +936,7 @@ backup_cib_file(const char *cib_dirname, const char *cib_filename)
         pcmk__err("Could not set owner of %s: %s", backup_digest,
                   strerror(errno));
         rc = -1;
+        goto done;
     }
 
     rc2 = pcmk__chown_series_sequence(cib_dirname, CIB_SERIES, file_owner,
@@ -943,6 +945,7 @@ backup_cib_file(const char *cib_dirname, const char *cib_filename)
         pcmk__err("Could not set owner of sequence file in %s: %s", cib_dirname,
                   pcmk_rc_str(rc2));
         rc = -1;
+        goto done;
     }
 
 done:
