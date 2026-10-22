@@ -53,8 +53,8 @@ typedef struct {
  * written files only in limited circumstances, so these variables allow
  * that to be indicated without affecting external callers
  */
-static uid_t file_owner = 0;
-static uid_t file_group = 0;
+static uid_t daemon_uid = 0;
+static gid_t daemon_gid = 0;
 static bool do_chown = false;
 
 static cib__op_fn_t get_op_function(const cib__operation_t *operation);
@@ -529,8 +529,6 @@ static int
 write_live(xmlNode *cib_root, const char *path)
 {
     uid_t euid = geteuid();
-    uid_t daemon_uid = 0;
-    gid_t daemon_gid = 0;
 
     GFile *file = NULL;
     GFile *dir = NULL;
@@ -560,8 +558,6 @@ write_live(xmlNode *cib_root, const char *path)
 
     /* if we're root, we want to update the file ownership */
     if (euid == 0) {
-        file_owner = daemon_uid;
-        file_group = daemon_gid;
         do_chown = true;
     }
 
@@ -922,14 +918,14 @@ backup_cib_file(const char *cib_dirname, const char *cib_filename)
         goto done;
     }
 
-    if ((chown(backup_path, file_owner, file_group) < 0) && (errno != ENOENT)) {
+    if ((chown(backup_path, daemon_uid, daemon_gid) < 0) && (errno != ENOENT)) {
         pcmk__err("Could not set owner of %s: %s", backup_path,
                   strerror(errno));
         rc = pcmk_rc_cib_backup;
         goto done;
     }
 
-    if ((chown(backup_digest, file_owner, file_group) < 0)
+    if ((chown(backup_digest, daemon_uid, daemon_gid) < 0)
         && (errno != ENOENT)) {
 
         pcmk__err("Could not set owner of %s: %s", backup_digest,
@@ -938,8 +934,8 @@ backup_cib_file(const char *cib_dirname, const char *cib_filename)
         goto done;
     }
 
-    rc = pcmk__chown_series_sequence(cib_dirname, CIB_SERIES, file_owner,
-                                     file_group);
+    rc = pcmk__chown_series_sequence(cib_dirname, CIB_SERIES, daemon_uid,
+                                     daemon_gid);
     if (rc != pcmk_rc_ok) {
         pcmk__err("Could not set owner of sequence file in %s: %s", cib_dirname,
                   pcmk_rc_str(rc));
@@ -1051,7 +1047,7 @@ cib__file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
 
     /* Protect the temporary file */
     if ((fchmod(fd, S_IRUSR | S_IWUSR) < 0)
-        || (do_chown && (fchown(fd, file_owner, file_group) < 0))) {
+        || (do_chown && (fchown(fd, daemon_uid, daemon_gid) < 0))) {
 
         pcmk__err("Couldn't protect temporary file %s for writing CIB: %s",
                   tmp_cib, strerror(errno));
@@ -1084,7 +1080,7 @@ cib__file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
         goto cleanup;
     }
 
-    if (do_chown && (fchown(fd, file_owner, file_group) < 0)) {
+    if (do_chown && (fchown(fd, daemon_uid, daemon_gid) < 0)) {
         pcmk__err("Couldn't protect temporary file %s for writing CIB: %s",
                   tmp_cib, strerror(errno));
         rc = pcmk_rc_cib_save;
