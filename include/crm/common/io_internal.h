@@ -37,8 +37,8 @@ extern "C" {
 
 char *pcmk__series_filename(const char *directory, const char *series,
                             unsigned int sequence, bool bzip);
-int pcmk__read_series_sequence(const char *directory, const char *series,
-                               unsigned int *seq);
+void pcmk__read_series_sequence(const char *directory, const char *series,
+                                unsigned int *seq);
 void pcmk__write_series_sequence(const char *directory, const char *series,
                                  unsigned int sequence, int max);
 int pcmk__chown_series_sequence(const char *directory, const char *series,

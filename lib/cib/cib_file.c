@@ -887,11 +887,7 @@ backup_cib_file(const char *cib_dirname, const char *cib_filename)
     char *backup_digest;
 
     // Determine backup and digest file names
-    if (pcmk__read_series_sequence(cib_dirname, CIB_SERIES,
-                                   &seq) != pcmk_rc_ok) {
-        // @TODO maybe handle errors better ...
-        seq = 0U;
-    }
+    pcmk__read_series_sequence(cib_dirname, CIB_SERIES, &seq);
 
     // Must pass false because archived copies are created with hard links
     backup_path = pcmk__series_filename(cib_dirname, CIB_SERIES, seq, false);
