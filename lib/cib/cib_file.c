@@ -874,18 +874,17 @@ done:
  * \param[in] cib_dirname Directory containing CIB file and backups
  * \param[in] cib_filename Name (relative to cib_dirname) of CIB file to back up
  *
- * \return 0 on success, -1 on error
+ * \return Standard Pacemaker return code
  */
 static int
 backup_cib_file(const char *cib_dirname, const char *cib_filename)
 {
-    int rc = 0;
-    int rc2 = pcmk_rc_ok;
+    int rc = pcmk_rc_ok;
     unsigned int seq = 0U;
     char *cib_path = pcmk__assert_asprintf("%s/%s", cib_dirname, cib_filename);
     char *cib_digest = pcmk__assert_asprintf("%s.sig", cib_path);
-    char *backup_path;
-    char *backup_digest;
+    char *backup_path = NULL;
+    char *backup_digest = NULL;
     bool wrote = false;
 
     // Determine backup and digest file names
@@ -903,7 +902,7 @@ backup_cib_file(const char *cib_dirname, const char *cib_filename)
     if ((link(cib_path, backup_path) < 0) && (errno != ENOENT)) {
         pcmk__err("Could not archive %s by linking to %s: %s", cib_path,
                   backup_path, strerror(errno));
-        rc = -1;
+        rc = pcmk_rc_cib_backup;
         goto done;
     }
 
@@ -911,7 +910,7 @@ backup_cib_file(const char *cib_dirname, const char *cib_filename)
     if ((link(cib_digest, backup_digest) < 0) && (errno != ENOENT)) {
         pcmk__err("Could not archive %s by linking to %s: %s", cib_digest,
                   backup_digest, strerror(errno));
-        rc = -1;
+        rc = pcmk_rc_cib_backup;
         goto done;
     }
 
@@ -926,7 +925,7 @@ backup_cib_file(const char *cib_dirname, const char *cib_filename)
     if ((chown(backup_path, file_owner, file_group) < 0) && (errno != ENOENT)) {
         pcmk__err("Could not set owner of %s: %s", backup_path,
                   strerror(errno));
-        rc = -1;
+        rc = pcmk_rc_cib_backup;
         goto done;
     }
 
@@ -935,16 +934,16 @@ backup_cib_file(const char *cib_dirname, const char *cib_filename)
 
         pcmk__err("Could not set owner of %s: %s", backup_digest,
                   strerror(errno));
-        rc = -1;
+        rc = pcmk_rc_cib_backup;
         goto done;
     }
 
-    rc2 = pcmk__chown_series_sequence(cib_dirname, CIB_SERIES, file_owner,
-                                      file_group);
-    if (rc2 != pcmk_rc_ok) {
+    rc = pcmk__chown_series_sequence(cib_dirname, CIB_SERIES, file_owner,
+                                     file_group);
+    if (rc != pcmk_rc_ok) {
         pcmk__err("Could not set owner of sequence file in %s: %s", cib_dirname,
-                  pcmk_rc_str(rc2));
-        rc = -1;
+                  pcmk_rc_str(rc));
+        rc = pcmk_rc_cib_backup;
         goto done;
     }
 
@@ -1032,8 +1031,8 @@ cib__file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
     }
 
     /* Back up the existing CIB */
-    if (backup_cib_file(cib_dirname, cib_filename) < 0) {
-        rc = pcmk_rc_cib_backup;
+    rc = backup_cib_file(cib_dirname, cib_filename);
+    if (rc != pcmk_rc_ok) {
         goto cleanup;
     }
 
