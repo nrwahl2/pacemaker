@@ -49,13 +49,8 @@ typedef struct {
     xmlNode *cib_xml;
 } file_opaque_t;
 
-/* backup_cib_file() and cib__file_write_with_digest() need to chown the
- * written files only in limited circumstances, so these variables allow
- * that to be indicated without affecting external callers
- */
 static uid_t daemon_uid = 0;
 static gid_t daemon_gid = 0;
-static bool do_chown = false;
 
 static cib__op_fn_t get_op_function(const cib__operation_t *operation);
 
@@ -528,16 +523,13 @@ file_signon(cib_t *cib, const char *name, enum cib_conn_type type)
 static int
 write_live(xmlNode *cib_root, const char *path)
 {
-    uid_t euid = geteuid();
+    int rc = pcmk_rc_ok;
 
     GFile *file = NULL;
     GFile *dir = NULL;
     char *dname = NULL;
     char *bname = NULL;
 
-    int rc = pcmk_rc_ok;
-
-    /* Get the desired uid/gid */
     rc = pcmk__daemon_user(&daemon_uid, &daemon_gid);
     if (rc != pcmk_rc_ok) {
         pcmk__err("Could not find user " CRM_DAEMON_USER ": %s",
@@ -545,20 +537,17 @@ write_live(xmlNode *cib_root, const char *path)
         goto done;
     }
 
-    /* If we're root, we can change the ownership;
-     * if we're daemon, anything we create will be OK;
-     * otherwise, block access so we don't create wrong owner
+    /* The live CIB file and related files should be owned by the daemon user
+     * and group. If we're running as the daemon user, this will happen
+     * automatically for any files we create. If we're running as root, we'll
+     * change the ownership to the daemon user and group. Otherwise, we can't
+     * change the ownership in general, so bail.
      */
-    if ((euid != 0) && (euid != daemon_uid)) {
+    if ((geteuid() != 0) && (geteuid() != daemon_uid)) {
         pcmk__err("Must be root or " CRM_DAEMON_USER " to modify live CIB");
 
         // @TODO Should this return an error instead?
         goto done;
-    }
-
-    /* if we're root, we want to update the file ownership */
-    if (euid == 0) {
-        do_chown = true;
     }
 
     file = g_file_new_for_path(path);
@@ -569,14 +558,7 @@ write_live(xmlNode *cib_root, const char *path)
 
     dname = g_file_get_path(dir);
     bname = g_file_get_basename(file);
-
-    /* write the file */
     rc = cib__file_write_with_digest(cib_root, dname, bname);
-
-    /* turn off file ownership changes, for other callers */
-    if (euid == 0) {
-        do_chown = false;
-    }
 
 done:
     g_clear_pointer(&file, g_object_unref);
@@ -914,7 +896,7 @@ backup_cib_file(const char *cib_dirname, const char *cib_filename)
     pcmk__write_series_sequence(cib_dirname, CIB_SERIES, ++seq, CIB_SERIES_MAX);
     wrote = true;
 
-    if (!do_chown) {
+    if (geteuid() != 0) {
         goto done;
     }
 
@@ -1047,7 +1029,7 @@ cib__file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
 
     /* Protect the temporary file */
     if ((fchmod(fd, S_IRUSR | S_IWUSR) < 0)
-        || (do_chown && (fchown(fd, daemon_uid, daemon_gid) < 0))) {
+        || ((geteuid() == 0) && (fchown(fd, daemon_uid, daemon_gid) < 0))) {
 
         pcmk__err("Couldn't protect temporary file %s for writing CIB: %s",
                   tmp_cib, strerror(errno));
@@ -1080,7 +1062,7 @@ cib__file_write_with_digest(xmlNode *cib_root, const char *cib_dirname,
         goto cleanup;
     }
 
-    if (do_chown && (fchown(fd, daemon_uid, daemon_gid) < 0)) {
+    if ((geteuid() == 0) && (fchown(fd, daemon_uid, daemon_gid) < 0)) {
         pcmk__err("Couldn't protect temporary file %s for writing CIB: %s",
                   tmp_cib, strerror(errno));
         rc = pcmk_rc_cib_save;
