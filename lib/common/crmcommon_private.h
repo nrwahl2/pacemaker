@@ -381,6 +381,25 @@ G_GNUC_INTERNAL
 int pcmk__add_logfile(const char *filename);
 
 /*
+ * Options
+ */
+
+typedef struct {
+    const char *name;
+    const char *alt_name;
+    const char *type;
+    const char *values;
+    const char *default_value;
+
+    bool (*is_valid)(const char *);
+
+    uint32_t flags;                 //!< Group of <tt>enum pcmk__opt_flags</tt>
+
+    const char *description_short;
+    const char *description_long;
+} pcmk__cluster_option_t;
+
+/*
  * Output
  */
 G_GNUC_INTERNAL

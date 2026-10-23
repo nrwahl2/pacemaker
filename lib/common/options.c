@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2025 the Pacemaker project contributors
+ * Copyright 2004-2026 the Pacemaker project contributors
  *
  * The version control history for this file may have further details.
  *
@@ -19,6 +19,7 @@
 #include <crm/crm.h>
 #include <crm/common/xml.h>
 
+#include "crmcommon_private.h"      // pcmk__cluster_option_t
 
 /*
  * Option metadata
