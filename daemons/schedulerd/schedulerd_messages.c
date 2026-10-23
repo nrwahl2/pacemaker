@@ -60,7 +60,7 @@ handle_pecalc_request(pcmk__request_t *request)
     time_t execution_date = time(NULL);
     xmlNode *converted = NULL;
     xmlNode *reply = NULL;
-    bool is_repoke = false;
+    bool digest_changed = false;
     pcmk_scheduler_t *scheduler = init_scheduler();
 
     pcmk__ipc_send_ack(request->ipc_client, request->ipc_id, request->ipc_flags,
@@ -77,13 +77,14 @@ handle_pecalc_request(pcmk__request_t *request)
     } else {
         char *digest = pcmk__digest_xml(xml_data, false);
 
-        if (pcmk__str_eq(digest, last_digest, pcmk__str_casei)) {
-            is_repoke = true;
-            free(digest);
+        digest_changed = !pcmk__str_eq(digest, last_digest, pcmk__str_casei);
 
-        } else {
+        if (digest_changed) {
             free(last_digest);
             last_digest = digest;
+
+        } else {
+            free(digest);
         }
 
         scheduler->input = converted;
@@ -147,7 +148,7 @@ handle_pecalc_request(pcmk__request_t *request)
     if (series_wrap == 0) { // Don't save any inputs of this kind
         g_clear_pointer(&filename, free);
 
-    } else if (!is_repoke) { // Input changed, save to disk
+    } else if (digest_changed) {    // Input changed, save to disk
         free(filename);
         filename = pcmk__series_filename(PCMK_SCHEDULER_INPUT_DIR, series_name,
                                          seq, true);
@@ -160,7 +161,7 @@ handle_pecalc_request(pcmk__request_t *request)
     if (series_wrap == 0) {
         pcmk__debug("Not saving input to disk (disabled by configuration)");
 
-    } else if (is_repoke) {
+    } else if (!digest_changed) {
         pcmk__info("Input has not changed since last time, not saving to disk");
 
     } else {
