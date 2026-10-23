@@ -33,7 +33,7 @@
 #define CIB_SERIES "cib"
 #define CIB_SERIES_MAX 100
 
-#define LIVE_CIB_PATH CRM_CONFIG_DIR "/" CIB_SERIES ".xml"
+#define LIVE_CIB_FILE CIB_SERIES ".xml"
 
 // key: client ID (const char *) -> value: client (cib_t *)
 static GHashTable *client_table = NULL;
@@ -545,7 +545,7 @@ file_signoff(cib_t *cib)
 
     if (pcmk__is_set(private->flags, file_flag_live)) {
         // Write the live CIB with a digest
-        rc = cib__file_write_live(private->cib_xml, LIVE_CIB_PATH);
+        rc = cib__file_write_live(private->cib_xml, CRM_CONFIG_DIR);
         rc = pcmk_rc2legacy(rc);
 
     } else {
@@ -654,7 +654,7 @@ cib_file_new(const char *cib_location)
     private->flags = 0;
 
     if ((stat(cib_location, &sb_loc) == 0)
-        && (stat(LIVE_CIB_PATH, &sb_live) == 0)
+        && (stat(CRM_CONFIG_DIR "/" LIVE_CIB_FILE, &sb_live) == 0)
         && (sb_loc.st_dev == sb_live.st_dev)
         && (sb_loc.st_ino == sb_live.st_ino)) {
 
@@ -794,16 +794,15 @@ done:
  * \brief Back up a CIB
  *
  * \param[in] cib_dirname Directory containing CIB file and backups
- * \param[in] cib_filename Name (relative to cib_dirname) of CIB file to back up
  *
  * \return Standard Pacemaker return code
  */
 static int
-backup_cib_file(const char *cib_dirname, const char *cib_filename)
+backup_cib_file(const char *cib_dirname)
 {
     int rc = pcmk_rc_ok;
     unsigned int seq = 0U;
-    char *cib_path = pcmk__assert_asprintf("%s/%s", cib_dirname, cib_filename);
+    char *cib_path = pcmk__assert_asprintf("%s/%s", cib_dirname, LIVE_CIB_FILE);
     char *cib_digest = pcmk__assert_asprintf("%s.sig", cib_path);
     char *backup_path = NULL;
     char *backup_digest = NULL;
@@ -920,35 +919,25 @@ prepare_xml(xmlNode *root)
  * files atomic, by writing to temp files and then renaming them to the live CIB
  * and signature paths.
  *
- * \param[in,out] xml       CIB XML
- * \param[in]     cib_path  CIB file path
+ * \param[in,out] xml  CIB XML
+ * \param[in]     dir  Directory to write to
  *
  * \return Standard Pacemaker return code
  */
 int
-cib__file_write_live(xmlNode *xml, const char *cib_path)
+cib__file_write_live(xmlNode *xml, const char *dir)
 {
     int rc = pcmk_rc_ok;
     int fd = -1;
-
-    GFile *cib_file = NULL;
-    GFile *dir_file = NULL;
-    char *cib_filename = NULL;
-    char *cib_dirname = NULL;
-
+    char *cib_path = NULL;
     char *digest_path = NULL;
     char *tmp_cib = NULL;
     char *tmp_digest = NULL;
     char *digest = NULL;
 
-    pcmk__assert((xml != NULL) && (cib_path != NULL));
+    pcmk__assert((xml != NULL) && (dir != NULL));
 
-    cib_file = g_file_new_for_path(cib_path);
-    dir_file = g_file_get_parent(cib_file);
-    cib_filename = g_file_get_basename(cib_file);
-    cib_dirname = g_file_get_path(dir_file);
-
-    pcmk__assert((cib_filename != NULL) && (cib_dirname != NULL));
+    cib_path = pcmk__assert_asprintf("%s/%s", dir, LIVE_CIB_FILE);
 
     rc = pcmk__daemon_user(&daemon_uid, &daemon_gid);
     if (rc != pcmk_rc_ok) {
@@ -971,7 +960,7 @@ cib__file_write_live(xmlNode *xml, const char *cib_path)
     }
 
     digest_path = pcmk__assert_asprintf("%s.sig", cib_path);
-    tmp_cib = pcmk__assert_asprintf("%s/cib.XXXXXX", cib_dirname);
+    tmp_cib = pcmk__assert_asprintf("%s/cib.XXXXXX", dir);
 
     /* Ensure the admin didn't modify the existing CIB underneath us */
     pcmk__trace("Reading cluster configuration file %s", cib_path);
@@ -985,7 +974,7 @@ cib__file_write_live(xmlNode *xml, const char *cib_path)
     }
 
     /* Back up the existing CIB */
-    rc = backup_cib_file(cib_dirname, cib_filename);
+    rc = backup_cib_file(dir);
     if (rc != pcmk_rc_ok) {
         goto cleanup;
     }
@@ -1080,13 +1069,10 @@ cib__file_write_live(xmlNode *xml, const char *cib_path)
         rc = pcmk_rc_cib_save;
     }
 
-    pcmk__sync_directory(cib_dirname);
+    pcmk__sync_directory(dir);
 
   cleanup:
-    g_clear_pointer(&cib_file, g_object_unref);
-    g_clear_pointer(&dir_file, g_object_unref);
-    g_free(cib_filename);
-    g_free(cib_dirname);
+    free(cib_path);
 
     free(digest_path);
     free(digest);
