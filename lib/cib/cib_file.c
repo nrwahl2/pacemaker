@@ -843,22 +843,6 @@ backup_live_cib(const char *dir)
         goto done;
     }
 
-    if ((chown(backup_path, daemon_uid, daemon_gid) < 0) && (errno != ENOENT)) {
-        pcmk__err("Could not set owner of %s: %s", backup_path,
-                  strerror(errno));
-        rc = pcmk_rc_cib_backup;
-        goto done;
-    }
-
-    if ((chown(backup_digest, daemon_uid, daemon_gid) < 0)
-        && (errno != ENOENT)) {
-
-        pcmk__err("Could not set owner of %s: %s", backup_digest,
-                  strerror(errno));
-        rc = pcmk_rc_cib_backup;
-        goto done;
-    }
-
     rc = pcmk__chown_series_sequence(dir, CIB_SERIES, daemon_uid, daemon_gid);
     if (rc != pcmk_rc_ok) {
         pcmk__err("Could not set owner of sequence file in %s: %s", dir,
