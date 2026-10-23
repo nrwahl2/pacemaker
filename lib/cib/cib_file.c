@@ -919,13 +919,13 @@ prepare_xml(xmlNode *root)
  * files atomic, by writing to temp files and then renaming them to the live CIB
  * and signature paths.
  *
- * \param[in,out] cib_root  Root of XML tree to write
+ * \param[in,out] xml       CIB XML
  * \param[in]     cib_path  CIB file path
  *
  * \return Standard Pacemaker return code
  */
 int
-cib__file_write_live(xmlNode *cib_root, const char *cib_path)
+cib__file_write_live(xmlNode *xml, const char *cib_path)
 {
     int rc = pcmk_rc_ok;
     int fd = -1;
@@ -940,7 +940,7 @@ cib__file_write_live(xmlNode *cib_root, const char *cib_path)
     char *tmp_digest = NULL;
     char *digest = NULL;
 
-    pcmk__assert((cib_root != NULL) && (cib_path != NULL));
+    pcmk__assert((xml != NULL) && (cib_path != NULL));
 
     cib_file = g_file_new_for_path(cib_path);
     dir_file = g_file_get_parent(cib_file);
@@ -991,7 +991,7 @@ cib__file_write_live(xmlNode *cib_root, const char *cib_path)
 
     pcmk__debug("Writing CIB to disk");
     umask(S_IWGRP | S_IWOTH | S_IROTH);
-    prepare_xml(cib_root);
+    prepare_xml(xml);
 
     /* Write the CIB to a temporary file, so we can deploy (near) atomically */
     fd = mkstemp(tmp_cib);
@@ -1013,18 +1013,18 @@ cib__file_write_live(xmlNode *cib_root, const char *cib_path)
     }
 
     /* Write out the CIB */
-    if (pcmk__xml_write_fd(cib_root, tmp_cib, fd) != pcmk_rc_ok) {
+    if (pcmk__xml_write_fd(xml, tmp_cib, fd) != pcmk_rc_ok) {
         pcmk__err("Changes couldn't be written to %s", tmp_cib);
         rc = pcmk_rc_cib_save;
         goto cleanup;
     }
 
     /* Calculate CIB digest */
-    digest = pcmk__digest_on_disk_cib(cib_root);
+    digest = pcmk__digest_on_disk_cib(xml);
     pcmk__assert(digest != NULL);
     pcmk__info("Wrote version %s.%s.0 of the CIB to disk (digest: %s)",
-               pcmk__s(pcmk__xe_get(cib_root, PCMK_XA_ADMIN_EPOCH), "0"),
-               pcmk__s(pcmk__xe_get(cib_root, PCMK_XA_EPOCH), "0"), digest);
+               pcmk__s(pcmk__xe_get(xml, PCMK_XA_ADMIN_EPOCH), "0"),
+               pcmk__s(pcmk__xe_get(xml, PCMK_XA_EPOCH), "0"), digest);
 
     /* Write the CIB digest to a temporary file */
     tmp_digest = pcmk__assert_asprintf("%s.sig", tmp_cib);

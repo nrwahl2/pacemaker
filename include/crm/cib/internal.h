@@ -225,7 +225,7 @@ int cib_internal_op(cib_t * cib, const char *op, const char *host,
 
 
 int cib__file_read_and_verify(const char *filename, xmlNode **root);
-int cib__file_write_live(xmlNode *cib_root, const char *cib_path);
+int cib__file_write_live(xmlNode *xml, const char *cib_path);
 
 void cib__set_output(cib_t *cib, pcmk__output_t *out);
 
