@@ -56,7 +56,6 @@ handle_pecalc_request(pcmk__request_t *request)
     const char *series_name = NULL;
     const char *series_max_param = NULL;
     int series_wrap = 0;
-    char *digest = NULL;
     const char *value = NULL;
     time_t execution_date = time(NULL);
     xmlNode *converted = NULL;
@@ -67,16 +66,17 @@ handle_pecalc_request(pcmk__request_t *request)
     pcmk__ipc_send_ack(request->ipc_client, request->ipc_id, request->ipc_flags,
                        NULL, CRM_EX_INDETERMINATE);
 
-    digest = pcmk__digest_xml(xml_data, false);
     converted = pcmk__xml_copy(NULL, xml_data);
+
     if (pcmk__update_configured_schema(&converted, true) != pcmk_rc_ok) {
         scheduler->priv->graph = pcmk__xe_create(NULL,
                                                  PCMK__XE_TRANSITION_GRAPH);
         pcmk__xe_set_int(scheduler->priv->graph, "transition_id", 0);
         pcmk__xe_set_int(scheduler->priv->graph, PCMK_OPT_CLUSTER_DELAY, 0);
-        free(digest);
 
     } else {
+        char *digest = pcmk__digest_xml(xml_data, false);
+
         if (pcmk__str_eq(digest, last_digest, pcmk__str_casei)) {
             is_repoke = true;
             free(digest);
