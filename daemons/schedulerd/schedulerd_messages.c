@@ -62,7 +62,6 @@ handle_pecalc_request(pcmk__request_t *request)
     xmlNode *converted = NULL;
     xmlNode *reply = NULL;
     bool is_repoke = false;
-    bool process = true;
     pcmk_scheduler_t *scheduler = init_scheduler();
 
     pcmk__ipc_send_ack(request->ipc_client, request->ipc_id, request->ipc_flags,
@@ -75,19 +74,18 @@ handle_pecalc_request(pcmk__request_t *request)
                                                  PCMK__XE_TRANSITION_GRAPH);
         pcmk__xe_set_int(scheduler->priv->graph, "transition_id", 0);
         pcmk__xe_set_int(scheduler->priv->graph, PCMK_OPT_CLUSTER_DELAY, 0);
-        process = false;
-        free(digest);
-
-    } else if (pcmk__str_eq(digest, last_digest, pcmk__str_casei)) {
-        is_repoke = true;
         free(digest);
 
     } else {
-        free(last_digest);
-        last_digest = digest;
-    }
+        if (pcmk__str_eq(digest, last_digest, pcmk__str_casei)) {
+            is_repoke = true;
+            free(digest);
 
-    if (process) {
+        } else {
+            free(last_digest);
+            last_digest = digest;
+        }
+
         scheduler->input = converted;
         pcmk__set_scheduler_flags(scheduler,
                                   pcmk__sched_no_counts
