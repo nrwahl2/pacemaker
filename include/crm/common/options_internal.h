@@ -88,22 +88,6 @@ enum pcmk__opt_flags {
     pcmk__opt_primitive  = (UINT32_C(1) << 7),
 };
 
-typedef struct {
-    const char *name;
-    const char *alt_name;
-    const char *type;
-    const char *values;
-    const char *default_value;
-
-    bool (*is_valid)(const char *);
-
-    uint32_t flags;                 //!< Group of <tt>enum pcmk__opt_flags</tt>
-
-    const char *description_short;
-    const char *description_long;
-
-} pcmk__cluster_option_t;
-
 const char *pcmk__cluster_option(GHashTable *options, const char *name);
 
 int pcmk__output_cluster_options(pcmk__output_t *out, const char *name,
