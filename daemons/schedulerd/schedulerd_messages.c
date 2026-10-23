@@ -48,15 +48,10 @@ handle_pecalc_request(pcmk__request_t *request)
     static struct series_s {
         const char *name;
         const char *param;
-
-        /* Maximum number of inputs of this kind to save to disk.
-         * If -1, save all; if 0, save none.
-         */
-        int wrap;
     } series[] = {
-        { "pe-error", PCMK_OPT_PE_ERROR_SERIES_MAX, -1 },
-        { "pe-warn",  PCMK_OPT_PE_WARN_SERIES_MAX, 5000 },
-        { "pe-input", PCMK_OPT_PE_INPUT_SERIES_MAX, 4000 },
+        { "pe-error", PCMK_OPT_PE_ERROR_SERIES_MAX },
+        { "pe-warn",  PCMK_OPT_PE_WARN_SERIES_MAX },
+        { "pe-input", PCMK_OPT_PE_INPUT_SERIES_MAX },
     };
 
     xmlNode *msg = request->xml;
@@ -122,12 +117,22 @@ handle_pecalc_request(pcmk__request_t *request)
         series_id = 2;
     }
 
+    /* Maximum number of inputs of this kind to save to disk.
+     * If -1, save all; if 0, save none.
+     */
     value = pcmk__cluster_option(scheduler->priv->options,
                                  series[series_id].param);
     pcmk__assert(value != NULL);
 
     if (pcmk__scan_min_int(value, &series_wrap, -1) != pcmk_rc_ok) {
-        series_wrap = series[series_id].wrap;
+        /* Use default value.
+         *
+         * @TODO Improve option validation to check that the value is within an
+         * allowed range instead of just a valid long long value. Then we can
+         * rely on pcmk__cluster_option() returning the default in this case.
+         */
+        value = pcmk__cluster_option(NULL, series[series_id].param);
+        pcmk__assert(pcmk__scan_min_int(value, &series_wrap, -1) == pcmk_rc_ok);
     }
 
     pcmk__read_series_sequence(PCMK_SCHEDULER_INPUT_DIR, series[series_id].name,
