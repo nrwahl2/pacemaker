@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2024 the Pacemaker project contributors
+ * Copyright 2022-2026 the Pacemaker project contributors
  *
  * The version control history for this file may have further details.
  *
@@ -14,7 +14,7 @@
 static void
 empty_input_string(void **state)
 {
-    int result;
+    int result = 0;
 
     assert_int_equal(pcmk__scan_min_int("", &result, 1), pcmk_rc_bad_input);
     assert_int_equal(result, 1);
@@ -26,25 +26,43 @@ empty_input_string(void **state)
 static void
 input_below_minimum(void **state)
 {
-    int result;
+    int result = 0;
+    char *below_s = NULL;
 
+    // Within int and long long range
     assert_int_equal(pcmk__scan_min_int("100", &result, 1024), pcmk_rc_ok);
     assert_int_equal(result, 1024);
+
+    // Below long long range
+    below_s = pcmk__assert_asprintf("%lld0", LLONG_MIN);
+    assert_int_equal(pcmk__scan_min_int(below_s, &result, 1024), pcmk_rc_ok);
+    assert_int_equal(result, 1024);
+    free(below_s);
 }
 
 static void
 input_above_maximum(void **state)
 {
-    int result;
+    int result = 0;
+    char *above_s = NULL;
 
-    assert_int_equal(pcmk__scan_min_int("20000000000000000", &result, 100), EOVERFLOW);
+    // Above int range and likely within long long range
+    above_s = pcmk__assert_asprintf("%d0", INT_MAX);
+    assert_int_equal(pcmk__scan_min_int(above_s, &result, 100), EOVERFLOW);
     assert_int_equal(result, INT_MAX);
+    free(above_s);
+
+    // Above long long range
+    above_s = pcmk__assert_asprintf("%lld0", LLONG_MAX);
+    assert_int_equal(pcmk__scan_min_int(above_s, &result, 100), EOVERFLOW);
+    assert_int_equal(result, INT_MAX);
+    free(above_s);
 }
 
 static void
 input_just_right(void **state)
 {
-    int result;
+    int result = 0;
 
     assert_int_equal(pcmk__scan_min_int("1024", &result, 1024), pcmk_rc_ok);
     assert_int_equal(result, 1024);
