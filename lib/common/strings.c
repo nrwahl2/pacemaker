@@ -119,10 +119,13 @@ pcmk__scan_ll(const char *text, long long *result, long long default_value)
 int
 pcmk__scan_min_int(const char *text, int *result, int minimum)
 {
-    int rc;
-    long long result_ll;
+    long long result_ll = 0;
+    int rc = pcmk__scan_ll(text, &result_ll, (long long) minimum);
 
-    rc = pcmk__scan_ll(text, &result_ll, (long long) minimum);
+    if (rc == ERANGE) {
+        // We specifically handle both out-of-range cases below
+        rc = pcmk_rc_ok;
+    }
 
     if (result_ll < (long long) minimum) {
         pcmk__warn("Clipped '%s' to minimum acceptable value %d", text,
