@@ -45,15 +45,6 @@ init_scheduler(void)
 static xmlNode *
 handle_pecalc_request(pcmk__request_t *request)
 {
-    static struct series_s {
-        const char *name;
-        const char *param;
-    } series[] = {
-        { "pe-error", PCMK_OPT_PE_ERROR_SERIES_MAX },
-        { "pe-warn",  PCMK_OPT_PE_WARN_SERIES_MAX },
-        { "pe-input", PCMK_OPT_PE_INPUT_SERIES_MAX },
-    };
-
     xmlNode *msg = request->xml;
     xmlNode *wrapper = pcmk__xe_first_child(msg, PCMK__XE_CRM_XML, NULL, NULL);
     xmlNode *xml_data = pcmk__xe_first_child(wrapper, NULL, NULL, NULL);
@@ -62,7 +53,8 @@ handle_pecalc_request(pcmk__request_t *request)
     static char *filename = NULL;
 
     unsigned int seq = 0U;
-    int series_id = 0;
+    const char *series_name = NULL;
+    const char *series_max_param = NULL;
     int series_wrap = 0;
     char *digest = NULL;
     const char *value = NULL;
@@ -106,22 +98,27 @@ handle_pecalc_request(pcmk__request_t *request)
         scheduler->input = NULL;
     }
 
-    // Get appropriate index into series[] array
     if (pcmk__is_set(scheduler->flags, pcmk__sched_processing_error)
         || pcmk__config_has_error) {
-        series_id = 0;
+
+        series_name = "pe-error";
+        series_max_param = PCMK_OPT_PE_ERROR_SERIES_MAX;
+
     } else if (pcmk__is_set(scheduler->flags, pcmk__sched_processing_warning)
                || pcmk__config_has_warning) {
-        series_id = 1;
+
+        series_name = "pe-warn";
+        series_max_param = PCMK_OPT_PE_WARN_SERIES_MAX;
+
     } else {
-        series_id = 2;
+        series_name = "pe-input";
+        series_max_param = PCMK_OPT_PE_INPUT_SERIES_MAX;
     }
 
     /* Maximum number of inputs of this kind to save to disk.
      * If -1, save all; if 0, save none.
      */
-    value = pcmk__cluster_option(scheduler->priv->options,
-                                 series[series_id].param);
+    value = pcmk__cluster_option(scheduler->priv->options, series_max_param);
     pcmk__assert(value != NULL);
 
     if (pcmk__scan_min_int(value, &series_wrap, -1) != pcmk_rc_ok) {
@@ -131,15 +128,14 @@ handle_pecalc_request(pcmk__request_t *request)
          * allowed range instead of just a valid long long value. Then we can
          * rely on pcmk__cluster_option() returning the default in this case.
          */
-        value = pcmk__cluster_option(NULL, series[series_id].param);
+        value = pcmk__cluster_option(NULL, series_max_param);
         pcmk__assert(pcmk__scan_min_int(value, &series_wrap, -1) == pcmk_rc_ok);
     }
 
-    pcmk__read_series_sequence(PCMK_SCHEDULER_INPUT_DIR, series[series_id].name,
-                               &seq);
+    pcmk__read_series_sequence(PCMK_SCHEDULER_INPUT_DIR, series_name, &seq);
 
-    pcmk__trace("Series %s: wrap=%d, seq=%u, pref=%s", series[series_id].name,
-                series_wrap, seq, value);
+    pcmk__trace("Series %s: wrap=%d, seq=%u, pref=%s", series_name, series_wrap,
+                seq, value);
 
     reply = pcmk__new_reply(msg, scheduler->priv->graph);
 
@@ -155,8 +151,8 @@ handle_pecalc_request(pcmk__request_t *request)
 
     } else if (!is_repoke) { // Input changed, save to disk
         free(filename);
-        filename = pcmk__series_filename(PCMK_SCHEDULER_INPUT_DIR,
-                                         series[series_id].name, seq, true);
+        filename = pcmk__series_filename(PCMK_SCHEDULER_INPUT_DIR, series_name,
+                                         seq, true);
     }
 
     pcmk__xe_set(reply, PCMK__XA_CRM_TGRAPH_IN, filename);
@@ -173,7 +169,7 @@ handle_pecalc_request(pcmk__request_t *request)
         unlink(filename);
         pcmk__xe_set_time(xml_data, PCMK_XA_EXECUTION_DATE, execution_date);
         pcmk__xml_write_file(xml_data, filename, true);
-        pcmk__write_series_sequence(PCMK_SCHEDULER_INPUT_DIR, series[series_id].name,
+        pcmk__write_series_sequence(PCMK_SCHEDULER_INPUT_DIR, series_name,
                                     ++seq, series_wrap);
     }
 
