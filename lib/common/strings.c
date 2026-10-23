@@ -45,40 +45,46 @@ scan_ll(const char *text, long long *result, long long default_value,
     int rc = pcmk_rc_ok;
 
     errno = 0;
-    if (text != NULL) {
-        local_result = strtoll(text, &local_end_text, 10);
-        if (errno == ERANGE) {
-            rc = errno;
-            pcmk__debug("Integer parsed from '%s' was clipped to %lld", text,
-                        local_result);
-
-        } else if (local_end_text == text) {
-            rc = pcmk_rc_bad_input;
-            local_result = default_value;
-            pcmk__debug("Could not parse integer from '%s' (using %lld "
-                        "instead): No digits found",
-                        text, default_value);
-
-        } else if (errno != 0) {
-            rc = errno;
-            local_result = default_value;
-            pcmk__debug("Could not parse integer from '%s' (using %lld "
-                        "instead): %s",
-                        text, default_value, pcmk_rc_str(rc));
-        }
-
-        if ((end_text == NULL) && !pcmk__str_empty(local_end_text)) {
-            pcmk__debug("Characters left over after parsing '%s': '%s'",
-                        text, local_end_text);
-        }
-        errno = rc;
+    if (text == NULL) {
+        goto done;
     }
+
+    local_result = strtoll(text, &local_end_text, 10);
+
+    if (errno == ERANGE) {
+        rc = errno;
+        pcmk__debug("Integer parsed from '%s' was clipped to %lld", text,
+                    local_result);
+
+    } else if (local_end_text == text) {
+        rc = pcmk_rc_bad_input;
+        local_result = default_value;
+        pcmk__debug("Could not parse integer from '%s' (using %lld instead): "
+                    "No digits found", text, default_value);
+
+    } else if (errno != 0) {
+        rc = errno;
+        local_result = default_value;
+        pcmk__debug("Could not parse integer from '%s' (using %lld instead): "
+                    "%s", text, default_value, pcmk_rc_str(rc));
+    }
+
+    if ((end_text == NULL) && !pcmk__str_empty(local_end_text)) {
+        pcmk__debug("Characters left over after parsing '%s': '%s'", text,
+                    local_end_text);
+    }
+
+    errno = rc;
+
+done:
     if (end_text != NULL) {
         *end_text = local_end_text;
     }
+
     if (result != NULL) {
         *result = local_result;
     }
+
     return rc;
 }
 
