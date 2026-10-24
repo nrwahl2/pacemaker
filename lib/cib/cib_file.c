@@ -791,28 +791,28 @@ done:
 
 /*!
  * \internal
- * \brief Back up a CIB
+ * \brief Back up the live CIB file and its signature file
  *
- * \param[in] cib_dirname Directory containing CIB file and backups
+ * \param[in] dir  Directory containing live CIB file and backups
  *
  * \return Standard Pacemaker return code
  */
 static int
-backup_cib_file(const char *cib_dirname)
+backup_live_cib(const char *dir)
 {
     int rc = pcmk_rc_ok;
     unsigned int seq = 0U;
-    char *cib_path = pcmk__assert_asprintf("%s/%s", cib_dirname, LIVE_CIB_FILE);
+    char *cib_path = pcmk__assert_asprintf("%s/%s", dir, LIVE_CIB_FILE);
     char *cib_digest = pcmk__assert_asprintf("%s.sig", cib_path);
     char *backup_path = NULL;
     char *backup_digest = NULL;
     bool wrote = false;
 
     // Determine backup and digest file names
-    pcmk__read_series_sequence(cib_dirname, CIB_SERIES, &seq);
+    pcmk__read_series_sequence(dir, CIB_SERIES, &seq);
 
     // Must pass false because archived copies are created with hard links
-    backup_path = pcmk__series_filename(cib_dirname, CIB_SERIES, seq, false);
+    backup_path = pcmk__series_filename(dir, CIB_SERIES, seq, false);
     backup_digest = pcmk__assert_asprintf("%s.sig", backup_path);
 
     /* Remove the old backups if they exist */
@@ -836,7 +836,7 @@ backup_cib_file(const char *cib_dirname)
     }
 
     /* Update the last counter and ensure everything is sync'd to media */
-    pcmk__write_series_sequence(cib_dirname, CIB_SERIES, ++seq, CIB_SERIES_MAX);
+    pcmk__write_series_sequence(dir, CIB_SERIES, ++seq, CIB_SERIES_MAX);
     wrote = true;
 
     if (geteuid() != 0) {
@@ -859,10 +859,9 @@ backup_cib_file(const char *cib_dirname)
         goto done;
     }
 
-    rc = pcmk__chown_series_sequence(cib_dirname, CIB_SERIES, daemon_uid,
-                                     daemon_gid);
+    rc = pcmk__chown_series_sequence(dir, CIB_SERIES, daemon_uid, daemon_gid);
     if (rc != pcmk_rc_ok) {
-        pcmk__err("Could not set owner of sequence file in %s: %s", cib_dirname,
+        pcmk__err("Could not set owner of sequence file in %s: %s", dir,
                   pcmk_rc_str(rc));
         rc = pcmk_rc_cib_backup;
         goto done;
@@ -870,7 +869,7 @@ backup_cib_file(const char *cib_dirname)
 
 done:
     if (wrote) {
-        pcmk__sync_directory(cib_dirname);
+        pcmk__sync_directory(dir);
         pcmk__info("Archived previous version as %s", backup_path);
     }
 
@@ -974,7 +973,7 @@ cib__file_write_live(xmlNode *xml, const char *dir)
     }
 
     /* Back up the existing CIB */
-    rc = backup_cib_file(dir);
+    rc = backup_live_cib(dir);
     if (rc != pcmk_rc_ok) {
         goto cleanup;
     }
