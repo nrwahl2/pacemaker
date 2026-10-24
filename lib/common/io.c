@@ -137,7 +137,9 @@ done:
  * \param[in] directory  Directory that contains the file series
  * \param[in] series     Start of file name
  * \param[in] sequence   Sequence number to write
- * \param[in] max        Maximum sequence value, after which it is reset to 0
+ * \param[in] max        Maximum sequence value, after which it is reset to 0.
+ *                       Pass 0 for no write at all. Pass a negative value for
+ *                       \c UINT_MAX (effectively no maximum).
  *
  * \note This function logs some errors but does not return any to the caller
  */
@@ -145,34 +147,37 @@ void
 pcmk__write_series_sequence(const char *directory, const char *series,
                             unsigned int sequence, int max)
 {
-    FILE *file_strm = NULL;
     char *series_file = NULL;
+    FILE *file_strm = NULL;
+    int rc = 0;
 
-    CRM_CHECK(directory != NULL, return);
-    CRM_CHECK(series != NULL, return);
+    pcmk__assert((directory != NULL) && (series != NULL));
 
     if (max == 0) {
-        return;
+        goto done;
     }
-    if (max > 0 && sequence >= max) {
+
+    if ((max > 0) && (sequence >= max)) {
         sequence = 0;
     }
 
     series_file = pcmk__assert_asprintf("%s/%s.last", directory, series);
+
     file_strm = fopen(series_file, "w");
-    if (file_strm != NULL) {
-        int rc = fprintf(file_strm, "%u", sequence);
-
-        if (rc < 0) {
-            pcmk__err("Cannot write to series file %s", series_file);
-        }
-        fflush(file_strm);
-        fclose(file_strm);
-
-    } else {
+    if (file_strm == NULL) {
         pcmk__err("Cannot open series file %s for writing", series_file);
+        goto done;
     }
 
+    rc = fprintf(file_strm, "%u", sequence);
+    if (rc < 0) {
+        pcmk__err("Cannot write to series file %s", series_file);
+    }
+
+    fflush(file_strm);
+    fclose(file_strm);
+
+done:
     free(series_file);
 }
 
@@ -195,13 +200,14 @@ pcmk__chown_series_sequence(const char *directory, const char *series,
     char *series_file = NULL;
     int rc = pcmk_rc_ok;
 
-    if ((directory == NULL) || (series == NULL)) {
-        return EINVAL;
-    }
+    pcmk__assert((directory != NULL) && (series != NULL));
+
     series_file = pcmk__assert_asprintf("%s/%s.last", directory, series);
+
     if (chown(series_file, uid, gid) < 0) {
         rc = errno;
     }
+
     free(series_file);
     return rc;
 }
