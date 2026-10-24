@@ -806,7 +806,6 @@ backup_live_cib(const char *dir)
     char *cib_digest = pcmk__assert_asprintf("%s.sig", cib_path);
     char *backup_path = NULL;
     char *backup_digest = NULL;
-    bool wrote = false;
 
     // Determine backup and digest file names
     pcmk__read_series_sequence(dir, CIB_SERIES, &seq);
@@ -837,26 +836,11 @@ backup_live_cib(const char *dir)
 
     /* Update the last counter and ensure everything is sync'd to media */
     pcmk__write_series_sequence(dir, CIB_SERIES, ++seq, CIB_SERIES_MAX);
-    wrote = true;
 
-    if (geteuid() != 0) {
-        goto done;
-    }
-
-    rc = pcmk__chown_series_sequence(dir, CIB_SERIES, daemon_uid, daemon_gid);
-    if (rc != pcmk_rc_ok) {
-        pcmk__err("Could not set owner of sequence file in %s: %s", dir,
-                  pcmk_rc_str(rc));
-        rc = pcmk_rc_cib_backup;
-        goto done;
-    }
+    pcmk__sync_directory(dir);
+    pcmk__info("Archived previous version as %s", backup_path);
 
 done:
-    if (wrote) {
-        pcmk__sync_directory(dir);
-        pcmk__info("Archived previous version as %s", backup_path);
-    }
-
     free(cib_path);
     free(cib_digest);
     free(backup_path);

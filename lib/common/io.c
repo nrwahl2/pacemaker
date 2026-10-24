@@ -134,6 +134,10 @@ done:
  * \internal
  * \brief Write sequence number to a file series' .last file
  *
+ * This is intended to be called as either root or \c CRM_DAEMON_USER. On
+ * success, this sets the file's ownership to \c CRM_DAEMON_USER and
+ * \c CRM_DAEMON_GROUP.
+ *
  * \param[in] directory  Directory that contains the file series
  * \param[in] series     Start of file name
  * \param[in] sequence   Sequence number to write
@@ -141,7 +145,7 @@ done:
  *                       Pass 0 for no write at all. Pass a negative value for
  *                       \c UINT_MAX (effectively no maximum).
  *
- * \note This function logs some errors but does not return any to the caller
+ * \todo Consider returning an error code and handling it in the callers.
  */
 void
 pcmk__write_series_sequence(const char *directory, const char *series,
@@ -150,6 +154,8 @@ pcmk__write_series_sequence(const char *directory, const char *series,
     char *series_file = NULL;
     FILE *file_strm = NULL;
     int rc = 0;
+    uid_t daemon_uid = 0;
+    gid_t daemon_gid = 0;
 
     pcmk__assert((directory != NULL) && (series != NULL));
 
@@ -177,39 +183,20 @@ pcmk__write_series_sequence(const char *directory, const char *series,
     fflush(file_strm);
     fclose(file_strm);
 
-done:
-    free(series_file);
-}
-
-/*!
- * \internal
- * \brief Change the owner and group of a file series' .last file
- *
- * \param[in] directory  Directory that contains series
- * \param[in] series     Series to change
- * \param[in] uid        User ID of desired file owner
- * \param[in] gid        Group ID of desired file group
- *
- * \return Standard Pacemaker return code
- * \note The caller must have the appropriate privileges.
- */
-int
-pcmk__chown_series_sequence(const char *directory, const char *series,
-                            uid_t uid, gid_t gid)
-{
-    char *series_file = NULL;
-    int rc = pcmk_rc_ok;
-
-    pcmk__assert((directory != NULL) && (series != NULL));
-
-    series_file = pcmk__assert_asprintf("%s/%s.last", directory, series);
-
-    if (chown(series_file, uid, gid) < 0) {
-        rc = errno;
+    rc = pcmk__daemon_user(&daemon_uid, &daemon_gid);
+    if (rc != pcmk_rc_ok) {
+        pcmk__err("Could not find user " CRM_DAEMON_USER ": %s",
+                  pcmk_rc_str(rc));
+        goto done;
     }
 
+    if (chown(series_file, daemon_uid, daemon_gid) < 0) {
+        pcmk__err("Could not set owner of sequence file in %s: %s", directory,
+                  strerror(errno));
+    }
+
+done:
     free(series_file);
-    return rc;
 }
 
 static bool

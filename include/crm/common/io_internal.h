@@ -14,10 +14,8 @@
 #ifndef PCMK__CRM_COMMON_IO_INTERNAL__H
 #define PCMK__CRM_COMMON_IO_INTERNAL__H
 
-#include <fcntl.h>              // open()
 #include <stdbool.h>            // bool
 #include <stdio.h>              // freopen()
-#include <unistd.h>             // uid_t, gid_t
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,8 +39,6 @@ void pcmk__read_series_sequence(const char *directory, const char *series,
                                 unsigned int *seq);
 void pcmk__write_series_sequence(const char *directory, const char *series,
                                  unsigned int sequence, int max);
-int pcmk__chown_series_sequence(const char *directory, const char *series,
-                                uid_t uid, gid_t gid);
 
 int pcmk__build_path(const char *path_c, mode_t mode);
 bool pcmk__daemon_can_write(const char *dir, const char *file);
