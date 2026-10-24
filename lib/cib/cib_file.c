@@ -32,7 +32,8 @@
 
 #define CIB_SERIES "cib"
 #define CIB_SERIES_MAX 100
-#define CIB_LIVE_NAME CIB_SERIES ".xml"
+
+#define LIVE_CIB_PATH CRM_CONFIG_DIR "/" CIB_SERIES ".xml"
 
 // key: client ID (const char *) -> value: client (cib_t *)
 static GHashTable *client_table = NULL;
@@ -544,7 +545,7 @@ file_signoff(cib_t *cib)
 
     if (pcmk__is_set(private->flags, file_flag_live)) {
         // Write the live CIB with a digest
-        rc = cib__file_write_live(private->cib_xml, private->filename);
+        rc = cib__file_write_live(private->cib_xml, LIVE_CIB_PATH);
         rc = pcmk_rc2legacy(rc);
 
     } else {
@@ -653,7 +654,7 @@ cib_file_new(const char *cib_location)
     private->flags = 0;
 
     if ((stat(cib_location, &sb_loc) == 0)
-        && (stat(CRM_CONFIG_DIR "/" CIB_LIVE_NAME, &sb_live) == 0)
+        && (stat(LIVE_CIB_PATH, &sb_live) == 0)
         && (sb_loc.st_dev == sb_live.st_dev)
         && (sb_loc.st_ino == sb_live.st_ino)) {
 
