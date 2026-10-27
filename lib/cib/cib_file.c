@@ -947,7 +947,6 @@ cib__file_write_live(xmlNode *xml, const char *dir)
     }
 
     pcmk__debug("Writing CIB to disk");
-    umask(S_IWGRP | S_IWOTH | S_IROTH);
     prepare_xml(xml);
 
     /* Write the CIB to a temporary file, so we can deploy (near) atomically */

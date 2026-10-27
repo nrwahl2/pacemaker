@@ -17,7 +17,7 @@
 #include <stdio.h>                  // rename
 #include <stdlib.h>                 // free, mkdtemp
 #include <string.h>                 // strerror, strrchr, etc.
-#include <sys/stat.h>               // stat, umask, etc.
+#include <sys/stat.h>               // stat, etc.
 #include <sys/types.h>              // pid_t
 #include <time.h>                   // time_t
 #include <unistd.h>                 // _exit, fork
@@ -259,8 +259,6 @@ archive_on_digest_mismatch(const char *old_cibfile_path)
 
     char *old_sigfile_path = pcmk__assert_asprintf("%s.sig", old_cibfile_path);
     char *new_sigfile_path = pcmk__assert_asprintf("%s.sig", new_cibfile_path);
-
-    umask(S_IWGRP | S_IWOTH | S_IROTH);
 
     if (mkdtemp(new_dir) == NULL) {
         pcmk__err("Failed to create directory to archive %s after digest "
