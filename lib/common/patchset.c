@@ -1006,6 +1006,7 @@ xml_apply_patchset(xmlNode *xml, const xmlNode *patchset, bool check_version)
     int rc = pcmk_ok;
     xmlNode *old = NULL;
     const char *digest = NULL;
+    char *new_digest = NULL;
 
     if (patchset == NULL) {
         goto done;
@@ -1039,33 +1040,34 @@ xml_apply_patchset(xmlNode *xml, const xmlNode *patchset, bool check_version)
     rc = apply_v2_patchset(xml, patchset);
     rc = pcmk_rc2legacy(rc);
 
-    if ((rc == pcmk_ok) && (digest != NULL)) {
-        char *new_digest = NULL;
-
-        new_digest = pcmk__digest_xml(xml, true);
-        if (!pcmk__str_eq(new_digest, digest, pcmk__str_casei)) {
-            pcmk__info("v%d digest mis-match: expected %s, calculated %s",
-                       format, digest, new_digest);
-            rc = -pcmk_err_diff_failed;
-            pcmk__if_tracing(
-                {
-                    pcmk__xml_write_temp_file(old, "PatchDigest:input", NULL);
-                    pcmk__xml_write_temp_file(xml, "PatchDigest:result", NULL);
-                    pcmk__xml_write_temp_file(patchset, "PatchDigest:diff",
-                                              NULL);
-                },
-                {}
-            );
-
-        } else {
-            pcmk__trace("v%d digest matched: expected %s, calculated %s",
-                        format, digest, new_digest);
-        }
-        free(new_digest);
+    if ((rc != pcmk_ok) || (digest == NULL)) {
+        goto done;
     }
+
+    new_digest = pcmk__digest_xml(xml, true);
+
+    if (!pcmk__str_eq(new_digest, digest, pcmk__str_casei)) {
+        pcmk__info("v%d digest mis-match: expected %s, calculated %s", format,
+                   digest, new_digest);
+        rc = -pcmk_err_diff_failed;
+        pcmk__if_tracing(
+            {
+                pcmk__xml_write_temp_file(old, "PatchDigest:input", NULL);
+                pcmk__xml_write_temp_file(xml, "PatchDigest:result", NULL);
+                pcmk__xml_write_temp_file(patchset, "PatchDigest:diff", NULL);
+            },
+            {}
+        );
+
+        goto done;
+    }
+
+    pcmk__trace("v%d digest matched: expected %s, calculated %s", format,
+                digest, new_digest);
 
 done:
     pcmk__xml_free(old);
+    free(new_digest);
     return rc;
 }
 
