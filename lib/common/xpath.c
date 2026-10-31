@@ -278,6 +278,21 @@ done:
  *
  * \note The caller is responsible for freeing the string using
  *       \c g_string_free().
+ *
+ * \todo This can generate a pseudo-XPath expression for any XML node with its
+ *       \c name field set. This includes elements, attributes, entity
+ *       references, processing instructions, text nodes, and comments. However,
+ *       an XPath query using the generated expression probably would not match
+ *       the node for non-elements. For example, a comment node has the name
+ *       \c "comment". Suppose \p xml is a comment node with parent element
+ *       \c foo. This function would return \c "/foo/comment". But an XPath
+ *       query using that string would probably match only \c comment elements
+ *       with parent \c foo, rather than matching \p xml. Further, it would not
+ *       uniquely identify \p xml, if there are multiple comments with the same
+ *       parent. This behavior is good enough for how we currently use this
+ *       function, but we do call it for comment nodes (see the patchset code
+ *       for example). We should at least rename it and clarify its
+ *       documentation.
  */
 GString *
 pcmk__element_xpath(const xmlNode *xml)
