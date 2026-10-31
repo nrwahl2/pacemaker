@@ -831,12 +831,11 @@ static int
 apply_v2_patchset(xmlNode *xml, const xmlNode *patchset)
 {
     int rc = pcmk_rc_ok;
-    const xmlNode *change = NULL;
     GList *change_objs = NULL;
-    GList *gIter = NULL;
 
-    for (change = pcmk__xml_first_child(patchset); change != NULL;
-         change = pcmk__xml_next(change)) {
+    for (const xmlNode *change = pcmk__xml_first_child(patchset);
+         change != NULL; change = pcmk__xml_next(change)) {
+
         xmlNode *match = NULL;
         const char *op = pcmk__xe_get(change, PCMK_XA_OPERATION);
         const char *xpath = pcmk__xe_get(change, PCMK_XA_PATH);
@@ -918,13 +917,12 @@ apply_v2_patchset(xmlNode *xml, const xmlNode *patchset)
     // Changes should be generated in the right order. Double checking.
     change_objs = g_list_sort(change_objs, sort_change_obj_by_position);
 
-    for (gIter = change_objs; gIter; gIter = gIter->next) {
-        xml_change_obj_t *change_obj = gIter->data;
+    for (GList *iter = change_objs; iter != NULL; iter = iter->next) {
+        xml_change_obj_t *change_obj = iter->data;
+        const xmlNode *change = change_obj->change;
         xmlNode *match = change_obj->match;
         const char *op = NULL;
         const char *xpath = NULL;
-
-        change = change_obj->change;
 
         op = pcmk__xe_get(change, PCMK_XA_OPERATION);
         xpath = pcmk__xe_get(change, PCMK_XA_PATH);
