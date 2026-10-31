@@ -839,23 +839,25 @@ apply_v2_patchset(xmlNode *xml, const xmlNode *patchset)
         /* PCMK_VALUE_DELETE changes for XML comments are generated with
          * PCMK_XE_POSITION
          */
-        if (strcmp(op, PCMK_VALUE_DELETE) == 0) {
+        if (pcmk__str_eq(op, PCMK_VALUE_DELETE, pcmk__str_none)) {
             pcmk__xe_get_int(change, PCMK_XE_POSITION, &position);
         }
+
         match = search_v2_xpath(xml, xpath, position);
         pcmk__trace("Performing %s on %s with %p", op, xpath, match);
 
-        if ((match == NULL) && (strcmp(op, PCMK_VALUE_DELETE) == 0)) {
-            pcmk__debug("No %s match for %s in %p", op, xpath, xml->doc);
-            continue;
+        if (match == NULL) {
+            if (pcmk__str_eq(op, PCMK_VALUE_DELETE, pcmk__str_none)) {
+                pcmk__debug("No %s match for %s in %p", op, xpath, xml->doc);
+                continue;
+            }
 
-        } else if (match == NULL) {
             pcmk__err("No %s match for %s in %p", op, xpath, xml->doc);
             rc = pcmk_rc_diff_failed;
             continue;
+        }
 
-        } else if (pcmk__str_any_of(op,
-                                    PCMK_VALUE_CREATE, PCMK_VALUE_MOVE, NULL)) {
+        if (pcmk__str_any_of(op, PCMK_VALUE_CREATE, PCMK_VALUE_MOVE, NULL)) {
             // Delay the adding of a PCMK_VALUE_CREATE object
             xml_change_obj_t *change_obj =
                 pcmk__assert_alloc(1, sizeof(xml_change_obj_t));
@@ -865,17 +867,22 @@ apply_v2_patchset(xmlNode *xml, const xmlNode *patchset)
 
             change_objs = g_list_append(change_objs, change_obj);
 
-            if (strcmp(op, PCMK_VALUE_MOVE) == 0) {
+            if (pcmk__str_eq(op, PCMK_VALUE_MOVE, pcmk__str_none)) {
                 // Temporarily put the PCMK_VALUE_MOVE object after the last sibling
                 if ((match->parent != NULL) && (match->parent->last != NULL)) {
                     xmlAddNextSibling(match->parent->last, match);
                 }
             }
 
-        } else if (strcmp(op, PCMK_VALUE_DELETE) == 0) {
-            pcmk__xml_free(match);
+            continue;
+        }
 
-        } else if (strcmp(op, PCMK_VALUE_MODIFY) == 0) {
+        if (pcmk__str_eq(op, PCMK_VALUE_DELETE, pcmk__str_none)) {
+            pcmk__xml_free(match);
+            continue;
+        }
+
+        if (pcmk__str_eq(op, PCMK_VALUE_MODIFY, pcmk__str_none)) {
             const xmlNode *child = pcmk__xe_first_child(change,
                                                         PCMK_XE_CHANGE_RESULT,
                                                         NULL, NULL);
@@ -897,10 +904,11 @@ apply_v2_patchset(xmlNode *xml, const xmlNode *patchset)
             // Copy the ones from attrs
             pcmk__xe_copy_attrs(match, attrs, pcmk__xaf_none);
 
-        } else {
-            pcmk__err("Unknown operation: %s", op);
-            rc = pcmk_rc_diff_failed;
+            continue;
         }
+
+        pcmk__err("Unknown operation: %s", op);
+        rc = pcmk_rc_diff_failed;
     }
 
     // Changes should be generated in the right order. Double checking.
@@ -918,7 +926,7 @@ apply_v2_patchset(xmlNode *xml, const xmlNode *patchset)
 
         pcmk__trace("Continue performing %s on %s with %p", op, xpath, match);
 
-        if (strcmp(op, PCMK_VALUE_CREATE) == 0) {
+        if (pcmk__str_eq(op, PCMK_VALUE_CREATE, pcmk__str_none)) {
             int position = 0;
             xmlNode *child = NULL;
             xmlNode *match_child = NULL;
@@ -942,7 +950,10 @@ apply_v2_patchset(xmlNode *xml, const xmlNode *patchset)
                             position);
             }
 
-        } else if (strcmp(op, PCMK_VALUE_MOVE) == 0) {
+            continue;
+        }
+
+        if (pcmk__str_eq(op, PCMK_VALUE_MOVE, pcmk__str_none)) {
             int position = 0;
 
             pcmk__xe_get_int(change, PCMK_XE_POSITION, &position);
