@@ -1019,7 +1019,7 @@ xml_apply_patchset(xmlNode *xml, const xmlNode *patchset, bool check_version)
     const char *digest = NULL;
 
     if (patchset == NULL) {
-        return rc;
+        goto done;
     }
 
     pcmk__log_xml_patchset(LOG_TRACE, patchset);
@@ -1027,7 +1027,7 @@ xml_apply_patchset(xmlNode *xml, const xmlNode *patchset, bool check_version)
     if (check_version) {
         rc = pcmk_rc2legacy(check_patchset_versions(xml, patchset));
         if (rc != pcmk_ok) {
-            return rc;
+            goto done;
         }
     }
 
@@ -1044,10 +1044,11 @@ xml_apply_patchset(xmlNode *xml, const xmlNode *patchset, bool check_version)
     if (format != 2) {
         pcmk__err("Unknown patch format: %d", format);
         rc = -EINVAL;
-
-    } else {
-        rc = pcmk_rc2legacy(apply_v2_patchset(xml, patchset));
+        goto done;
     }
+
+    rc = apply_v2_patchset(xml, patchset);
+    rc = pcmk_rc2legacy(rc);
 
     if ((rc == pcmk_ok) && (digest != NULL)) {
         char *new_digest = NULL;
@@ -1073,6 +1074,8 @@ xml_apply_patchset(xmlNode *xml, const xmlNode *patchset, bool check_version)
         }
         free(new_digest);
     }
+
+done:
     pcmk__xml_free(old);
     return rc;
 }
