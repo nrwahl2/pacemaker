@@ -679,20 +679,21 @@ first_matching_xml_child(const xmlNode *parent, const char *name,
         /* This is equivalent to pcmk__xe_is(), but semantically that doesn't
          * make sense, since child may not be an element.
          */
-        if (strcmp((const char *) child->name, name) != 0) {
+        if (!pcmk__str_eq((const char *) child->name, name, pcmk__str_none)) {
             continue;
-        } else if (id) {
-            const char *cid = pcmk__xe_id(child);
+        }
 
-            if ((cid == NULL) || (strcmp(cid, id) != 0)) {
-                continue;
-            }
+        if ((id != NULL)
+            && !pcmk__str_eq(pcmk__xe_id(child), id, pcmk__str_none)) {
+
+            continue;
         }
 
         // "position" makes sense only for XML comments for now
         if ((child->type == XML_COMMENT_NODE)
             && (position >= 0)
             && (pcmk__xml_position(child, pcmk__xf_skip) != position)) {
+
             continue;
         }
 
