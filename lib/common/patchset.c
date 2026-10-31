@@ -676,6 +676,9 @@ first_matching_xml_child(const xmlNode *parent, const char *name,
     for (xmlNode *child = pcmk__xml_first_child(parent); child != NULL;
          child = pcmk__xml_next(child)) {
 
+        /* This is equivalent to pcmk__xe_is(), but semantically that doesn't
+         * make sense, since child may not be an element.
+         */
         if (strcmp((const char *) child->name, name) != 0) {
             continue;
         } else if (id) {

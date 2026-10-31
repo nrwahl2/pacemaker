@@ -1782,7 +1782,7 @@ handle_rsc_op(xmlNode *xml, void *userdata)
     xmlNode *n = xml;
     xmlNode * rsc_op = xml;
 
-    if(strcmp((const char*)xml->name, PCMK__XE_LRM_RSC_OP) != 0) {
+    if (!pcmk__xe_is(xml, PCMK__XE_LRM_RSC_OP)) {
         pcmk__xe_foreach_child(xml, NULL, handle_rsc_op, (void *) node_id);
         return pcmk_rc_ok;
     }
