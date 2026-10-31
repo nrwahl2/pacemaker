@@ -1028,16 +1028,14 @@ xml_apply_patchset(xmlNode *xml, const xmlNode *patchset, bool check_version)
         pcmk__if_tracing(old = pcmk__xml_copy(NULL, xml), {});
     }
 
-    if (rc == pcmk_ok) {
-        pcmk__xe_get_int(patchset, PCMK_XA_FORMAT, &format);
+    pcmk__xe_get_int(patchset, PCMK_XA_FORMAT, &format);
 
-        if (format != 2) {
-            pcmk__err("Unknown patch format: %d", format);
-            rc = -EINVAL;
+    if (format != 2) {
+        pcmk__err("Unknown patch format: %d", format);
+        rc = -EINVAL;
 
-        } else {
-            rc = pcmk_rc2legacy(apply_v2_patchset(xml, patchset));
-        }
+    } else {
+        rc = pcmk_rc2legacy(apply_v2_patchset(xml, patchset));
     }
 
     if ((rc == pcmk_ok) && (digest != NULL)) {
