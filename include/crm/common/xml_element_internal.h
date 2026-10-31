@@ -62,6 +62,12 @@ int pcmk__xe_update_match(xmlNode *xml, xmlNode *update, uint32_t flags);
  * \param[in] name  XML element name to compare
  *
  * \return \c true if \p xml is of type \p name, otherwise \c false
+ *
+ * \todo Either return \c false for non-element nodes, or rename the function.
+ *       It can return \c true for any XML element whose \c name field is not
+ *       \c NULL. This includes, but is not limited to, text and comment nodes,
+ *       whose \c name fields are set to \c "text" and \c "comment",
+ *       respectively.
  */
 static inline bool
 pcmk__xe_is(const xmlNode *xml, const char *name)
