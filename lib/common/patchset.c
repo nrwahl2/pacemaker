@@ -662,14 +662,13 @@ static xmlNode *
 first_matching_xml_child(const xmlNode *parent, const char *name,
                          const char *id, int position)
 {
-    xmlNode *cIter = NULL;
+    for (xmlNode *child = pcmk__xml_first_child(parent); child != NULL;
+         child = pcmk__xml_next(child)) {
 
-    for (cIter = pcmk__xml_first_child(parent); cIter != NULL;
-         cIter = pcmk__xml_next(cIter)) {
-        if (strcmp((const char *) cIter->name, name) != 0) {
+        if (strcmp((const char *) child->name, name) != 0) {
             continue;
         } else if (id) {
-            const char *cid = pcmk__xe_id(cIter);
+            const char *cid = pcmk__xe_id(child);
 
             if ((cid == NULL) || (strcmp(cid, id) != 0)) {
                 continue;
@@ -677,14 +676,15 @@ first_matching_xml_child(const xmlNode *parent, const char *name,
         }
 
         // "position" makes sense only for XML comments for now
-        if ((cIter->type == XML_COMMENT_NODE)
+        if ((child->type == XML_COMMENT_NODE)
             && (position >= 0)
-            && (pcmk__xml_position(cIter, pcmk__xf_skip) != position)) {
+            && (pcmk__xml_position(child, pcmk__xf_skip) != position)) {
             continue;
         }
 
-        return cIter;
+        return child;
     }
+
     return NULL;
 }
 
