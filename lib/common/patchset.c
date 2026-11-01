@@ -772,21 +772,6 @@ search_v2_xpath(const xmlNode *top, const char *key, int target_position)
     // Continue if something remains to search, and we've matched so far
     } while ((rc == 2) && (target != NULL));
 
-    if (target != NULL) {
-        pcmk__if_tracing(
-            {
-                char *path = (char *) xmlGetNodePath(target);
-
-                pcmk__trace("Found %s for %s", path, key);
-                free(path);
-            },
-            {}
-        );
-
-    } else {
-        pcmk__debug("No match for %s", key);
-    }
-
     free(remainder);
     free(section);
     free(tag);
@@ -886,7 +871,6 @@ apply_v2_patchset(xmlNode *xml, const xmlNode *patchset)
         }
 
         match = search_v2_xpath(xml, xpath, position);
-        pcmk__trace("Performing %s on %s with %p", op, xpath, match);
 
         if (match == NULL) {
             if (pcmk__str_eq(op, PCMK_VALUE_DELETE, pcmk__str_none)) {
@@ -898,6 +882,8 @@ apply_v2_patchset(xmlNode *xml, const xmlNode *patchset)
             rc = pcmk_rc_diff_failed;
             continue;
         }
+
+        pcmk__trace("Performing %s on %s with %p", op, xpath, match);
 
         if (pcmk__str_any_of(op, PCMK_VALUE_CREATE, PCMK_VALUE_MOVE, NULL)) {
             // Delay the adding of a PCMK_VALUE_CREATE object
