@@ -669,12 +669,56 @@ check_patchset_versions(const xmlNode *cib_root, const xmlNode *patchset)
     return pcmk_rc_old_data;
 }
 
-// Return first child matching element name and optionally id or position
+/*!
+ * \internal
+ * \brief Get first XML child with matching name and optionally ID or position
+ *
+ * \p step must adhere to one of the following restricted XPath formats, where
+ * \c NAME and \c ID are replaced with the actual name and ID to match:
+ * - \c "NAME"
+ * - \c "NAME[@id='ID']"
+ *
+ * \param[in] xml       XML node whose child to match
+ * \param[in] step      XPath step containing child name and optionally ID
+ * \param[in] position  Position of child among its siblings (ignored if
+ *                      negative or if a candidate match is not a comment node)
+ * \param[in] path      Path expression containing \p step (for logging only)
+ *
+ * \return First matching child of \p xml
+ */
 static xmlNode *
-first_matching_xml_child(const xmlNode *parent, const char *name,
-                         const char *id, int position)
+first_matching_xml_child(const xmlNode *xml, const char *step, int position,
+                         const char *path)
 {
-    for (xmlNode *child = pcmk__xml_first_child(parent); child != NULL;
+    GMatchInfo *match_info = NULL;
+    char *name = NULL;
+    char *id = NULL;
+    xmlNode *result = NULL;
+
+    // Matches NAME or NAME[@id='ID'] and captures NAME and ID
+    if (name_id_regex == NULL) {
+        name_id_regex = g_regex_new("^"
+                                    "(?<name>[^[]+)"
+                                    "(?:\\[@" PCMK_XA_ID "='(?<id>[^']+)'\\])?"
+                                    "$",
+                                    0, 0, NULL);
+        pcmk__assert(name_id_regex != NULL);
+    }
+
+    if (!g_regex_match(name_id_regex, step, 0, &match_info)) {
+        pcmk__err("Patchset change path '%s' is of incorrect format", path);
+        goto done;
+    }
+
+    name = g_match_info_fetch_named(match_info, "name");
+    id = g_match_info_fetch_named(match_info, "id");
+
+    if (pcmk__str_empty(id)) {
+        // Empty string means the id subpattern didn't match anything
+        g_clear_pointer(&id, g_free);
+    }
+
+    for (const xmlNode *child = pcmk__xml_first_child(xml); child != NULL;
          child = pcmk__xml_next(child)) {
 
         /* This is equivalent to pcmk__xe_is(), but semantically that doesn't
@@ -698,10 +742,16 @@ first_matching_xml_child(const xmlNode *parent, const char *name,
             continue;
         }
 
-        return child;
+        result = (xmlNode *) child;
+        break;
     }
 
-    return NULL;
+done:
+    g_match_info_free(match_info);
+    g_free(name);
+    g_free(id);
+
+    return result;
 }
 
 /*!
@@ -728,16 +778,6 @@ search_v2_xpath(const xmlNode *top, const char *path, int target_position)
         goto done;
     }
 
-    // Matches NAME or NAME[@id='ID'] and captures NAME and ID
-    if (name_id_regex == NULL) {
-        name_id_regex = g_regex_new("^"
-                                    "(?<name>[^[]+)"
-                                    "(?:\\[@" PCMK_XA_ID "='(?<id>[^']+)'\\])?"
-                                    "$",
-                                    0, 0, NULL);
-        pcmk__assert(name_id_regex != NULL);
-    }
-
     // An XPath path expression is one or more "steps" separated by "/" or "//"
     steps = g_strsplit(path + 1, "/", 0);
 
@@ -747,37 +787,14 @@ search_v2_xpath(const xmlNode *top, const char *path, int target_position)
     for (const char *const *step = (const char *const *) steps;
          (*step != NULL) && (target != NULL); step++) {
 
-        GMatchInfo *match_info = NULL;
-        char *name = NULL;
-        char *id = NULL;
-        int current_position = -1;
-
-        if (!g_regex_match(name_id_regex, *step, 0, &match_info)) {
-            g_match_info_free(match_info);
-            pcmk__err("Patchset change path '%s' is of incorrect format", path);
-            target = NULL;
-            break;
-        }
-
-        name = g_match_info_fetch_named(match_info, "name");
-        id = g_match_info_fetch_named(match_info, "id");
-
-        if (pcmk__str_empty(id)) {
-            // Empty string means the id subpattern didn't match anything
-            g_clear_pointer(&id, g_free);
-        }
-
-        g_match_info_free(match_info);
+        int position = -1;
 
         // The target position is only for the final step
         if ((*(step + 1) == NULL) && (target_position >= 0)) {
-            current_position = target_position;
+            position = target_position;
         }
 
-        target = first_matching_xml_child(target, name, id, current_position);
-
-        g_free(name);
-        g_free(id);
+        target = first_matching_xml_child(target, *step, position, path);
     }
 
 done:
