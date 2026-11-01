@@ -826,15 +826,44 @@ apply_v2_patchset(xmlNode *xml, const xmlNode *patchset)
     int rc = pcmk_rc_ok;
     GList *change_objs = NULL;
 
-    for (const xmlNode *change = pcmk__xml_first_child(patchset);
-         change != NULL; change = pcmk__xml_next(change)) {
+    for (const xmlNode *change = pcmk__xe_first_child(patchset, NULL, NULL,
+                                                      NULL);
+         change != NULL; change = pcmk__xe_next(change, NULL)) {
 
+        const char *op = NULL;
+        const char *xpath = NULL;
         xmlNode *match = NULL;
-        const char *op = pcmk__xe_get(change, PCMK_XA_OPERATION);
-        const char *xpath = pcmk__xe_get(change, PCMK_XA_PATH);
         int position = -1;
 
+        if (pcmk__xe_is(change, PCMK_XE_VERSION)) {
+            /* We generate a PCMK_XE_VERSION element as the first child in
+             * xml_create_patchset(). However, crm_diff removes it if
+             * --no-version is specified. So ignore it if present, but don't
+             * require it.
+             */
+            continue;
+        }
+
+        if (!pcmk__xe_is(change, PCMK_XE_CHANGE)) {
+            pcmk__err("Unexpected %s child element in patchset",
+                      (const char *) change->name);
+            rc = pcmk_rc_diff_failed;
+            continue;
+        }
+
+        op = pcmk__xe_get(change, PCMK_XA_OPERATION);
         if (op == NULL) {
+            pcmk__err("Patchset " PCMK_XE_CHANGE " element is missing "
+                      PCMK_XA_OPERATION " attribute");
+            rc = pcmk_rc_diff_failed;
+            continue;
+        }
+
+        xpath = pcmk__xe_get(change, PCMK_XA_PATH);
+        if (xpath == NULL) {
+            pcmk__err("Patchset " PCMK_XE_CHANGE " element is missing "
+                      PCMK_XA_PATH " attribute");
+            rc = pcmk_rc_diff_failed;
             continue;
         }
 
