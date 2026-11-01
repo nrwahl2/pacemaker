@@ -720,7 +720,7 @@ first_matching_xml_child(const xmlNode *parent, const char *name,
  * \brief Simplified, more efficient alternative to pcmk__xpath_find_one()
  *
  * \param[in] top              Root of XML to search
- * \param[in] key              Search xpath
+ * \param[in] path             Search xpath
  * \param[in] target_position  If deleting, where to delete
  *
  * \return XML child matching xpath if found, NULL otherwise
@@ -729,13 +729,13 @@ first_matching_xml_child(const xmlNode *parent, const char *name,
  *       i.e. the only allowed search predicate is [@id='XXX'].
  */
 static xmlNode *
-search_v2_xpath(const xmlNode *top, const char *key, int target_position)
+search_v2_xpath(const xmlNode *top, const char *path, int target_position)
 {
     xmlNode *target = NULL;
     char **steps = NULL;
 
-    if (!g_str_has_prefix(key, "/")) {
-        pcmk__err("Patchset change path '%s' must begin with '/'", key);
+    if (!g_str_has_prefix(path, "/")) {
+        pcmk__err("Patchset change path '%s' must begin with '/'", path);
         goto done;
     }
 
@@ -750,7 +750,7 @@ search_v2_xpath(const xmlNode *top, const char *key, int target_position)
     }
 
     // An XPath path expression is one or more "steps" separated by "/" or "//"
-    steps = g_strsplit(key + 1, "/", 0);
+    steps = g_strsplit(path + 1, "/", 0);
 
     target = (xmlNode *) top->doc;
 
@@ -765,7 +765,7 @@ search_v2_xpath(const xmlNode *top, const char *key, int target_position)
 
         if (!g_regex_match(name_id_regex, *step, 0, &match_info)) {
             g_match_info_free(match_info);
-            pcmk__err("Patchset change path '%s' is of incorrect format", key);
+            pcmk__err("Patchset change path '%s' is of incorrect format", path);
             target = NULL;
             break;
         }
