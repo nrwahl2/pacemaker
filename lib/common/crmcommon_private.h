@@ -397,6 +397,13 @@ G_GNUC_INTERNAL
 bool pcmk__output_text_get_fancy(pcmk__output_t *out);
 
 /*
+ * Patchsets
+ */
+
+G_GNUC_INTERNAL
+void pcmk__patchset_cleanup(void);
+
+/*
  * Rules
  */
 

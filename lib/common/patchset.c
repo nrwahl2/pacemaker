@@ -32,6 +32,18 @@ static const char *const vfields[] = {
     PCMK_XA_NUM_UPDATES,
 };
 
+static GRegex *name_id_regex = NULL;
+
+/*!
+ * \internal
+ * \brief Free data structures used for XML patchsets
+ */
+void
+pcmk__patchset_cleanup(void)
+{
+    g_clear_pointer(&name_id_regex, g_regex_unref);
+}
+
 /*!
  * \internal
  * \brief Set patchset version fields for source or target XML
@@ -709,18 +721,21 @@ static xmlNode *
 search_v2_xpath(const xmlNode *top, const char *key, int target_position)
 {
     xmlNode *target = NULL;
-    const size_t key_len = strlen(key);
     char **steps = NULL;
-
-    /* These are scanned from key after a slash, so they can't be bigger than
-     * key_len - 1 characters plus a null terminator.
-     */
-    char *tag = pcmk__assert_alloc(key_len, sizeof(char));
-    char *id = pcmk__assert_alloc(key_len, sizeof(char));
 
     if (!g_str_has_prefix(key, "/")) {
         pcmk__err("Patchset change path '%s' must begin with '/'", key);
         goto done;
+    }
+
+    // Matches NAME or NAME[@id='ID'] and captures NAME and ID
+    if (name_id_regex == NULL) {
+        name_id_regex = g_regex_new("^"
+                                    "(?<name>[^[]+)"
+                                    "(?:\\[@" PCMK_XA_ID "='(?<id>[^']+)'\\])?"
+                                    "$",
+                                    0, 0, NULL);
+        pcmk__assert(name_id_regex != NULL);
     }
 
     // An XPath path expression is one or more "steps" separated by "/" or "//"
@@ -732,30 +747,41 @@ search_v2_xpath(const xmlNode *top, const char *key, int target_position)
     for (const char *const *step = (const char *const *) steps;
          (*step != NULL) && (target != NULL); step++) {
 
-        int rc = 0;
+        GMatchInfo *match_info = NULL;
+        char *name = NULL;
+        char *id = NULL;
         int current_position = -1;
 
-        // Separate current step into TAG[@id='ID']
-        rc = sscanf(*step, "%[^[][@" PCMK_XA_ID "='%[^']", tag, id);
-        if ((rc < 1) || (rc > 2)) {
+        if (!g_regex_match(name_id_regex, *step, 0, &match_info)) {
+            g_match_info_free(match_info);
             pcmk__err("Patchset change path '%s' is of incorrect format", key);
             target = NULL;
             break;
         }
+
+        name = g_match_info_fetch_named(match_info, "name");
+        id = g_match_info_fetch_named(match_info, "id");
+
+        if (pcmk__str_empty(id)) {
+            // Empty string means the id subpattern didn't match anything
+            g_clear_pointer(&id, g_free);
+        }
+
+        g_match_info_free(match_info);
 
         // The target position is only for the final step
         if ((*(step + 1) == NULL) && (target_position >= 0)) {
             current_position = target_position;
         }
 
-        target = first_matching_xml_child(target, tag, ((rc == 2)? id : NULL),
-                                          current_position);
+        target = first_matching_xml_child(target, name, id, current_position);
+
+        g_free(name);
+        g_free(id);
     }
 
 done:
     g_strfreev(steps);
-    free(tag);
-    free(id);
     return target;
 }
 
