@@ -719,53 +719,52 @@ first_matching_xml_child(const xmlNode *parent, const char *name,
 static xmlNode *
 search_v2_xpath(const xmlNode *top, const char *key, int target_position)
 {
-    xmlNode *target = (xmlNode *) top->doc;
+    xmlNode *target = NULL;
     const size_t key_len = strlen(key);
-    const char *current = key;
-    int rc = 0;
+    char **steps = NULL;
 
     /* These are scanned from key after a slash, so they can't be bigger than
      * key_len - 1 characters plus a null terminator.
      */
-    char *section = pcmk__assert_alloc(key_len, sizeof(char));
-    char *remainder = pcmk__assert_alloc(key_len, sizeof(char));
     char *tag = pcmk__assert_alloc(key_len, sizeof(char));
     char *id = pcmk__assert_alloc(key_len, sizeof(char));
 
-    do {
-        int f = 0;
+    if (!g_str_has_prefix(key, "/")) {
+        pcmk__err("Patchset change path '%s' must begin with '/'", key);
+        goto done;
+    }
+
+    // An XPath path expression is one or more "steps" separated by "/" or "//"
+    steps = g_strsplit(key + 1, "/", 0);
+
+    target = (xmlNode *) top->doc;
+
+    // Continue as long as something remains to search and we've matched so far
+    for (const char *const *step = (const char *const *) steps;
+         (*step != NULL) && (target != NULL); step++) {
+
+        int rc = 0;
         int current_position = -1;
 
-        // Look for /NEXT_COMPONENT/REMAINING_COMPONENTS
-        rc = sscanf(current, "/%[^/]%s", section, remainder);
-        if (rc <= 0) {
-            break;
-        }
-
-        // Separate FIRST_COMPONENT into TAG[@id='ID']
-        f = sscanf(section, "%[^[][@" PCMK_XA_ID "='%[^']", tag, id);
-        if ((f < 1) || (f > 2)) {
+        // Separate current step into TAG[@id='ID']
+        rc = sscanf(*step, "%[^[][@" PCMK_XA_ID "='%[^']", tag, id);
+        if ((rc < 1) || (rc > 2)) {
             pcmk__err("Patchset change path '%s' is of incorrect format", key);
             target = NULL;
             break;
         }
 
-        /* The target position is for the final component tag, so only use it if
-         * there is nothing left to search after this component.
-         */
-        if ((rc == 1) && (target_position >= 0)) {
+        // The target position is only for the final step
+        if ((*(step + 1) == NULL) && (target_position >= 0)) {
             current_position = target_position;
         }
 
-        target = first_matching_xml_child(target, tag, ((f == 2)? id : NULL),
+        target = first_matching_xml_child(target, tag, ((rc == 2)? id : NULL),
                                           current_position);
-        current = remainder;
+    }
 
-    // Continue if something remains to search, and we've matched so far
-    } while ((rc == 2) && (target != NULL));
-
-    free(remainder);
-    free(section);
+done:
+    g_strfreev(steps);
     free(tag);
     free(id);
     return target;
