@@ -733,36 +733,41 @@ search_v2_xpath(const xmlNode *top, const char *key, int target_position)
     char *id = pcmk__assert_alloc(key_len, sizeof(char));
 
     do {
+        int f = 0;
+        int current_position = -1;
+
         // Look for /NEXT_COMPONENT/REMAINING_COMPONENTS
         rc = sscanf(current, "/%[^/]%s", section, remainder);
-        if (rc > 0) {
-            // Separate FIRST_COMPONENT into TAG[@id='ID']
-            int f = sscanf(section, "%[^[][@" PCMK_XA_ID "='%[^']", tag, id);
-            int current_position = -1;
-
-            /* The target position is for the final component tag, so only use
-             * it if there is nothing left to search after this component.
-             */
-            if ((rc == 1) && (target_position >= 0)) {
-                current_position = target_position;
-            }
-
-            switch (f) {
-                case 1:
-                    target = first_matching_xml_child(target, tag, NULL,
-                                                      current_position);
-                    break;
-                case 2:
-                    target = first_matching_xml_child(target, tag, id,
-                                                      current_position);
-                    break;
-                default:
-                    // This should not be possible
-                    target = NULL;
-                    break;
-            }
-            current = remainder;
+        if (rc <= 0) {
+            break;
         }
+
+        // Separate FIRST_COMPONENT into TAG[@id='ID']
+        f = sscanf(section, "%[^[][@" PCMK_XA_ID "='%[^']", tag, id);
+
+        /* The target position is for the final component tag, so only use it if
+         * there is nothing left to search after this component.
+         */
+        if ((rc == 1) && (target_position >= 0)) {
+            current_position = target_position;
+        }
+
+        switch (f) {
+            case 1:
+                target = first_matching_xml_child(target, tag, NULL,
+                                                  current_position);
+                break;
+            case 2:
+                target = first_matching_xml_child(target, tag, id,
+                                                  current_position);
+                break;
+            default:
+                // This should not be possible
+                target = NULL;
+                break;
+        }
+
+        current = remainder;
 
     // Continue if something remains to search, and we've matched so far
     } while ((rc == 2) && (target != NULL));
