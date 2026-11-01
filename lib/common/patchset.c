@@ -733,6 +733,11 @@ search_v2_xpath(const xmlNode *top, const char *key, int target_position)
 
         // Separate FIRST_COMPONENT into TAG[@id='ID']
         f = sscanf(section, "%[^[][@" PCMK_XA_ID "='%[^']", tag, id);
+        if ((f < 1) || (f > 2)) {
+            pcmk__err("Patchset change path '%s' is of incorrect format", key);
+            target = NULL;
+            break;
+        }
 
         /* The target position is for the final component tag, so only use it if
          * there is nothing left to search after this component.
@@ -741,21 +746,8 @@ search_v2_xpath(const xmlNode *top, const char *key, int target_position)
             current_position = target_position;
         }
 
-        switch (f) {
-            case 1:
-                target = first_matching_xml_child(target, tag, NULL,
-                                                  current_position);
-                break;
-            case 2:
-                target = first_matching_xml_child(target, tag, id,
-                                                  current_position);
-                break;
-            default:
-                // This should not be possible
-                target = NULL;
-                break;
-        }
-
+        target = first_matching_xml_child(target, tag, ((f == 2)? id : NULL),
+                                          current_position);
         current = remainder;
 
     // Continue if something remains to search, and we've matched so far
