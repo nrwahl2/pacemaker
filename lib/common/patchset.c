@@ -720,25 +720,17 @@ static xmlNode *
 search_v2_xpath(const xmlNode *top, const char *key, int target_position)
 {
     xmlNode *target = (xmlNode *) top->doc;
+    const size_t key_len = strlen(key);
     const char *current = key;
-    char *section;
-    char *remainder;
-    char *id;
-    char *tag;
-    int rc;
-    size_t key_len;
+    int rc = 0;
 
-    CRM_CHECK(key != NULL, return NULL);
-    key_len = strlen(key);
-
-    /* These are scanned from key after a slash, so they can't be bigger
-     * than key_len - 1 characters plus a null terminator.
+    /* These are scanned from key after a slash, so they can't be bigger than
+     * key_len - 1 characters plus a null terminator.
      */
-
-    remainder = pcmk__assert_alloc(key_len, sizeof(char));
-    section = pcmk__assert_alloc(key_len, sizeof(char));
-    id = pcmk__assert_alloc(key_len, sizeof(char));
-    tag = pcmk__assert_alloc(key_len, sizeof(char));
+    char *section = pcmk__assert_alloc(key_len, sizeof(char));
+    char *remainder = pcmk__assert_alloc(key_len, sizeof(char));
+    char *tag = pcmk__assert_alloc(key_len, sizeof(char));
+    char *id = pcmk__assert_alloc(key_len, sizeof(char));
 
     do {
         // Look for /NEXT_COMPONENT/REMAINING_COMPONENTS
@@ -773,9 +765,9 @@ search_v2_xpath(const xmlNode *top, const char *key, int target_position)
         }
 
     // Continue if something remains to search, and we've matched so far
-    } while ((rc == 2) && target);
+    } while ((rc == 2) && (target != NULL));
 
-    if (target) {
+    if (target != NULL) {
         pcmk__if_tracing(
             {
                 char *path = (char *) xmlGetNodePath(target);
@@ -785,6 +777,7 @@ search_v2_xpath(const xmlNode *top, const char *key, int target_position)
             },
             {}
         );
+
     } else {
         pcmk__debug("No match for %s", key);
     }
