@@ -55,6 +55,7 @@ pcmk_common_cleanup(void)
 {
     // @TODO This isn't really everything, move all cleanup here
     mainloop_cleanup();
+    pcmk__patchset_cleanup();
     pcmk__schema_cleanup();
     crm_log_deinit();
 
