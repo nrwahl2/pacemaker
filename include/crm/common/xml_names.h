@@ -162,7 +162,6 @@ extern "C" {
 #define PCMK_XE_PERIOD                      "period"
 #define PCMK_XE_PODMAN                      "podman"
 #define PCMK_XE_PORT_MAPPING                "port-mapping"
-#define PCMK_XE_POSITION                    "position"
 #define PCMK_XE_PRIMITIVE                   "primitive"
 #define PCMK_XE_PROMOTION_SCORE             "promotion_score"
 #define PCMK_XE_PROVIDER                    "provider"

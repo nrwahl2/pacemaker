@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2025 the Pacemaker project contributors
+ * Copyright 2004-2026 the Pacemaker project contributors
  *
  * The version control history for this file may have further details.
  *
@@ -25,6 +25,9 @@ extern "C" {
 
 //! \deprecated Do not use
 #define PCMK_XA_CRM_TIMESTAMP "crm-timestamp"
+
+//! \deprecated Use \c PCMK_XA_POSITION instead
+#define PCMK_XE_POSITION PCMK_XA_POSITION
 
 #ifdef __cplusplus
 }
