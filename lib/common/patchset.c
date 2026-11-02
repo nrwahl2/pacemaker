@@ -1099,43 +1099,45 @@ apply_v2_patchset(xmlNode *xml, const xmlNode *patchset)
 
         if (pcmk__str_eq(op, PCMK_VALUE_MOVE, pcmk__str_none)) {
             int position = 0;
+            int p = 0;
+            xmlNode *match_child = NULL;
 
             pcmk__xe_get_int(change, PCMK_XA_POSITION, &position);
-            if (position != pcmk__xml_position(match, pcmk__xf_skip)) {
-                xmlNode *match_child = NULL;
-                int p = position;
 
-                if (p > pcmk__xml_position(match, pcmk__xf_skip)) {
-                    p++; // Skip ourselves
-                }
+            if (position == pcmk__xml_position(match, pcmk__xf_skip)) {
+                pcmk__trace("%s is already in position %d",
+                            (const char *) match->name, position);
+                continue;
+            }
 
-                pcmk__assert(match->parent != NULL);
-                match_child = match->parent->children;
+            p = position;
 
-                while ((match_child != NULL)
-                       && (p != pcmk__xml_position(match_child, pcmk__xf_skip))) {
-                    match_child = match_child->next;
-                }
+            if (p > pcmk__xml_position(match, pcmk__xf_skip)) {
+                p++; // Skip ourselves
+            }
 
-                pcmk__trace("Moving %s to position %d (was %d, prev %p, %s %p)",
-                            match->name, position,
-                            pcmk__xml_position(match, pcmk__xf_skip),
-                            match->prev,
-                            ((match_child != NULL)? "next" : "last"),
-                            ((match_child != NULL)? match_child
-                                                  : match->parent->last));
+            pcmk__assert(match->parent != NULL);
+            match_child = match->parent->children;
 
-                if (match_child) {
-                    xmlAddPrevSibling(match_child, match);
+            while ((match_child != NULL)
+                   && (p != pcmk__xml_position(match_child, pcmk__xf_skip))) {
 
-                } else {
-                    pcmk__assert(match->parent->last != NULL);
-                    xmlAddNextSibling(match->parent->last, match);
-                }
+                match_child = match_child->next;
+            }
+
+            pcmk__trace("Moving %s to position %d (was %d, prev %p, %s %p)",
+                        (const char *) match->name, position,
+                        pcmk__xml_position(match, pcmk__xf_skip), match->prev,
+                        ((match_child != NULL)? "next" : "last"),
+                        ((match_child != NULL)? match_child
+                                              : match->parent->last));
+
+            if (match_child != NULL) {
+                xmlAddPrevSibling(match_child, match);
 
             } else {
-                pcmk__trace("%s is already in position %d", match->name,
-                            position);
+                pcmk__assert(match->parent->last != NULL);
+                xmlAddNextSibling(match->parent->last, match);
             }
 
             if (position != pcmk__xml_position(match, pcmk__xf_skip)) {
