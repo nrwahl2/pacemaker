@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2025 the Pacemaker project contributors
+ * Copyright 2004-2026 the Pacemaker project contributors
  *
  * The version control history for this file may have further details.
  *
@@ -116,7 +116,7 @@ xml_show_patchset(pcmk__output_t *out, const xmlNode *patchset)
             free(prefix);
 
         } else if (strcmp(op, PCMK_VALUE_MOVE) == 0) {
-            const char *position = pcmk__xe_get(change, PCMK_XE_POSITION);
+            const char *position = pcmk__xe_get(change, PCMK_XA_POSITION);
 
             temp_rc = out->info(out,
                                 PCMK__XML_PREFIX_MOVED " %s moved to offset %s",
@@ -168,7 +168,7 @@ xml_show_patchset(pcmk__output_t *out, const xmlNode *patchset)
         } else if (strcmp(op, PCMK_VALUE_DELETE) == 0) {
             int position = -1;
 
-            pcmk__xe_get_int(change, PCMK_XE_POSITION, &position);
+            pcmk__xe_get_int(change, PCMK_XA_POSITION, &position);
             if (position >= 0) {
                 temp_rc = out->info(out, "-- %s (%d)", xpath, position);
             } else {
