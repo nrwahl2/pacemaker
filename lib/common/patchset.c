@@ -122,8 +122,10 @@ add_create_change(xmlNode *xml, xmlNode *patchset)
 
     pcmk__xe_set(change, PCMK_XA_OPERATION, PCMK_VALUE_CREATE);
     pcmk__xe_set(change, PCMK_XA_PATH, xpath->str);
-    pcmk__xe_set_int(change, PCMK_XA_POSITION,
-                     pcmk__xml_position(xml, pcmk__xf_deleted));
+
+    // @TODO Figure out why pcmk__xf_skip breaks this
+    pcmk__xe_set_int(change, PCMK_XA_POSITION, pcmk__xml_position(xml, 0));
+
     pcmk__xml_copy(change, xml);
 
     g_string_free(xpath, TRUE);
@@ -278,8 +280,9 @@ add_move_change(const xmlNode *xml, xmlNode *patchset)
 
     pcmk__xe_set(change, PCMK_XA_OPERATION, PCMK_VALUE_MOVE);
     pcmk__xe_set(change, PCMK_XA_PATH, xpath->str);
-    pcmk__xe_set_int(change, PCMK_XA_POSITION,
-                     pcmk__xml_position(xml, pcmk__xf_deleted));
+
+    // @TODO Figure out why pcmk__xf_skip breaks this
+    pcmk__xe_set_int(change, PCMK_XA_POSITION, pcmk__xml_position(xml, 0));
 
     pcmk__trace("%s.%s moved to position %d", xml->name, pcmk__xe_id(xml),
                 pcmk__xml_position(xml, pcmk__xf_skip));

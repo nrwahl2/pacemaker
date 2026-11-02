@@ -583,7 +583,9 @@ pcmk__xml_position(const xmlNode *xml, enum pcmk__xml_flags ignore_if_set)
     for (const xmlNode *cIter = xml; cIter->prev; cIter = cIter->prev) {
         xml_node_private_t *nodepriv = ((xmlNode*)cIter->prev)->_private;
 
-        if (!pcmk__is_set(nodepriv->flags, ignore_if_set)) {
+        if ((ignore_if_set == 0)
+            || !pcmk__is_set(nodepriv->flags, ignore_if_set)) {
+
             position++;
         }
     }
