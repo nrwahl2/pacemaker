@@ -671,6 +671,41 @@ check_patchset_versions(const xmlNode *cib_root, const xmlNode *patchset)
 
 /*!
  * \internal
+ * \brief Check whether an XML node matches a given name, ID, and position
+ *
+ * \param[in] xml       XML node
+ * \param[in] name      Value to match against node's \c name field
+ * \param[in] id        If not \c NULL, \c PCMK_XA_ID attribute value to match
+ * \param[in] position  Position of node among its siblings (ignored if negative
+ *                      or if \p xml is not a comment node)
+ */
+static bool
+node_matches(const xmlNode *xml, const char *name, const char *id, int position)
+{
+    /* This is equivalent to pcmk__xe_is(), but semantically that doesn't make
+     * sense, since xml may not be an element.
+     */
+    if (!pcmk__str_eq((const char *) xml->name, name, pcmk__str_none)) {
+        return false;
+    }
+
+    if ((id != NULL) && !pcmk__str_eq(pcmk__xe_id(xml), id, pcmk__str_none)) {
+        return false;
+    }
+
+    // "position" makes sense only for XML comments for now
+    if ((xml->type == XML_COMMENT_NODE)
+        && (position >= 0)
+        && (pcmk__xml_position(xml, pcmk__xf_skip) != position)) {
+
+        return false;
+    }
+
+    return true;
+}
+
+/*!
+ * \internal
  * \brief Get first XML child with matching name and optionally ID or position
  *
  * \p step must adhere to one of the following restricted XPath formats, where
@@ -721,24 +756,7 @@ first_matching_xml_child(const xmlNode *xml, const char *step, int position,
     for (const xmlNode *child = pcmk__xml_first_child(xml); child != NULL;
          child = pcmk__xml_next(child)) {
 
-        /* This is equivalent to pcmk__xe_is(), but semantically that doesn't
-         * make sense, since child may not be an element.
-         */
-        if (!pcmk__str_eq((const char *) child->name, name, pcmk__str_none)) {
-            continue;
-        }
-
-        if ((id != NULL)
-            && !pcmk__str_eq(pcmk__xe_id(child), id, pcmk__str_none)) {
-
-            continue;
-        }
-
-        // "position" makes sense only for XML comments for now
-        if ((child->type == XML_COMMENT_NODE)
-            && (position >= 0)
-            && (pcmk__xml_position(child, pcmk__xf_skip) != position)) {
-
+        if (!node_matches(child, name, id, position)) {
             continue;
         }
 
