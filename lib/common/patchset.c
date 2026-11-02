@@ -862,6 +862,53 @@ sort_change_obj_by_position(const void *a, const void *b)
 
 /*!
  * \internal
+ * \brief Check whether an element is a \c PCMK_XE_CHANGE with valid structure
+ *
+ * Log an appropriate error if the check fails.
+ *
+ * This checks only that the element is of the correct type and that it has the
+ * correct attributes. The check can pass even if the change's path doesn't
+ * match anything in the target XML document.
+ *
+ * \param[in] change  Child element of an XML patchset
+ *
+ * \return \c true if \p change is a \c PCMK_XE_CHANGE element with
+ *         \c PCMK_XA_OPERATION and \c PCMK_XA_PATH attributes, or \c false
+ *         otherwise
+ */
+static bool
+change_is_valid(const xmlNode *change)
+{
+    const char *op = NULL;
+    const char *path = NULL;
+
+    // The caller has already skipped change if it is PCMK_XE_VERSION
+    if (!pcmk__xe_is(change, PCMK_XE_CHANGE)) {
+        pcmk__err("Unexpected %s child element in patchset",
+                  (const char *) change->name);
+        return false;
+    }
+
+    op = pcmk__xe_get(change, PCMK_XA_OPERATION);
+    path = pcmk__xe_get(change, PCMK_XA_PATH);
+
+    if (op == NULL) {
+        pcmk__err("Patchset " PCMK_XE_CHANGE " element for path %s is missing "
+                  PCMK_XA_OPERATION " attribute", pcmk__s(path, "(missing)"));
+        return false;
+    }
+
+    if (path == NULL) {
+        pcmk__err("Patchset %s " PCMK_XE_CHANGE " element is missing "
+                  PCMK_XA_PATH " attribute", op);
+        return false;
+    }
+
+    return true;
+}
+
+/*!
+ * \internal
  * \brief Apply a version 2 patchset to an XML node
  *
  * \param[in,out] xml       XML to apply patchset to
@@ -884,7 +931,6 @@ apply_v2_patchset(xmlNode *xml, const xmlNode *patchset)
          change != NULL; change = pcmk__xe_next(change, NULL)) {
 
         const char *op = NULL;
-        const char *xpath = NULL;
 
         if (pcmk__xe_is(change, PCMK_XE_VERSION)) {
             /* We generate a PCMK_XE_VERSION element as the first child in
@@ -895,28 +941,13 @@ apply_v2_patchset(xmlNode *xml, const xmlNode *patchset)
             continue;
         }
 
-        if (!pcmk__xe_is(change, PCMK_XE_CHANGE)) {
-            pcmk__err("Unexpected %s child element in patchset",
-                      (const char *) change->name);
+        if (!change_is_valid(change)) {
+            // Error already logged
             rc = pcmk_rc_diff_failed;
             continue;
         }
 
         op = pcmk__xe_get(change, PCMK_XA_OPERATION);
-        if (op == NULL) {
-            pcmk__err("Patchset " PCMK_XE_CHANGE " element is missing "
-                      PCMK_XA_OPERATION " attribute");
-            rc = pcmk_rc_diff_failed;
-            continue;
-        }
-
-        xpath = pcmk__xe_get(change, PCMK_XA_PATH);
-        if (xpath == NULL) {
-            pcmk__err("Patchset " PCMK_XE_CHANGE " element is missing "
-                      PCMK_XA_PATH " attribute");
-            rc = pcmk_rc_diff_failed;
-            continue;
-        }
 
         if (pcmk__str_eq(op, PCMK_VALUE_DELETE, pcmk__str_none)) {
             delete_changes = g_slist_prepend(delete_changes, (void *) change);
