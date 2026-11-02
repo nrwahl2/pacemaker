@@ -873,6 +873,10 @@ static int
 apply_v2_patchset(xmlNode *xml, const xmlNode *patchset)
 {
     int rc = pcmk_rc_ok;
+    GSList *delete_changes = NULL;
+    GSList *modify_changes = NULL;
+    GSList *create_changes = NULL;
+    GSList *move_changes = NULL;
     GList *change_objs = NULL;
 
     for (const xmlNode *change = pcmk__xe_first_child(patchset, NULL, NULL,
@@ -881,8 +885,6 @@ apply_v2_patchset(xmlNode *xml, const xmlNode *patchset)
 
         const char *op = NULL;
         const char *xpath = NULL;
-        xmlNode *match = NULL;
-        int position = -1;
 
         if (pcmk__xe_is(change, PCMK_XE_VERSION)) {
             /* We generate a PCMK_XE_VERSION element as the first child in
@@ -916,77 +918,23 @@ apply_v2_patchset(xmlNode *xml, const xmlNode *patchset)
             continue;
         }
 
-        pcmk__trace("Processing %s %s", change->name, op);
-
-        /* PCMK_VALUE_DELETE changes for XML comments are generated with
-         * PCMK_XA_POSITION
-         */
         if (pcmk__str_eq(op, PCMK_VALUE_DELETE, pcmk__str_none)) {
-            pcmk__xe_get_int(change, PCMK_XA_POSITION, &position);
-        }
-
-        match = search_v2_xpath(xml, xpath, position);
-
-        if (match == NULL) {
-            if (pcmk__str_eq(op, PCMK_VALUE_DELETE, pcmk__str_none)) {
-                pcmk__debug("No %s match for %s in %p", op, xpath, xml->doc);
-                continue;
-            }
-
-            pcmk__err("No %s match for %s in %p", op, xpath, xml->doc);
-            rc = pcmk_rc_diff_failed;
-            continue;
-        }
-
-        pcmk__trace("Performing %s on %s with %p", op, xpath, match);
-
-        if (pcmk__str_any_of(op, PCMK_VALUE_CREATE, PCMK_VALUE_MOVE, NULL)) {
-            // Delay the adding of a PCMK_VALUE_CREATE object
-            xml_change_obj_t *change_obj =
-                pcmk__assert_alloc(1, sizeof(xml_change_obj_t));
-
-            change_obj->change = change;
-            change_obj->match = match;
-
-            change_objs = g_list_append(change_objs, change_obj);
-
-            if (pcmk__str_eq(op, PCMK_VALUE_MOVE, pcmk__str_none)) {
-                // Temporarily put the PCMK_VALUE_MOVE object after the last sibling
-                if ((match->parent != NULL) && (match->parent->last != NULL)) {
-                    xmlAddNextSibling(match->parent->last, match);
-                }
-            }
-
-            continue;
-        }
-
-        if (pcmk__str_eq(op, PCMK_VALUE_DELETE, pcmk__str_none)) {
-            pcmk__xml_free(match);
+            delete_changes = g_slist_prepend(delete_changes, (void *) change);
             continue;
         }
 
         if (pcmk__str_eq(op, PCMK_VALUE_MODIFY, pcmk__str_none)) {
-            const xmlNode *child = pcmk__xe_first_child(change,
-                                                        PCMK_XE_CHANGE_RESULT,
-                                                        NULL, NULL);
-            const xmlNode *attrs = pcmk__xml_first_child(child);
+            modify_changes = g_slist_prepend(modify_changes, (void *) change);
+            continue;
+        }
 
-            if (attrs == NULL) {
-                rc = ENOMSG;
-                continue;
-            }
+        if (pcmk__str_eq(op, PCMK_VALUE_CREATE, pcmk__str_none)) {
+            create_changes = g_slist_prepend(create_changes, (void *) change);
+            continue;
+        }
 
-            /* Remove all existing attributes and then set the ones from attrs.
-             * We remove all attributes, even the ones that will be reset or
-             * unchanged, because for some reason we care about whether their
-             * positions have changed. Removing all attributes first ensures
-             * that the resulting order matches the order in attrs.
-             */
-            pcmk__xe_remove_matching_attrs(match, false, NULL, NULL);
-
-            // Copy the ones from attrs
-            pcmk__xe_copy_attrs(match, attrs, pcmk__xaf_none);
-
+        if (pcmk__str_eq(op, PCMK_VALUE_MOVE, pcmk__str_none)) {
+            move_changes = g_slist_prepend(move_changes, (void *) change);
             continue;
         }
 
@@ -994,18 +942,131 @@ apply_v2_patchset(xmlNode *xml, const xmlNode *patchset)
         rc = pcmk_rc_diff_failed;
     }
 
-    // Changes should be generated in the right order. Double checking.
+    delete_changes = g_slist_reverse(delete_changes);
+    modify_changes = g_slist_reverse(modify_changes);
+    create_changes = g_slist_reverse(create_changes);
+    move_changes = g_slist_reverse(move_changes);
+
+    for (const GSList *iter = delete_changes; iter != NULL; iter = iter->next) {
+        const xmlNode *change = iter->data;
+        const char *op = pcmk__xe_get(change, PCMK_XA_OPERATION);
+        const char *xpath = pcmk__xe_get(change, PCMK_XA_PATH);
+        xmlNode *match = NULL;
+        int position = -1;
+
+        /* PCMK_VALUE_DELETE changes for XML comments are generated with
+         * PCMK_XA_POSITION
+         */
+        pcmk__xe_get_int(change, PCMK_XA_POSITION, &position);
+
+        match = search_v2_xpath(xml, xpath, position);
+        if (match == NULL) {
+            pcmk__debug("No %s match for %s in %p", op, xpath, xml->doc);
+            continue;
+        }
+
+        pcmk__trace("Performing %s on %s with %p", op, xpath, match);
+        pcmk__xml_free(match);
+    }
+
+    for (const GSList *iter = modify_changes; iter != NULL; iter = iter->next) {
+        const xmlNode *change = iter->data;
+        const char *op = pcmk__xe_get(change, PCMK_XA_OPERATION);
+        const char *xpath = pcmk__xe_get(change, PCMK_XA_PATH);
+        xmlNode *match = NULL;
+        const xmlNode *child = NULL;
+        const xmlNode *attrs = NULL;
+
+        match = search_v2_xpath(xml, xpath, -1);
+        if (match == NULL) {
+            pcmk__err("No %s match for %s in %p", op, xpath, xml->doc);
+            rc = pcmk_rc_diff_failed;
+            continue;
+        }
+
+        child = pcmk__xe_first_child(change, PCMK_XE_CHANGE_RESULT, NULL, NULL);
+        attrs = pcmk__xml_first_child(child);
+
+        if (attrs == NULL) {
+            pcmk__err("%s on %s has a malformed " PCMK_XE_CHANGE_RESULT, op,
+                      xpath);
+            rc = ENOMSG;
+            continue;
+        }
+
+        pcmk__trace("Performing %s on %s with %p", op, xpath, match);
+
+        /* Remove all existing attributes and then set the ones from attrs. We
+         * remove all attributes, even the ones that will be reset or unchanged,
+         * because for some reason we care about whether their positions have
+         * changed. Removing all attributes first ensures that the resulting
+         * order matches the order in attrs.
+         */
+        pcmk__xe_remove_matching_attrs(match, false, NULL, NULL);
+
+        // Copy the ones from attrs
+        pcmk__xe_copy_attrs(match, attrs, pcmk__xaf_none);
+    }
+
+    for (const GSList *iter = create_changes; iter != NULL; iter = iter->next) {
+        const xmlNode *change = iter->data;
+        const char *op = pcmk__xe_get(change, PCMK_XA_OPERATION);
+        const char *xpath = pcmk__xe_get(change, PCMK_XA_PATH);
+        xmlNode *match = NULL;
+        xml_change_obj_t *change_obj = NULL;
+
+        match = search_v2_xpath(xml, xpath, -1);
+        if (match == NULL) {
+            pcmk__err("No %s match for %s in %p", op, xpath, xml->doc);
+            rc = pcmk_rc_diff_failed;
+            continue;
+        }
+
+        // Delay the adding of a PCMK_VALUE_CREATE object
+        change_obj = pcmk__assert_alloc(1, sizeof(xml_change_obj_t));
+        change_obj->change = change;
+        change_obj->match = match;
+
+        change_objs = g_list_append(change_objs, change_obj);
+    }
+
+    for (const GSList *iter = move_changes; iter != NULL; iter = iter->next) {
+        const xmlNode *change = iter->data;
+        const char *op = pcmk__xe_get(change, PCMK_XA_OPERATION);
+        const char *xpath = pcmk__xe_get(change, PCMK_XA_PATH);
+        xmlNode *match = NULL;
+        xml_change_obj_t *change_obj = NULL;
+
+        match = search_v2_xpath(xml, xpath, -1);
+        if (match == NULL) {
+            pcmk__err("No %s match for %s in %p", op, xpath, xml->doc);
+            rc = pcmk_rc_diff_failed;
+            continue;
+        }
+
+        change_obj = pcmk__assert_alloc(1, sizeof(xml_change_obj_t));
+        change_obj->change = change;
+        change_obj->match = match;
+
+        change_objs = g_list_append(change_objs, change_obj);
+
+        // Temporarily put the PCMK_VALUE_MOVE object after the last sibling
+        if ((match->parent != NULL) && (match->parent->last != NULL)) {
+            xmlAddNextSibling(match->parent->last, match);
+        }
+    }
+
+    /* Changes should be generated in the right order if Pacemaker created the
+     * patchset, but try to be robust in case of a user-created patchset.
+     */
     change_objs = g_list_sort(change_objs, sort_change_obj_by_position);
 
     for (GList *iter = change_objs; iter != NULL; iter = iter->next) {
         xml_change_obj_t *change_obj = iter->data;
         const xmlNode *change = change_obj->change;
         xmlNode *match = change_obj->match;
-        const char *op = NULL;
-        const char *xpath = NULL;
-
-        op = pcmk__xe_get(change, PCMK_XA_OPERATION);
-        xpath = pcmk__xe_get(change, PCMK_XA_PATH);
+        const char *op = pcmk__xe_get(change, PCMK_XA_OPERATION);
+        const char *xpath = pcmk__xe_get(change, PCMK_XA_PATH);
 
         pcmk__trace("Continue performing %s on %s with %p", op, xpath, match);
 
@@ -1087,7 +1148,12 @@ apply_v2_patchset(xmlNode *xml, const xmlNode *patchset)
         }
     }
 
+    g_slist_free(delete_changes);
+    g_slist_free(modify_changes);
+    g_slist_free(create_changes);
+    g_slist_free(move_changes);
     g_list_free_full(change_objs, free);
+
     return rc;
 }
 
