@@ -92,7 +92,7 @@ add_delete_change(void *data, void *user_data)
     pcmk__xe_set(change, PCMK_XA_PATH, deleted_obj->path);
 
     if (deleted_obj->position >= 0) {
-        pcmk__xe_set_int(change, PCMK_XE_POSITION, deleted_obj->position);
+        pcmk__xe_set_int(change, PCMK_XA_POSITION, deleted_obj->position);
     }
 }
 
@@ -122,7 +122,7 @@ add_create_change(xmlNode *xml, xmlNode *patchset)
 
     pcmk__xe_set(change, PCMK_XA_OPERATION, PCMK_VALUE_CREATE);
     pcmk__xe_set(change, PCMK_XA_PATH, xpath->str);
-    pcmk__xe_set_int(change, PCMK_XE_POSITION,
+    pcmk__xe_set_int(change, PCMK_XA_POSITION,
                      pcmk__xml_position(xml, pcmk__xf_deleted));
     pcmk__xml_copy(change, xml);
 
@@ -278,7 +278,7 @@ add_move_change(const xmlNode *xml, xmlNode *patchset)
 
     pcmk__xe_set(change, PCMK_XA_OPERATION, PCMK_VALUE_MOVE);
     pcmk__xe_set(change, PCMK_XA_PATH, xpath->str);
-    pcmk__xe_set_int(change, PCMK_XE_POSITION,
+    pcmk__xe_set_int(change, PCMK_XA_POSITION,
                      pcmk__xml_position(xml, pcmk__xf_deleted));
 
     pcmk__trace("%s.%s moved to position %d", xml->name, pcmk__xe_id(xml),
@@ -844,8 +844,8 @@ sort_change_obj_by_position(const void *a, const void *b)
     int position_a = -1;
     int position_b = -1;
 
-    pcmk__xe_get_int(change_obj_a->change, PCMK_XE_POSITION, &position_a);
-    pcmk__xe_get_int(change_obj_b->change, PCMK_XE_POSITION, &position_b);
+    pcmk__xe_get_int(change_obj_a->change, PCMK_XA_POSITION, &position_a);
+    pcmk__xe_get_int(change_obj_b->change, PCMK_XA_POSITION, &position_b);
 
     if (position_a < position_b) {
         return -1;
@@ -916,10 +916,10 @@ apply_v2_patchset(xmlNode *xml, const xmlNode *patchset)
         pcmk__trace("Processing %s %s", change->name, op);
 
         /* PCMK_VALUE_DELETE changes for XML comments are generated with
-         * PCMK_XE_POSITION
+         * PCMK_XA_POSITION
          */
         if (pcmk__str_eq(op, PCMK_VALUE_DELETE, pcmk__str_none)) {
-            pcmk__xe_get_int(change, PCMK_XE_POSITION, &position);
+            pcmk__xe_get_int(change, PCMK_XA_POSITION, &position);
         }
 
         match = search_v2_xpath(xml, xpath, position);
@@ -1012,7 +1012,7 @@ apply_v2_patchset(xmlNode *xml, const xmlNode *patchset)
             xmlNode *match_child = NULL;
 
             match_child = match->children;
-            pcmk__xe_get_int(change, PCMK_XE_POSITION, &position);
+            pcmk__xe_get_int(change, PCMK_XA_POSITION, &position);
 
             while ((match_child != NULL)
                    && (position != pcmk__xml_position(match_child, pcmk__xf_skip))) {
@@ -1036,7 +1036,7 @@ apply_v2_patchset(xmlNode *xml, const xmlNode *patchset)
         if (pcmk__str_eq(op, PCMK_VALUE_MOVE, pcmk__str_none)) {
             int position = 0;
 
-            pcmk__xe_get_int(change, PCMK_XE_POSITION, &position);
+            pcmk__xe_get_int(change, PCMK_XA_POSITION, &position);
             if (position != pcmk__xml_position(match, pcmk__xf_skip)) {
                 xmlNode *match_child = NULL;
                 int p = position;

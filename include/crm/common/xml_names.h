@@ -359,6 +359,7 @@ extern "C" {
 #define PCMK_XA_PATH                        "path"
 #define PCMK_XA_PENDING                     "pending"
 #define PCMK_XA_PORT                        "port"
+#define PCMK_XA_POSITION                    "position"
 #define PCMK_XA_PRESENT                     "present"
 #define PCMK_XA_PRIORITY_FENCING_DELAY_MS   "priority-fencing-delay-ms"
 #define PCMK_XA_PROGRAM                     "program"
