@@ -587,6 +587,7 @@ pcmk__xml_position(const xmlNode *xml, enum pcmk__xml_flags ignore_if_set)
          * created outside of Pacemaker. In that case, nodepriv may be NULL.
          */
         if ((nodepriv == NULL)
+            || (ignore_if_set == 0)
             || !pcmk__is_set(nodepriv->flags, ignore_if_set)) {
 
             position++;
