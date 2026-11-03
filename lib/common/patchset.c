@@ -867,14 +867,14 @@ sort_change_obj_by_position(const void *a, const void *b)
  * Log an appropriate error if the check fails.
  *
  * This checks only that the element is of the correct type and that it has the
- * correct attributes. The check can pass even if the change's path doesn't
- * match anything in the target XML document.
+ * correct attributes and children. The check can pass even if the change's path
+ * doesn't match anything in the target XML document.
  *
  * \param[in] change  Child element of an XML patchset
  *
  * \return \c true if \p change is a \c PCMK_XE_CHANGE element with
- *         \c PCMK_XA_OPERATION and \c PCMK_XA_PATH attributes, or \c false
- *         otherwise
+ *         \c PCMK_XA_OPERATION and \c PCMK_XA_PATH attributes and everything
+ *         that the particular operation requires, or \c false otherwise
  */
 static bool
 change_is_valid(const xmlNode *change)
@@ -904,7 +904,60 @@ change_is_valid(const xmlNode *change)
         return false;
     }
 
-    return true;
+    if (pcmk__str_eq(op, PCMK_VALUE_DELETE, pcmk__str_none)) {
+        // @TODO Ensure PCMK_XA_POSITION is present for comments
+        return true;
+    }
+
+    if (pcmk__str_any_of(op, PCMK_VALUE_CREATE, PCMK_VALUE_MOVE, NULL)) {
+        int pos = -1;
+
+        if ((pcmk__xe_get_int(change, PCMK_XA_POSITION, &pos) != pcmk_rc_ok)
+            || (pos < 0)) {
+
+            pcmk__err("Patchset %s " PCMK_XE_CHANGE " element must have a "
+                      "nonnegative " PCMK_XA_POSITION " attribute", op);
+            return false;
+        }
+
+        if (pcmk__str_eq(op, PCMK_VALUE_CREATE, pcmk__str_none)
+            && (change->children == NULL)) {
+
+            pcmk__err("Patchset %s " PCMK_XE_CHANGE " element is missing a "
+                      "child", op);
+            return false;
+        }
+
+        return true;
+    }
+
+    if (pcmk__str_eq(op, PCMK_VALUE_MODIFY, pcmk__str_none)) {
+        const xmlNode *change_result = NULL;
+
+        /* PCMK_XE_CHANGE_LIST should be also present, but we don't use it when
+         * applying a patchset, so don't check for it
+         */
+
+        change_result = pcmk__xe_first_child(change, PCMK_XE_CHANGE_RESULT,
+                                             NULL, NULL);
+        if (change_result == NULL) {
+            pcmk__err("Patchset %s " PCMK_XE_CHANGE " element for %s is "
+                      "missing a " PCMK_XE_CHANGE_RESULT, op, path);
+            return false;
+        }
+
+        if (pcmk__xml_first_child(change_result) == NULL) {
+            pcmk__err("Patchset %s " PCMK_XE_CHANGE " element for %s has a "
+                      PCMK_XE_CHANGE_RESULT " with no child", op, path);
+            return false;
+        }
+
+        return true;
+    }
+
+    pcmk__err("Patchset " PCMK_XE_CHANGE " element for path %s has invalid "
+              PCMK_XA_OPERATION " attribute '%s'", path, op);
+    return false;
 }
 
 /*!
@@ -1015,17 +1068,10 @@ apply_v2_patchset(xmlNode *xml, const xmlNode *patchset)
             continue;
         }
 
+        pcmk__trace("Performing %s on %s with %p", op, xpath, match);
+
         child = pcmk__xe_first_child(change, PCMK_XE_CHANGE_RESULT, NULL, NULL);
         attrs = pcmk__xml_first_child(child);
-
-        if (attrs == NULL) {
-            pcmk__err("%s on %s has a malformed " PCMK_XE_CHANGE_RESULT, op,
-                      xpath);
-            rc = ENOMSG;
-            continue;
-        }
-
-        pcmk__trace("Performing %s on %s with %p", op, xpath, match);
 
         /* Remove all existing attributes and then set the ones from attrs. We
          * remove all attributes, even the ones that will be reset or unchanged,
