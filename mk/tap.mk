@@ -1,5 +1,5 @@
 #
-# Copyright 2021-2025 the Pacemaker project contributors
+# Copyright 2021-2026 the Pacemaker project contributors
 #
 # The version control history for this file may have further details.
 #
@@ -14,7 +14,6 @@ AM_TESTS_ENVIRONMENT += PCMK_CTS_CLI_DIR=$(top_srcdir)/cts/cli
 AM_TESTS_ENVIRONMENT += PCMK_schema_directory=$(top_builddir)/xml
 
 LOG_DRIVER = env AM_TAP_AWK='$(AWK)' $(SHELL) $(top_srcdir)/tests/tap-driver.sh
-LOG_COMPILER = $(top_srcdir)/tests/tap-test
 CLEANFILES = *.log *.trs
 
 WRAPPED = abort 		\

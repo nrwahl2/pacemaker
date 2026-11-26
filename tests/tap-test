@@ -1,3 +1,0 @@
-#!/bin/sh
-# run a GTest in tap more. The test binary is passed as $1
-$1 -k --tap
