@@ -26,5 +26,3 @@ check_PROGRAMS += pcmk__parse_type_test
 check_PROGRAMS += pcmk__replace_submatches_test
 check_PROGRAMS += pcmk__unpack_duration_test
 check_PROGRAMS += pcmk_evaluate_rule_test
-
-TESTS = $(check_PROGRAMS)

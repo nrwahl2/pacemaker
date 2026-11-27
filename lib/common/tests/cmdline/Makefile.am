@@ -15,5 +15,3 @@ include $(top_srcdir)/mk/unittest.mk
 check_PROGRAMS = pcmk__cmdline_preproc_test
 check_PROGRAMS += pcmk__new_common_args_test
 check_PROGRAMS += pcmk__quote_cmdline_test
-
-TESTS = $(check_PROGRAMS)

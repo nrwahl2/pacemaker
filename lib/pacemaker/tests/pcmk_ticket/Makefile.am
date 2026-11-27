@@ -1,5 +1,5 @@
 #
-# Copyright 2024 the Pacemaker project contributors
+# Copyright 2024-2026 the Pacemaker project contributors
 #
 # The version control history for this file may have further details.
 #
@@ -24,5 +24,3 @@ check_PROGRAMS += pcmk_ticket_info_test
 check_PROGRAMS += pcmk_ticket_remove_attr_test
 check_PROGRAMS += pcmk_ticket_set_attr_test
 check_PROGRAMS += pcmk_ticket_state_test
-
-TESTS = $(check_PROGRAMS)

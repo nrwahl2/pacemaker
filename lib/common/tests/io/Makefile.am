@@ -14,5 +14,3 @@ include $(top_srcdir)/mk/unittest.mk
 # Add "_test" to the end of all test program names to simplify .gitignore.
 check_PROGRAMS = pcmk__full_path_test
 check_PROGRAMS += pcmk__get_tmpdir_test
-
-TESTS = $(check_PROGRAMS)

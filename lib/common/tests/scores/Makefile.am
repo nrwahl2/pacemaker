@@ -17,5 +17,3 @@ check_PROGRAMS += pcmk_parse_score_test
 check_PROGRAMS += pcmk_readable_score_test
 check_PROGRAMS += pcmk_str_is_infinity_test
 check_PROGRAMS += pcmk_str_is_minus_infinity_test
-
-TESTS = $(check_PROGRAMS)

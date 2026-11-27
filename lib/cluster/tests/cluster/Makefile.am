@@ -1,5 +1,5 @@
 #
-# Copyright 2024 the Pacemaker project contributors
+# Copyright 2024-2026 the Pacemaker project contributors
 #
 # The version control history for this file may have further details.
 #
@@ -15,5 +15,3 @@ LDADD += $(top_builddir)/lib/cluster/libcrmcluster.la
 
 # Add "_test" to the end of all test program names to simplify .gitignore.
 check_PROGRAMS = pcmk_cluster_set_destroy_fn_test
-
-TESTS = $(check_PROGRAMS)

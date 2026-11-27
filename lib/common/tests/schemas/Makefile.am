@@ -27,8 +27,6 @@ FIND_X_0_SCHEMA_TEST =	pcmk__find_x_0_schema_test
 
 check_PROGRAMS =	$(SHARED_SCHEMA_TESTS) $(FIND_X_0_SCHEMA_TEST)
 
-TESTS = $(check_PROGRAMS)
-
 $(SHARED_SCHEMA_TESTS): setup-schema-dir
 
 $(FIND_X_0_SCHEMA_TEST): setup-find_x_0-schema-dir

@@ -18,5 +18,3 @@ check_PROGRAMS += pcmk__cmp_nvpair_blocks_test
 check_PROGRAMS += pcmk__scan_nvpair_test
 check_PROGRAMS += pcmk__unpack_nvpair_block_test
 check_PROGRAMS += pcmk__unpack_nvpair_blocks_test
-
-TESTS = $(check_PROGRAMS)

@@ -20,5 +20,3 @@ check_PROGRAMS += pcmk__time_add_seconds_test
 check_PROGRAMS += pcmk__time_add_years_test
 check_PROGRAMS += pcmk__time_format_hr_test
 check_PROGRAMS += pcmk__time_parse_duration_test
-
-TESTS = $(check_PROGRAMS)

@@ -16,5 +16,3 @@ check_PROGRAMS = pcmk__clear_flags_as_test
 check_PROGRAMS += pcmk__set_flags_as_test
 check_PROGRAMS += pcmk__all_flags_set_test
 check_PROGRAMS += pcmk__any_flags_set_test
-
-TESTS = $(check_PROGRAMS)

@@ -33,5 +33,3 @@ check_PROGRAMS += pcmk__strcmp_test
 check_PROGRAMS += pcmk__strkey_table_test
 check_PROGRAMS += pcmk__strikey_table_test
 check_PROGRAMS += pcmk__uint_from_hash_test
-
-TESTS = $(check_PROGRAMS)

@@ -21,5 +21,3 @@ check_PROGRAMS += pcmk__register_formats_test
 check_PROGRAMS += pcmk__register_message_test
 check_PROGRAMS += pcmk__register_messages_test
 check_PROGRAMS += pcmk__unregister_formats_test
-
-TESTS = $(check_PROGRAMS)

@@ -17,5 +17,3 @@ check_PROGRAMS += crm_parse_agent_spec_test
 check_PROGRAMS += pcmk__effective_rc_test
 check_PROGRAMS += pcmk_get_ra_caps_test
 check_PROGRAMS += pcmk_stonith_param_test
-
-TESTS = $(check_PROGRAMS)

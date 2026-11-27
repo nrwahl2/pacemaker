@@ -1,5 +1,5 @@
 #
-# Copyright 2024 the Pacemaker project contributors
+# Copyright 2024-2026 the Pacemaker project contributors
 #
 # The version control history for this file may have further details.
 #
@@ -14,5 +14,3 @@ include $(top_srcdir)/mk/unittest.mk
 # Add "_test" to the end of all test program names to simplify .gitignore.
 
 check_PROGRAMS = pcmk__new_message_as_test
-
-TESTS = $(check_PROGRAMS)

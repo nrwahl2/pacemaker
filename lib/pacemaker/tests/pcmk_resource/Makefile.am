@@ -1,5 +1,5 @@
 #
-# Copyright 2023-2024 the Pacemaker project contributors
+# Copyright 2023-2026 the Pacemaker project contributors
 #
 # The version control history for this file may have further details.
 #
@@ -17,5 +17,3 @@ LDADD += $(top_builddir)/lib/cib/libcib.la
 # Add "_test" to the end of all test program names to simplify .gitignore.
 
 check_PROGRAMS = pcmk_resource_delete_test
-
-TESTS = $(check_PROGRAMS)

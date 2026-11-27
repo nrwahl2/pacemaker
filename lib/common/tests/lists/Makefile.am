@@ -16,5 +16,3 @@ include $(top_srcdir)/mk/unittest.mk
 check_PROGRAMS = pcmk__list_of_1_test
 check_PROGRAMS += pcmk__list_of_multiple_test
 check_PROGRAMS += pcmk__subtract_lists_test
-
-TESTS = $(check_PROGRAMS)

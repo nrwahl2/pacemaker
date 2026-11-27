@@ -18,5 +18,3 @@ AM_TESTS_ENVIRONMENT += PCMK_CTS_CLI_DIR=$(top_srcdir)/cts/cli
 # Add "_test" to the end of all test program names to simplify .gitignore.
 check_PROGRAMS = native_find_rsc_test
 check_PROGRAMS += pe_base_name_eq_test
-
-TESTS = $(check_PROGRAMS)

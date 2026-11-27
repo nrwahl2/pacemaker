@@ -15,5 +15,3 @@ include $(top_srcdir)/mk/unittest.mk
 check_PROGRAMS = pcmk__env_option_test
 check_PROGRAMS += pcmk__set_env_option_test
 check_PROGRAMS += pcmk__env_option_enabled_test
-
-TESTS = $(check_PROGRAMS)

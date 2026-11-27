@@ -1,5 +1,5 @@
 #
-# Copyright 2024 the Pacemaker project contributors
+# Copyright 2024-2026 the Pacemaker project contributors
 #
 # The version control history for this file may have further details.
 #
@@ -15,5 +15,3 @@ include $(top_srcdir)/mk/unittest.mk
 check_PROGRAMS = pcmk_is_probe_test
 check_PROGRAMS += pcmk_xe_is_probe_test
 check_PROGRAMS += pcmk_xe_mask_probe_failure_test
-
-TESTS = $(check_PROGRAMS)

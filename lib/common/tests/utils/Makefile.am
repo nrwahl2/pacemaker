@@ -22,5 +22,3 @@ check_PROGRAMS += pcmk__lastfailure_name_test
 check_PROGRAMS += pcmk__lookup_user_test
 check_PROGRAMS += pcmk__realloc_test
 check_PROGRAMS += pcmk__timeout_ms2s_test
-
-TESTS = $(check_PROGRAMS)

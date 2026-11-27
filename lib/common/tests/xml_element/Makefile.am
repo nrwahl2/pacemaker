@@ -25,5 +25,3 @@ check_PROGRAMS += pcmk__xe_set_bool_test
 check_PROGRAMS += pcmk__xe_set_id_test
 check_PROGRAMS += pcmk__xe_set_score_test
 check_PROGRAMS += pcmk__xe_sort_attrs_test
-
-TESTS = $(check_PROGRAMS)

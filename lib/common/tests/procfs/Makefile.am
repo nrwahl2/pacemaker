@@ -15,5 +15,3 @@ include $(top_srcdir)/mk/unittest.mk
 check_PROGRAMS = pcmk__procfs_has_pids_false_test
 check_PROGRAMS += pcmk__procfs_has_pids_true_test
 check_PROGRAMS += pcmk__procfs_pid2path_test
-
-TESTS = $(check_PROGRAMS)

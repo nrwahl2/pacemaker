@@ -20,5 +20,3 @@ check_PROGRAMS += pcmk_node_is_in_maintenance_test
 check_PROGRAMS += pcmk_node_is_online_test
 check_PROGRAMS += pcmk_node_is_pending_test
 check_PROGRAMS += pcmk_node_is_shutting_down_test
-
-TESTS = $(check_PROGRAMS)

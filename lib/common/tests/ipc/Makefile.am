@@ -13,5 +13,3 @@ include $(top_srcdir)/mk/unittest.mk
 
 # Add "_test" to the end of all test program names to simplify .gitignore.
 check_PROGRAMS = pcmk__ipc_msg_append_test
-
-TESTS = $(check_PROGRAMS)
