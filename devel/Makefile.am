@@ -267,6 +267,5 @@ EXTRA_PROGRAMS		= scratch
 nodist_scratch_SOURCES	= scratch.c
 scratch_LDADD		= $(top_builddir)/lib/common/libcrmcommon.la
 
-.PHONY: clean-local
 clean-local: coverage-clean coverity-clean cppcheck-clean
 	-rm -f $(EXTRA_PROGRAMS)

@@ -94,7 +94,6 @@ core-clean:
 		$(MAKE) $(AM_MAKEFLAGS) -C $$subdir clean || exit 1; \
 	done
 
-.PHONY: install-exec-local
 install-exec-local:
 	for DIR in $(ROOT_DIRS) $(DAEMON_R_DIRS); do				\
 		$(INSTALL) -d -m 750 "$(DESTDIR)/$$DIR";			\
@@ -122,13 +121,11 @@ clean-generic:
 
 PACKAGE         ?= pacemaker
 
-.PHONY: clean-local
 clean-local:
 	-rm -f $(builddir)/$(PACKAGE)-*.tar.gz
 	-if [ "x$(top_srcdir)" != "x$(top_builddir)" ]; then \
 		rm -rf $(top_builddir)/python; \
 	fi
 
-.PHONY: distclean-local
 distclean-local:
 	-rm -rf libltdl autom4te.cache

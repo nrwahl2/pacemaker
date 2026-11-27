@@ -17,7 +17,6 @@ SUBDIRS += tests
 
 PYCHECKFILES ?= $(SUBDIRS)
 
-.PHONY: check-local
 check-local:
 	if [ "x$(top_srcdir)" != "x$(top_builddir)" ]; then \
 		cp -r $(top_srcdir)/python/* $(abs_top_builddir)/python/; \

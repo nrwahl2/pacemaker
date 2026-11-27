@@ -166,7 +166,6 @@ vars:
 	@echo "VERSION='$(VERSION)'"
 	@echo "PACKAGE_SERIES='$(PACKAGE_SERIES)'"
 
-.PHONY: all-local
 all-local:
 if BUILD_SPHINX_DOCS
 	@for book in $(BOOKS); do					\
@@ -176,7 +175,6 @@ if BUILD_SPHINX_DOCS
 	done
 endif
 
-.PHONY: install-data-local
 install-data-local: all-local
 if BUILD_SPHINX_DOCS
 	$(AM_V_at)for book in $(BOOKS); do				\
@@ -195,7 +193,6 @@ if BUILD_SPHINX_DOCS
 	done
 endif
 
-.PHONY: uninstall-local
 uninstall-local:
 if BUILD_SPHINX_DOCS
 	$(AM_V_at)for book in $(BOOKS); do		\
@@ -203,7 +200,6 @@ if BUILD_SPHINX_DOCS
 	done
 endif
 
-.PHONY: clean-local
 clean-local:
 	$(AM_V_at)-rm -rf				\
 		$(BOOKS:%="$(builddir)/%/_build")	\

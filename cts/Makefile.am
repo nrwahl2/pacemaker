@@ -44,7 +44,6 @@ scheduler-list:
 
 CLEANFILES	= $(builddir)/.regression.failed.diff
 
-.PHONY: clean-local
 clean-local:
 	rm -f scheduler/*/*.pe
 	rm -f schemas/*/*.up{,.err}

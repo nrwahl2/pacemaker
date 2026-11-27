@@ -1,5 +1,5 @@
 #
-# Copyright 2004-2025 the Pacemaker project contributors
+# Copyright 2004-2026 the Pacemaker project contributors
 #
 # The version control history for this file may have further details.
 #
@@ -35,12 +35,10 @@ pacemaker_schedulerd_SOURCES	= pacemaker-schedulerd.c
 pacemaker_schedulerd_SOURCES	+= schedulerd_ipc.c
 pacemaker_schedulerd_SOURCES	+= schedulerd_messages.c
 
-.PHONY: install-exec-local
 install-exec-local:
 	$(INSTALL) -d -m 750 $(DESTDIR)/$(PCMK_SCHEDULER_INPUT_DIR)
 	-chown $(CRM_DAEMON_USER):$(CRM_DAEMON_GROUP) $(DESTDIR)/$(PCMK_SCHEDULER_INPUT_DIR)
 
-.PHONY: uninstall-local
 uninstall-local:
 	-rmdir $(DESTDIR)/$(PCMK_SCHEDULER_INPUT_DIR)
 

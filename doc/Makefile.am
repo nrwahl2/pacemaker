@@ -127,7 +127,6 @@ books-upload:
 .PHONY: www
 www: clean-local manhtml-upload global-upload doxygen-upload books-upload
 
-.PHONY: clean-local
 clean-local: global-clean manhtml-clean doxygen-clean abi-clean
 
 # "make check" will cause "make all" to be run, which means docs will get built

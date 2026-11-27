@@ -27,7 +27,6 @@ logrotate_DATA		= logrotate.d/pacemaker
 EXTRA_DIST		= $(foreach f,$(CONFIGS),sysconfig/$(f))
 
 # Don't overwrite user's existing config files
-.PHONY: install-data-local
 install-data-local:
 	$(AM_V_at)$(MKDIR_P) $(DESTDIR)$(configdir)
 	$(AM_V_at)for f in $(CONFIGS); do				\
@@ -36,7 +35,6 @@ install-data-local:
 		$(INSTALL_DATA) "$(srcdir)/sysconfig/$$f" "$$dest";	\
 	done
 
-.PHONY: uninstall-local
 uninstall-local:
 	$(AM_V_at)for f in $(CONFIGS); do		\
 		dest="$(DESTDIR)$(configdir)/$$f";	\

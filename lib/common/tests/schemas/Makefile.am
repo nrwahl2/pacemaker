@@ -82,6 +82,5 @@ setup-find_x_0-schema-dir:
 		ln -sf ../$$f $$(basename $$f); \
 	  done )
 
-.PHONY: clean-local
 clean-local:
 	-rm -rf schemas
