@@ -17,6 +17,11 @@ book_verbose = $(book_verbose_@AM_V@)
 book_verbose_ = $(book_verbose_@AM_DEFAULT_V@)
 book_verbose_0 = @echo "  BOOK     $(@:%/_build=%): $(BOOK_FORMATS)";
 
+# Allow silencing stdout when not in verbose mode
+stdout_verbose = $(stdout_verbose_@AM_V@)
+stdout_verbose_ = $(stdout_verbose_@AM_DEFAULT_V@)
+stdout_verbose_0 = >/dev/null
+
 # Things you might want to override on the command line
 
 # Books to generate
@@ -122,10 +127,10 @@ $(BOOKS:%=%/conf.py): conf.py.in
 		$(<) > "$@"
 
 $(BOOK)/_build: $(STATIC_FILES) $(BOOK)/conf.py $(DEPS_$(BOOK)) $(wildcard $(srcdir)/$(BOOK)/*.rst)
-	@echo 'Building "$(subst _, ,$(BOOK))" because of $?' $(PCMK_quiet)
+	@echo 'Building "$(subst _, ,$(BOOK))" because of $?' $(stdout_verbose)
 	$(AM_V_at)rm -rf "$@"
 	$(book_verbose)for format in $(BOOK_FORMATS); do		\
-		echo -e "\n * Building $$format" $(PCMK_quiet);		\
+		echo -e "\n * Building $$format" $(stdout_verbose);	\
 		doctrees="doctrees";					\
 		real_format="$$format";					\
 		case "$$format" in					\
@@ -137,7 +142,7 @@ $(BOOK)/_build: $(STATIC_FILES) $(BOOK)/conf.py $(DEPS_$(BOOK)) $(wildcard $(src
 			-D latex_elements.papersize=$(PAPER)		\
 			$(SPHINXFLAGS)					\
 			"$(srcdir)/$(BOOK)" "$@/$$format"		\
-			$(PCMK_quiet);					\
+			$(stdout_verbose);				\
 		if [ "$$format" = "pdf" ]; then				\
 			$(MAKE) $(AM_MAKEFLAGS)	-C "$@/$$format"	\
 				all-pdf;				\

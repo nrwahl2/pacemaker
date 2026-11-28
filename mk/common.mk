@@ -7,18 +7,6 @@
 # or later (GPLv2+) WITHOUT ANY WARRANTY.
 #
 
-#
-# Some variables to help with silent rules
-# https://www.gnu.org/software/automake/manual/html_node/Automake-silent_002drules-Option.html
-
-V ?= $(AM_DEFAULT_VERBOSITY)
-
-# When a make command is prefixed with one of the AM_V_* macros, it may also be
-# desirable to suffix the command with this, to silence stdout.
-PCMK_quiet = $(pcmk_quiet_$(V))
-pcmk_quiet_0 = >/dev/null
-pcmk_quiet_1 = 
-
 MAINTAINERCLEANFILES	= Makefile.in
 
 AM_CPPFLAGS		= -I$(top_builddir)/include 	\

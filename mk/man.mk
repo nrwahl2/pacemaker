@@ -69,4 +69,4 @@ endif
 # Generate the actual man page for an OCF resource agent from the intermediate
 # docbook XML.
 %.7:	%.dbook
-	$(man_verbose)$(XSLTPROC) $(MANPAGE_XSLT) $(abs_builddir)/$< $(PCMK_quiet)
+	$(man_verbose)$(XSLTPROC) $(MANPAGE_XSLT) $(abs_builddir)/$<
