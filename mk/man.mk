@@ -20,6 +20,11 @@
 # generated via XSL transforms.
 #
 
+# Analogous to AM_V_GEN
+man_verbose = $(man_verbose_@AM_V@)
+man_verbose_ = $(man_verbose_@AM_DEFAULT_V@)
+man_verbose_0 = @echo "  MAN      $@";
+
 if BUILD_HELP
 manpages 		= $(sbin_PROGRAMS:%=%.8) $(sbin_SCRIPTS:%=%.8)
 man8_MANS 		= $(filter-out attrd_updater.8 cibadmin.8 crm_attribute.8,$(manpages))
@@ -35,7 +40,7 @@ HELP2MAN_ARGS = -N --section 8 --name "Part of the Pacemaker cluster resource ma
 # * fence_watchdog
 %.8:	%
 	$(AM_V_at)chmod a+x $(abs_builddir)/$<
-	$(AM_V_MAN)if [ -f $(abs_srcdir)/$@.inc ]; then			\
+	$(man_verbose)if [ -f $(abs_srcdir)/$@.inc ]; then			\
 		PATH=$(abs_builddir):$$PATH $(HELP2MAN) $(HELP2MAN_ARGS)	\
 			-h --help-all 						\
 			--no-discard-stderr 					\
@@ -64,4 +69,4 @@ endif
 # Generate the actual man page for an OCF resource agent from the intermediate
 # docbook XML.
 %.7:	%.dbook
-	$(AM_V_MAN)$(XSLTPROC) $(MANPAGE_XSLT) $(abs_builddir)/$< $(PCMK_quiet)
+	$(man_verbose)$(XSLTPROC) $(MANPAGE_XSLT) $(abs_builddir)/$< $(PCMK_quiet)

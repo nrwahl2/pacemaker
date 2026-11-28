@@ -12,6 +12,11 @@ include $(top_srcdir)/mk/common.mk
 include $(top_srcdir)/mk/release.mk
 include $(top_srcdir)/mk/uploads.mk
 
+# Analogous to AM_V_GEN
+book_verbose = $(book_verbose_@AM_V@)
+book_verbose_ = $(book_verbose_@AM_DEFAULT_V@)
+book_verbose_0 = @echo "  BOOK     $(@:%/_build=%): $(BOOK_FORMATS)";
+
 # Things you might want to override on the command line
 
 # Books to generate
@@ -119,7 +124,7 @@ $(BOOKS:%=%/conf.py): conf.py.in
 $(BOOK)/_build: $(STATIC_FILES) $(BOOK)/conf.py $(DEPS_$(BOOK)) $(wildcard $(srcdir)/$(BOOK)/*.rst)
 	@echo 'Building "$(subst _, ,$(BOOK))" because of $?' $(PCMK_quiet)
 	$(AM_V_at)rm -rf "$@"
-	$(AM_V_BOOK)for format in $(BOOK_FORMATS); do			\
+	$(book_verbose)for format in $(BOOK_FORMATS); do		\
 		echo -e "\n * Building $$format" $(PCMK_quiet);		\
 		doctrees="doctrees";					\
 		real_format="$$format";					\

@@ -9,6 +9,11 @@
 
 include $(top_srcdir)/mk/common.mk
 
+# Analogous to AM_V_GEN
+schema_verbose = $(schema_verbose_@AM_V@)
+schema_verbose_ = $(schema_verbose_@AM_DEFAULT_V@)
+schema_verbose_0 = @echo "  SCHEMA   $@";
+
 noarch_pkgconfig_DATA	= $(builddir)/pacemaker-schemas.pc
 
 # Pacemaker has 3 schemas: the CIB schema, the API schema (for command-line
@@ -182,10 +187,10 @@ api-versions:
 # Dynamically generated top-level API schema
 api/api-result.rng: api/api-result-$(API_max).rng
 	$(AM_V_at)$(MKDIR_P) api # might not exist in VPATH build
-	$(AM_V_SCHEMA)cp $(top_builddir)/xml/$< $@
+	$(schema_verbose)cp $(top_builddir)/xml/$< $@
 
 api/api-result-%.rng: $(API_build_copies) rng-helper Makefile.am
-	$(AM_V_SCHEMA)$(builddir)/rng-helper build_api_rng "$@" "$*" \
+	$(schema_verbose)$(builddir)/rng-helper build_api_rng "$@" "$*" \
 		$(API_request_base)
 
 crm_mon.rng: api/crm_mon-$(MON_max).rng
@@ -201,14 +206,14 @@ crm_mon.rng: api/crm_mon-$(MON_max).rng
 	$(AM_V_at)echo '            <externalRef href="$(<)" />' >> $@
 	$(AM_V_at)echo '        </element>' >> $@
 	$(AM_V_at)echo '    </define>' >> $@
-	$(AM_V_SCHEMA)echo '</grammar>' >> $@
+	$(schema_verbose)echo '</grammar>' >> $@
 
 # Dynamically generated top-level CIB schema
 pacemaker.rng: pacemaker-$(CIB_max).rng
-	$(AM_V_SCHEMA)cp $(top_builddir)/xml/$< $@
+	$(schema_verbose)cp $(top_builddir)/xml/$< $@
 
 pacemaker-%.rng: $(CIB_build_copies) rng-helper Makefile.am
-	$(AM_V_SCHEMA)$(builddir)/rng-helper build_cib_rng "$@" "$*" \
+	$(schema_verbose)$(builddir)/rng-helper build_cib_rng "$@" "$*" \
 		$(CIB_cfg_base)
 
 # Dynamically generated CIB schema listing all pacemaker versions
@@ -230,7 +235,7 @@ versions.rng: pacemaker-$(CIB_max).rng Makefile.am
 	$(AM_V_at)echo '      <attribute name="num_updates"><data type="nonNegativeInteger"/></attribute>' >> $@
 	$(AM_V_at)echo '    </group>' >> $@
 	$(AM_V_at)echo '  </start>' >> $@
-	$(AM_V_SCHEMA)echo '</grammar>' >> $@
+	$(schema_verbose)echo '</grammar>' >> $@
 
 schemas:
 	@if [ -z "$$SCHEMAS" ]; then \

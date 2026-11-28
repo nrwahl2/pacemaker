@@ -1,5 +1,5 @@
 #
-# Copyright 2014-2023 the Pacemaker project contributors
+# Copyright 2014-2026 the Pacemaker project contributors
 #
 # The version control history for this file may have further details.
 #
@@ -18,21 +18,6 @@ V ?= $(AM_DEFAULT_VERBOSITY)
 PCMK_quiet = $(pcmk_quiet_$(V))
 pcmk_quiet_0 = >/dev/null
 pcmk_quiet_1 = 
-
-# AM_V_GEN is intended to be used in custom pattern rules, and replaces echoing
-# the command used with a more concise line with "GEN" and the name of the file
-# being generated. Our AM_V_* macros are similar but more descriptive.
-AM_V_MAN = $(am__v_MAN_$(V))
-am__v_MAN_0 = @echo "  MAN      $@";
-am__v_MAN_1 = 
-
-AM_V_SCHEMA = $(am__v_SCHEMA_$(V))
-am__v_SCHEMA_0 = @echo "  SCHEMA   $@";
-am__v_SCHEMA_1 = 
-
-AM_V_BOOK = $(am__v_BOOK_$(V))
-am__v_BOOK_0 = @echo "  BOOK    $(@:%/_build=%): $(BOOK_FORMATS)";
-am__v_BOOK_1 = 
 
 MAINTAINERCLEANFILES	= Makefile.in
 
